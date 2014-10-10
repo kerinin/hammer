@@ -1,4 +1,4 @@
-mod index;
+mod partition;
 
 #[cfg(not(test))]
 fn main() {
