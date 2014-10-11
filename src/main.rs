@@ -1,3 +1,4 @@
+mod permutable;
 mod partition;
 
 #[cfg(not(test))]
