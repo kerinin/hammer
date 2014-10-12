@@ -1,6 +1,6 @@
 extern crate num;
 
-use std::collections::{HashMap, Map, MutableMap};
+use std::collections::{HashMap, HashSet, Map, MutableMap};
 use std::iter::Repeat;
 use self::num::rational::Ratio;
 use super::permutable::Permutable;
@@ -33,25 +33,23 @@ impl Partition<HashMap<Vec<u8>, Vec<u8>>> {
 }
 
 impl<T: Map<Vec<u8>, Vec<u8>> + MutableMap<Vec<u8>, Vec<u8>>> Partition<T> {
-    pub fn find(&self, key: Vec<u8>) -> Option<Vec<Vec<u8>>> {
 
+    pub fn find(&self, key: Vec<u8>) -> Option<Vec<Vec<u8>>> {
         let transformed_key = self.transform_key(key);
         let permutations = self.permute_key(transformed_key.clone());
-        let mut found_keys: Vec<Vec<u8>> = vec![];
+        let mut found_keys: Set<Vec<u8>> = HashSet::new();
 
         match self.kv.find(&transformed_key) {
             Some(key) => found_keys.push(key.clone()),
             None => {},
         }
 
-        permutations.iter()
-            .map(|k| self.kv.find(k))
-            .map(|option| {
-                match option {
-                    Some(key) => found_keys.push(key.clone()),
-                    None => {},
-                }
-            });
+        for k in permutations.iter() {
+            match self.kv.find(k) {
+                Some(key) => found_keys.push(key.clone()),
+                None => {},
+            }
+        }
 
         match found_keys.len() {
             0 => return None,
@@ -59,16 +57,19 @@ impl<T: Map<Vec<u8>, Vec<u8>> + MutableMap<Vec<u8>, Vec<u8>>> Partition<T> {
         }
     }
 
-    /*
     pub fn insert(&mut self, key: Vec<u8>) -> bool {
-        let transformed_key = self.transform_key(key);
-        let permutations = self.permute_key(transformed_key);
+        let transformed_key = self.transform_key(key.clone());
+        let permutations = self.permute_key(transformed_key.clone());
 
-        return permutations
-            .map(|&k| self.kv.insert(k, key))
-            .all_true;  // Probably not really a function
+        if self.kv.insert(transformed_key, key.clone()) {
+            for k in permutations.iter() {
+                self.kv.insert(k.clone(), key.clone());
+            }
+            return true;
+        } else {
+            return false;
+        }
     }
-    */
 
     /*
     pub fn remove(&mut self, key: Vec<u8>) -> bool {
@@ -134,29 +135,31 @@ mod test {
 
     #[test]
     fn find_inserted_key() {
-        let partition = Partition::new(4, 4);
+        let mut partition = Partition::new(4, 4);
         let a = vec![0b00001111u8];
 
-        assert!(partition.insert(&a));
+        assert!(partition.insert(a.clone()));
 
-        let keys = partition.find(a);
+        let keys = partition.find(a.clone());
+        println!("keys: {}", keys);
 
         assert_eq!(Some(vec![a]), keys);
     }
 
     #[test]
     fn find_permutation_of_inserted_key() {
-        let partition = Partition::new(4, 4);
+        let mut partition = Partition::new(4, 4);
         let a = vec![0b00001111u8];
         let b = vec![0b00000111u8];
 
-        assert!(partition.insert(&a));
+        assert!(partition.insert(a.clone()));
 
-        let keys = partition.find(b);
+        let keys = partition.find(b.clone());
 
         assert_eq!(Some(vec![a]), keys);
     }
 
+    /*
     #[test]
     fn remove_inserted_key() {
         let partition = Partition::new(4, 4);
@@ -177,4 +180,5 @@ mod test {
 
         assert!(!partition.remove(&a));
     }
+    */
 }

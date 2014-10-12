@@ -119,13 +119,13 @@ impl Permutable<Vec<u8>, uint, Vec<u8>> for Vec<u8> {
                         Some(&next_byte) => {
                             let bits_from_next_byte = &next_byte.shl(&to_unshift);
 
-                            out.unshift(out_byte.bitxor(bits_from_next_byte));
+                            out.insert(0, out_byte.bitxor(bits_from_next_byte));
                         },
 
                         // We're on the last element, so we don't need to pull
                         // bits from the next one
                         None => {
-                            out.unshift(out_byte);
+                            out.insert(0, out_byte);
                         },
                     }
                 },
