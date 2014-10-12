@@ -49,6 +49,8 @@ impl Permutable<Vec<u8>, uint, Vec<u8>> for Vec<u8> {
      * pads the left-most byte with zeros (if necessary)
      */
     fn shl(&self, rhs: &uint) -> Vec<u8> {
+        if rhs == &0 { return self.clone(); }
+
         let to_drop = rhs / 8;
         let to_shift = rhs % 8;
         let to_unshift = 8 - to_shift;
@@ -96,6 +98,8 @@ impl Permutable<Vec<u8>, uint, Vec<u8>> for Vec<u8> {
      * pads the right-most byte with zeros (if necessary)
      */
     fn shr(&self, rhs: &uint) -> Vec<u8> {
+        if rhs == &0 { return self.clone(); }
+
         let to_drop = rhs / 8;
         let to_shift = rhs % 8;
         let to_unshift = 8 - to_shift;
@@ -198,6 +202,14 @@ mod test {
     }
 
     #[test]
+    fn shl_zero() {
+        let a = vec![0b00000000u8, 0b11111111u8];
+        let b = vec![0b00000000u8, 0b11111111u8];
+
+        assert_eq!(a.shl(&0), b);
+    }
+
+    #[test]
     fn shl_less_than_vector_length() {
         let a = vec![0b00000000u8, 0b00000000u8, 0b11111111u8, 0b00000000u8];
         let b = vec![0b00001111u8, 0b11110000u8, 0b00000000u8];
@@ -219,6 +231,14 @@ mod test {
         let b = vec![];
 
         assert_eq!(a.shl(&12), b);
+    }
+
+    #[test]
+    fn shr_zero() {
+        let a = vec![0b00000000u8, 0b11111111u8];
+        let b = vec![0b00000000u8, 0b11111111u8];
+
+        assert_eq!(a.shr(&0), b);
     }
 
     #[test]

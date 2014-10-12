@@ -34,19 +34,23 @@ impl Partition<HashMap<Vec<u8>, Vec<u8>>> {
 
 impl<T: Map<Vec<u8>, Vec<u8>> + MutableMap<Vec<u8>, Vec<u8>>> Partition<T> {
 
-    pub fn find(&self, key: Vec<u8>) -> Option<Vec<Vec<u8>>> {
+    pub fn find(&self, key: Vec<u8>) -> Option<HashSet<Vec<u8>>> {
         let transformed_key = self.transform_key(key);
         let permutations = self.permute_key(transformed_key.clone());
-        let mut found_keys: Set<Vec<u8>> = HashSet::new();
+        let mut found_keys: HashSet<Vec<u8>> = HashSet::new();
 
         match self.kv.find(&transformed_key) {
-            Some(key) => found_keys.push(key.clone()),
+            Some(key) => {
+                found_keys.insert(key.clone());
+            },
             None => {},
         }
 
         for k in permutations.iter() {
             match self.kv.find(k) {
-                Some(key) => found_keys.push(key.clone()),
+                Some(key) => {
+                    found_keys.insert(key.clone());
+                },
                 None => {},
             }
         }
@@ -71,16 +75,19 @@ impl<T: Map<Vec<u8>, Vec<u8>> + MutableMap<Vec<u8>, Vec<u8>>> Partition<T> {
         }
     }
 
-    /*
     pub fn remove(&mut self, key: Vec<u8>) -> bool {
-        let transformed_key = self.transform_key(key);
-        let permutations = self.permute_key(transformed_key);
+        let transformed_key = self.transform_key(key.clone());
+        let permutations = self.permute_key(transformed_key.clone());
 
-        return permutations
-            .map(|&k| self.kv.remove(k))
-            .all_true;  // Probably not really a function
+        if self.kv.remove(&transformed_key) {
+            for k in permutations.iter() {
+                self.kv.remove(k);
+            }
+            return true;
+        } else {
+            return false;
+        }
     }
-    */
 
     /*
      * Transform the full key into this partition's keyspace.  Generally involves
@@ -115,6 +122,7 @@ impl<T: Map<Vec<u8>, Vec<u8>> + MutableMap<Vec<u8>, Vec<u8>>> Partition<T> {
 
 #[cfg(test)]
 mod test {
+    use std::collections::{HashSet};
     use super::{Partition};
 
     #[test]
@@ -137,13 +145,14 @@ mod test {
     fn find_inserted_key() {
         let mut partition = Partition::new(4, 4);
         let a = vec![0b00001111u8];
+        let mut b: HashSet<Vec<u8>> = HashSet::new();
+        b.insert(a.clone());
 
         assert!(partition.insert(a.clone()));
 
         let keys = partition.find(a.clone());
-        println!("keys: {}", keys);
 
-        assert_eq!(Some(vec![a]), keys);
+        assert_eq!(Some(b), keys);
     }
 
     #[test]
@@ -151,34 +160,35 @@ mod test {
         let mut partition = Partition::new(4, 4);
         let a = vec![0b00001111u8];
         let b = vec![0b00000111u8];
+        let mut c: HashSet<Vec<u8>> = HashSet::new();
+        c.insert(a.clone());
 
         assert!(partition.insert(a.clone()));
 
         let keys = partition.find(b.clone());
 
-        assert_eq!(Some(vec![a]), keys);
+        assert_eq!(Some(c), keys);
     }
 
-    /*
     #[test]
     fn remove_inserted_key() {
-        let partition = Partition::new(4, 4);
+        let mut partition = Partition::new(4, 4);
         let a = vec![0b00001111u8];
-        partition.insert(&a);
 
-        assert!(partition.remove(&a));
+        partition.insert(a.clone());
 
-        let keys = partition.find(a);
+        assert!(partition.remove(a.clone()));
+
+        let keys = partition.find(a.clone());
 
         assert_eq!(None, keys);
     }
 
     #[test]
     fn remove_missing_key() {
-        let partition = Partition::new(4, 4);
+        let mut partition = Partition::new(4, 4);
         let a = vec![0b00001111u8];
 
-        assert!(!partition.remove(&a));
+        assert!(!partition.remove(a));
     }
-    */
 }
