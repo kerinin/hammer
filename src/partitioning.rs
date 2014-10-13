@@ -1,6 +1,6 @@
 extern crate num;
 
-use std::collections::{HashMap};
+use std::collections::{HashMap,HashSet};
 use std::cmp::{min,max};
 use std::fmt;
 
@@ -63,33 +63,42 @@ impl Partitioning<HashMap<Vec<u8>, Vec<u8>>> {
 
     /*
      * Find all keys withing `hamming_distance` of `key`
-     *
-    fn find_all(&self, key: &K) -> Set<&V> {
-        let key_bytes = key.to_bytes();
-        return self.partitions.flat_map(|&x| x.find(key_bytes)) as Set<V>;
-    }
      */
+    fn find(&self, key: Vec<u8>) -> Option<HashSet<Vec<u8>>> {
+        let initial: HashSet<Vec<u8>> = HashSet::new();
+
+        let found_keys = self.partitions.iter()
+            .fold(initial, |res, partition| match partition.find(key.clone()) {
+                Some(keys) => res.union(&keys).map(|i| i.clone()).collect::<HashSet<Vec<u8>>>(),
+                None => res,
+            });
+
+        match found_keys.len() {
+            0 => return None,
+            _ => return Some(found_keys),
+        }
+    }
 
     /*
      * Insert `key` into indices
-    fn insert(&self, key: K) -> Vec<bool> {
-        let key_bytes = key.to_bytes();
-        return self.partitions.map(|&x| x.insert(key_bytes))
-    }
      */
+    fn insert(&mut self, key: Vec<u8>) -> bool {
+        return self.partitions.iter_mut()
+            .any(|x| x.insert(key.clone()));
+    }
 
     /*
      * Remove `key` from indices
-    fn remove(&self, key: &K) -> Vec<bool> {
-        let key_bytes = key.to_bytes();
-        return self.partitions.map(|&x| x.remove(key_bytes))
-    }
      */
+    fn remove(&mut self, key: Vec<u8>) -> bool {
+        return self.partitions.iter_mut()
+            .any(|x| x.remove(key.clone()));
+    }
 }
 
 #[cfg(test)]
 mod test {
-    use std::collections::HashMap;
+    use std::collections::{HashSet,HashMap};
     use super::{Partitioning};
     use partition::{Partition};
 
@@ -151,5 +160,65 @@ mod test {
             ]};
 
         assert_eq!(a, b);
+    }
+
+    #[test]
+    fn find_missing_key() {
+        let p: Partitioning<HashMap<Vec<u8>, Vec<u8>>> = Partitioning::new(8, 2);
+        let a = vec![0b11111111u8];
+        let keys = p.find(a);
+
+        assert_eq!(None, keys);
+    }
+
+    #[test]
+    fn find_inserted_key() {
+        let mut p: Partitioning<HashMap<Vec<u8>, Vec<u8>>> = Partitioning::new(8, 2);
+        let a = vec![0b11111111u8];
+        let mut b: HashSet<Vec<u8>> = HashSet::new();
+        b.insert(a.clone());
+
+        assert!(p.insert(a.clone()));
+
+        let keys = p.find(a.clone());
+
+        assert_eq!(Some(b), keys);
+    }
+
+    #[test]
+    fn find_permutation_of_inserted_key() {
+        let mut p: Partitioning<HashMap<Vec<u8>, Vec<u8>>> = Partitioning::new(8, 2);
+        let a = vec![0b11111111u8];
+        let b = vec![0b11011011u8];
+        let mut c: HashSet<Vec<u8>> = HashSet::new();
+        c.insert(a.clone());
+
+        assert!(p.insert(a.clone()));
+
+        let keys = p.find(b.clone());
+
+        assert_eq!(Some(c), keys);
+    }
+
+    #[test]
+    fn remove_inserted_key() {
+        let mut p: Partitioning<HashMap<Vec<u8>, Vec<u8>>> = Partitioning::new(8, 2);
+        let a = vec![0b00001111u8];
+
+        p.insert(a.clone());
+
+        assert!(p.remove(a.clone()));
+
+        let keys = p.find(a.clone());
+
+        assert_eq!(None, keys);
+    }
+
+    #[test]
+    fn remove_missing_key() {
+        let mut p: Partitioning<HashMap<Vec<u8>, Vec<u8>>> = Partitioning::new(8, 2);
+        let a = vec![0b00001111u8];
+
+        assert!(!p.remove(a));
     }
 }
