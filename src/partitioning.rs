@@ -99,8 +99,11 @@ impl Partitioning<HashMap<Vec<u8>, Vec<u8>>> {
 #[cfg(test)]
 mod test {
     use std::collections::{HashSet,HashMap};
+    use std::rand::{task_rng, sample, Rng};
+    use std::iter::Repeat;
     use super::{Partitioning};
     use partition::{Partition};
+    use permutable::{Permutable};
 
     #[test]
     fn partition_evenly() {
@@ -187,17 +190,61 @@ mod test {
 
     #[test]
     fn find_permutation_of_inserted_key() {
-        let mut p: Partitioning<HashMap<Vec<u8>, Vec<u8>>> = Partitioning::new(8, 2);
-        let a = vec![0b11111111u8];
-        let b = vec![0b11011011u8];
-        let mut c: HashSet<Vec<u8>> = HashSet::new();
-        c.insert(a.clone());
+        let mut rng1 = task_rng();
+        let mut rng2 = task_rng();
+        let bits = 8u;
+        let max_hd = 3u;
+        let shifts_seq = rng1.gen_iter::<uint>()
+            .map(|i| sample(&mut rng2, range(0, bits), i % max_hd));
 
-        assert!(p.insert(a.clone()));
+        for shifts in shifts_seq.take(1000u) {
+            let mut p: Partitioning<HashMap<Vec<u8>, Vec<u8>>> = Partitioning::new(bits, max_hd);
+            let a = vec![0b11111111u8];
 
-        let keys = p.find(b.clone());
+            let mut b = a.clone();
+            for shift in shifts.iter() {
+                b = b.bitxor(&vec![0b10000000u8].shr(shift));
+            }
 
-        assert_eq!(Some(c), keys);
+            let mut c: HashSet<Vec<u8>> = HashSet::new();
+            c.insert(a.clone());
+
+            assert!(p.insert(a.clone()));
+
+            let keys = p.find(b.clone());
+
+            assert_eq!(Some(c), keys);
+        }
+    }
+
+    #[test]
+    fn dont_find_permutation_of_inserted_key() {
+        let mut rng1 = task_rng();
+        let mut rng2 = task_rng();
+        let bits = 8u;
+        let max_hd = 3u;
+        let shifts_seq = rng1.gen_iter::<uint>()
+            .map(|i| sample(&mut rng2, range(0, bits), i % bits))
+            .filter(|shifts| shifts.len() > max_hd);
+
+        for shifts in shifts_seq.take(1000u) {
+            let mut p: Partitioning<HashMap<Vec<u8>, Vec<u8>>> = Partitioning::new(bits, max_hd);
+            let a = vec![0b11111111u8];
+
+            let mut b = a.clone();
+            for shift in shifts.iter() {
+                b = b.bitxor(&vec![0b10000000u8].shr(shift));
+            }
+
+            let mut c: HashSet<Vec<u8>> = HashSet::new();
+            c.insert(a.clone());
+
+            assert!(p.insert(a.clone()));
+
+            let keys = p.find(b.clone());
+
+            assert_eq!(None, keys);
+        }
     }
 
     #[test]
