@@ -1,3 +1,4 @@
+mod partitioning;
 mod permutable;
 mod partition;
 

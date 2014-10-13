@@ -2,14 +2,37 @@ extern crate num;
 
 use std::collections::{HashMap, HashSet, Map, MutableMap};
 use std::iter::Repeat;
+use std::fmt;
+
 use self::num::rational::Ratio;
+
 use super::permutable::Permutable;
 
-struct Partition<T> {
+pub struct Partition<T> {
     shift: uint,
     mask: uint,
 
     kv: T,
+}
+
+impl<T> fmt::Show for Partition<T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::FormatError> {
+        write!(f, "({:u},{:u})", self.shift, self.mask)
+    }
+}
+
+impl<T: PartialEq> PartialEq for Partition<T> {
+    fn eq(&self, other: &Partition<T>) -> bool {
+        return self.shift.eq(&other.shift) &&
+            self.mask.eq(&other.mask) &&
+            self.kv.eq(&other.kv);
+    }
+
+    fn ne(&self, other: &Partition<T>) -> bool {
+        return self.shift.ne(&other.shift) ||
+            self.mask.ne(&other.mask) ||
+            self.kv.ne(&other.kv);
+    }
 }
 
 impl<T> Partition<T> {
@@ -26,7 +49,7 @@ impl<T> Partition<T> {
 }
 
 impl Partition<HashMap<Vec<u8>, Vec<u8>>> {
-    fn new(shift: uint, mask: uint) -> Partition<HashMap<Vec<u8>, Vec<u8>>> {
+    pub fn new(shift: uint, mask: uint) -> Partition<HashMap<Vec<u8>, Vec<u8>>> {
         let kv: HashMap<Vec<u8>, Vec<u8>> = HashMap::new();
         return Partition {shift: shift, mask: mask, kv: kv};
     }
