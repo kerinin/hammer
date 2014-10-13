@@ -35,13 +35,6 @@ impl Permutable<Vec<u8>, uint, Vec<u8>> for Vec<u8> {
             .zip(other.iter())
             .map(|(self_byte, other_byte)| self_byte.clone().bitand(other_byte) )
             .collect::<Vec<u8>>();
-
-        //let other_then_zero = other.iter().chain(Repeat::new(zero));
-
-        //return self.iter()
-        //    .zip(other_then_zero)
-        //    .map(|(self_byte, other_byte)| self_byte.clone().bitand(other_byte) )
-        //    .collect::<Vec<u8>>();
     }
 
     /*
