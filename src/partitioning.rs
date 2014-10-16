@@ -192,7 +192,7 @@ mod test {
      * Want to verify that permutations don't crowd each other out
      */
     #[test]
-    fn find_permutations_of multiple_similar_keys() {
+    fn find_permutations_of_multiple_similar_keys() {
     }
 
     #[test]

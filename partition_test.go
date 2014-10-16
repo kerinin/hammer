@@ -2,29 +2,11 @@ package main
 
 import (
 	"testing"
-	"math/big"
 
 	"gopkg.in/fatih/set.v0"
 )
 
-/*
- * Converts a string to a big.Int, like "0011" => 3
- */
-func binary(s string) *big.Int {
-	bigint := big.NewInt(0)
-
-	for i, r := range(s) {
-		if r == '1' {
-			mask := big.NewInt(1)
-			mask.Lsh(mask, uint(i))
-			bigint.Or(bigint, mask)
-		}
-	}
-
-	return bigint
-}
-
-func TestFindMissingKey(t *testing.T) {
+func TestPartitionFindMissingKey(t *testing.T) {
 	partition := NewPartition(4, 4)
 	a := binary("00001111")
 	keys, err := partition.Find(a)
@@ -39,7 +21,7 @@ func TestFindMissingKey(t *testing.T) {
 	}
 }
 
-func TestFirstInsertion(t *testing.T) {
+func TestPartitionFirstInsertion(t *testing.T) {
 	partition := NewPartition(4, 4)
 	a := binary("00001111")
 
@@ -54,7 +36,7 @@ func TestFirstInsertion(t *testing.T) {
 	}
 }
 
-func TestSecondInsertion(t *testing.T) {
+func TestPartitionSecondInsertion(t *testing.T) {
 	partition := NewPartition(4, 4)
 	a := binary("00001111")
 
@@ -75,7 +57,7 @@ func TestSecondInsertion(t *testing.T) {
 	}
 }
 
-func TestFindInsertedKey(t *testing.T) {
+func TestPartitionFindInsertedKey(t *testing.T) {
 	partition := NewPartition(4, 4)
 	a := binary("00001111")
 	expected := set.New(&a)
@@ -97,7 +79,7 @@ func TestFindInsertedKey(t *testing.T) {
 	}
 }
 
-func TestFindPermutationOfInsertedKey(t *testing.T) {
+func TestPartitionFindPermutationOfInsertedKey(t *testing.T) {
 	partition := NewPartition(4, 4)
 	a := binary("00001111")
 	b := binary("00000111")
@@ -115,7 +97,7 @@ func TestFindPermutationOfInsertedKey(t *testing.T) {
 	}
 }
 
-func TestRemoveInsertedKey(t *testing.T) {
+func TestPartitionRemoveInsertedKey(t *testing.T) {
 	partition := NewPartition(4, 4)
 	a := binary("00001111")
 
@@ -142,7 +124,7 @@ func TestRemoveInsertedKey(t *testing.T) {
 	}
 }
 
-func TestRemoveMissingKey(t *testing.T) {
+func TestPartitionRemoveMissingKey(t *testing.T) {
 	partition := NewPartition(4, 4)
 	a := binary("00001111")
 
