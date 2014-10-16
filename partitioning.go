@@ -35,14 +35,14 @@ func NewPartitioning(bits uint, max_hamming_distance uint) Partitioning {
 		shift := i * head_width
 		mask := head_width
 
-		partitions[i] = NewPartition(shift, mask).(Partition)
+		partitions[i] = NewPartition(shift, mask)
 	}
 
 	for i := uint(0); i < tail_count; i++ {
 		shift := (head_count * head_width) + (i * tail_width)
 		mask := tail_width;
 
-		partitions[head_count + i] = NewPartition(shift, mask).(Partition)
+		partitions[head_count + i] = NewPartition(shift, mask)
 	}
 
 	return Partitioning{partitions: partitions}

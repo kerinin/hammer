@@ -188,6 +188,13 @@ mod test {
         assert_eq!(Some(b), keys);
     }
 
+    /*
+     * Want to verify that permutations don't crowd each other out
+     */
+    #[test]
+    fn find_permutations_of multiple_similar_keys() {
+    }
+
     #[test]
     fn find_permutation_of_inserted_key() {
         let mut rng1 = task_rng();
@@ -267,5 +274,13 @@ mod test {
         let a = vec![0b00001111u8];
 
         assert!(!p.remove(a));
+    }
+
+    /*
+     * We want to simulate adding & removing a ton of keys and then verify the
+     * state is consistent.  
+     */
+    #[test]
+    fn stability_under_load() {
     }
 }

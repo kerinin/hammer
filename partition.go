@@ -13,7 +13,7 @@ type Partition struct {
 	kv map[interface{}]*big.Int
 }
 
-func NewPartition(shift uint, mask uint) interface{} {
+func NewPartition(shift uint, mask uint) Partition {
 	return Partition{shift: shift, mask: mask, kv: make(map[interface{}]*big.Int)}
 }
 
@@ -54,6 +54,7 @@ func (p *Partition) Insert(key *big.Int) (bool, error) {
 	if err != nil {
 		return false, err
 	}
+	_, found := p.kv[transformed_key_int]
 	p.kv[transformed_key_int] = key
 
 	for _, permuted_key := range(permuted_keys) {
@@ -64,7 +65,7 @@ func (p *Partition) Insert(key *big.Int) (bool, error) {
 		p.kv[permuted_key_int] = key
 	}
 
-	return true, nil
+	return !found, nil
 }
 
 func (p *Partition) Remove(key *big.Int) (bool, error) {
@@ -76,7 +77,8 @@ func (p *Partition) Remove(key *big.Int) (bool, error) {
 		return false, err
 	}
 
-	delete(p.kv, &transformed_key_int)
+	_, found := p.kv[transformed_key_int]
+	delete(p.kv, transformed_key_int)
 
 	for _, permuted_key := range(permuted_keys) {
 		permuted_key_int, err := p.toInt(permuted_key)
@@ -86,7 +88,7 @@ func (p *Partition) Remove(key *big.Int) (bool, error) {
 		delete(p.kv, permuted_key_int)
 	}
 
-	return true, nil
+	return found, nil
 }
 
 func (p *Partition) transformKey(key big.Int) big.Int {
