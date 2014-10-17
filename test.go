@@ -7,7 +7,7 @@ import (
 /*
  * Converts a string to a big.Int, like "0011" => 3
  */
-func binary(s string) *big.Int {
+func binary(s string) big.Int {
 	bigint := big.NewInt(0)
 
 	for i, r := range(s) {
@@ -18,5 +18,5 @@ func binary(s string) *big.Int {
 		}
 	}
 
-	return bigint
+	return *bigint
 }

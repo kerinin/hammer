@@ -29,7 +29,7 @@ func NewPartitioning(bits uint, max_hamming_distance uint) Partitioning {
 	head_count := bits % partition_count
 	tail_count := partition_count - head_count
 
-	partitions := make([]Partition, 0, 0)
+	partitions := make([]Partition, partition_count, partition_count)
 
 	for i := uint(0); i < head_count; i++ {
 		shift := i * head_width
@@ -53,7 +53,7 @@ func (p *Partitioning) Find(key big.Int) (set.Set, error) {
 	results := set.New()
 
 	for _, partition := range(p.partitions) {
-		keys, err := partition.Find(&key)
+		keys, err := partition.Find(key)
 		if err != nil {
 			return *results, err
 		}
@@ -61,7 +61,7 @@ func (p *Partitioning) Find(key big.Int) (set.Set, error) {
 		for {
 			found_key := keys.Pop()
 			if found_key != nil {
-				results.Add(found_key)
+				results.Add(&found_key)
 			} else {
 				break
 			}
@@ -75,7 +75,7 @@ func (p *Partitioning) Insert(key big.Int) (bool, error) {
 	any_inserted := false
 
 	for _, partition := range(p.partitions) {
-		added, err := partition.Insert(&key)
+		added, err := partition.Insert(key)
 		if err != nil {
 			return any_inserted, err
 		}
@@ -90,7 +90,7 @@ func (p *Partitioning) Remove(key big.Int) (bool, error) {
 	any_removed := false
 
 	for _, partition := range(p.partitions) {
-		removed, err := partition.Remove(&key)
+		removed, err := partition.Remove(key)
 		if err != nil {
 			return any_removed, err
 		}

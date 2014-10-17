@@ -10,44 +10,48 @@ import (
 type Partition struct {
 	shift uint
 	mask uint
-	kv map[interface{}]*big.Int
+	kv map[interface{}]big.Int
 }
 
 func NewPartition(shift uint, mask uint) Partition {
-	return Partition{shift: shift, mask: mask, kv: make(map[interface{}]*big.Int)}
+	return Partition{shift: shift, mask: mask, kv: make(map[interface{}]big.Int)}
 }
 
-func (p *Partition) Find(key *big.Int) (*set.Set, error) {
-	transformed_key := p.transformKey(*key)
+func (p *Partition) Coords() (uint, uint) {
+	return p.shift, p.mask
+}
+
+func (p *Partition) Find(key big.Int) (set.Set, error) {
+	transformed_key := p.transformKey(key)
 	permutations := p.permuteKey(transformed_key)
 
 	found_keys := set.New()
 
 	transformed_key_int, err := p.toInt(transformed_key)
 	if err != nil {
-		return found_keys, err
+		return *found_keys, err
 	}
 	source_key, ok := p.kv[transformed_key_int]
 	if ok {
-		found_keys.Add(source_key)
+		found_keys.Add(&source_key)
 	}
 
 	for _, permuted_key := range(permutations) {
 		permuted_key_int, err := p.toInt(permuted_key)
 		if err != nil {
-			return found_keys, err
+			return *found_keys, err
 		}
 		source_key, ok := p.kv[permuted_key_int]
 		if ok {
-			found_keys.Add(source_key)
+			found_keys.Add(&source_key)
 		}
 	}
 
-	return found_keys, nil
+	return *found_keys, nil
 }
 
-func (p *Partition) Insert(key *big.Int) (bool, error) {
-	transformed_key := p.transformKey(*key)
+func (p *Partition) Insert(key big.Int) (bool, error) {
+	transformed_key := p.transformKey(key)
 	permuted_keys := p.permuteKey(transformed_key)
 
 	transformed_key_int, err := p.toInt(transformed_key)
@@ -68,8 +72,8 @@ func (p *Partition) Insert(key *big.Int) (bool, error) {
 	return !found, nil
 }
 
-func (p *Partition) Remove(key *big.Int) (bool, error) {
-	transformed_key := p.transformKey(*key)
+func (p *Partition) Remove(key big.Int) (bool, error) {
+	transformed_key := p.transformKey(key)
 	permuted_keys := p.permuteKey(transformed_key)
 
 	transformed_key_int, err := p.toInt(transformed_key)
@@ -92,25 +96,29 @@ func (p *Partition) Remove(key *big.Int) (bool, error) {
 }
 
 func (p *Partition) transformKey(key big.Int) big.Int {
-	key.Lsh(&key, p.shift)
-	key.Or(&key, p.maskBytes())
+	transformed := big.NewInt(0)
 
-	return key
+	transformed.Or(transformed, &key)
+	transformed.Lsh(transformed, p.shift)
+	transformed.Or(transformed, p.maskBytes())
+
+	return *transformed
 }
 
 func (p *Partition) permuteKey(key big.Int) []big.Int {
 	permutations := make([]big.Int, 0, 0)
 
 	for i := 0; i < key.BitLen(); i++ {
-		permutation := key
+		permutation := big.NewInt(0)
+		permutation.Or(permutation, &key)
 
 		if key.Bit(i) == 0 {
-			permutation.SetBit(&permutation, i, 1)
+			permutation.SetBit(permutation, i, 1)
 		} else {
-			permutation.SetBit(&permutation, i, 0)
+			permutation.SetBit(permutation, i, 0)
 		}
 
-		permutations = append(permutations, permutation)
+		permutations = append(permutations, *permutation)
 	}
 
 	return permutations

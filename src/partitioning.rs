@@ -34,7 +34,7 @@ impl Partitioning<HashMap<Vec<u8>, Vec<u8>>> {
      */
     fn new(bits: uint, max_hamming_distance: uint) -> Partitioning<HashMap<Vec<u8>, Vec<u8>>> {
 
-        let partition_count = max(1, min(bits, max_hamming_distance + 1));
+        let partition_count = max(1, min(bits, max_hamming_distance));
 
         let head_width = Ratio::new(bits, partition_count).ceil().to_integer() as uint;
         let tail_width = Ratio::new(bits, partition_count).floor().to_integer() as uint;
@@ -107,7 +107,7 @@ mod test {
 
     #[test]
     fn partition_evenly() {
-        let a: Partitioning<HashMap<Vec<u8>, Vec<u8>>> = Partitioning::new(32, 3);
+        let a: Partitioning<HashMap<Vec<u8>, Vec<u8>>> = Partitioning::new(32, 4);
         let b = Partitioning {partitions: vec![
             Partition::new(0, 8),
             Partition::new(8, 8),
@@ -120,7 +120,7 @@ mod test {
 
     #[test]
     fn partition_unevenly() {
-        let a: Partitioning<HashMap<Vec<u8>, Vec<u8>>> = Partitioning::new(32, 4);
+        let a: Partitioning<HashMap<Vec<u8>, Vec<u8>>> = Partitioning::new(32, 5);
         let b = Partitioning {partitions: vec![
             Partition::new(0, 7),
             Partition::new(7, 7),
