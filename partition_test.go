@@ -1,6 +1,7 @@
 package main
 
 import (
+	// "fmt"
 	"reflect"
 	"testing"
 
@@ -40,6 +41,7 @@ func TestPartitionFirstInsertion(t *testing.T) {
 func TestPartitionSecondInsertion(t *testing.T) {
 	partition := NewPartition(4, 4)
 	a := binary("00001111")
+	b := binary("00001111")
 
 	inserted, err := partition.Insert(a)
 	if err != nil {
@@ -47,7 +49,7 @@ func TestPartitionSecondInsertion(t *testing.T) {
 		t.Fail()
 	}
 
-	inserted, err = partition.Insert(a)
+	inserted, err = partition.Insert(b)
 	if inserted {
 		t.Logf("Insert returned true")
 		t.Fail()
@@ -61,6 +63,7 @@ func TestPartitionSecondInsertion(t *testing.T) {
 func TestPartitionFindInsertedKey(t *testing.T) {
 	partition := NewPartition(4, 4)
 	a := binary("00001111")
+	b := binary("00001111")
 	expected := make(map[*big.Int]uint)
 	expected[a] = 0
 
@@ -70,7 +73,7 @@ func TestPartitionFindInsertedKey(t *testing.T) {
 		t.Fail()
 	}
 
-	keys, err := partition.Find(a)
+	keys, err := partition.Find(b)
 	if !reflect.DeepEqual(keys, expected) {
 		t.Logf("Find returned unexpected set (expected %v): %v", expected, keys)
 		t.Fail()
@@ -83,8 +86,8 @@ func TestPartitionFindInsertedKey(t *testing.T) {
 
 func TestPartitionFindPermutationOfInsertedKey(t *testing.T) {
 	partition := NewPartition(4, 4)
-	a := binary("00001111")
-	b := binary("00000111")
+	a := binary("11110000")
+	b := binary("11100000")
 	expected := make(map[*big.Int]uint)
 	expected[a] = 0
 
@@ -103,10 +106,12 @@ func TestPartitionFindPermutationOfInsertedKey(t *testing.T) {
 func TestPartitionRemoveInsertedKey(t *testing.T) {
 	partition := NewPartition(4, 4)
 	a := binary("00001111")
+	b := binary("00001111")
+	c := binary("00001111")
 
 	partition.Insert(a)
 
-	removed, err := partition.Remove(a)
+	removed, err := partition.Remove(b)
 	if !removed {
 		t.Logf("Remove returned false")
 		t.Fail()
@@ -116,7 +121,7 @@ func TestPartitionRemoveInsertedKey(t *testing.T) {
 		t.Fail()
 	}
 
-	keys, err := partition.Find(a)
+	keys, err := partition.Find(c)
 	if len(keys) != 0 {
 		t.Logf("Find returned non-empty set: %v", keys)
 		t.Fail()

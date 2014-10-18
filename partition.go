@@ -8,11 +8,15 @@ import (
 type Partition struct {
 	shift uint
 	mask  uint
-	kv    map[interface{}]*big.Int
+	zero_kv    map[interface{}][]*big.Int
+	one_kv    map[interface{}][]*big.Int
 }
 
 func NewPartition(shift uint, mask uint) Partition {
-	return Partition{shift: shift, mask: mask, kv: make(map[interface{}]*big.Int)}
+	zero_kv := make(map[interface{}][]*big.Int)
+	one_kv := make(map[interface{}][]*big.Int)
+
+	return Partition{shift: shift, mask: mask, zero_kv: zero_kv, one_kv: one_kv}
 }
 
 func (p *Partition) Coords() (uint, uint) {
@@ -21,28 +25,36 @@ func (p *Partition) Coords() (uint, uint) {
 
 func (p *Partition) Find(key *big.Int) (map[*big.Int]uint, error) {
 	transformed_key := p.transformKey(key)
+	transformed_key_int, err := p.toInt(transformed_key)
+
 	permutations := p.permuteKey(transformed_key)
 
 	found_keys := make(map[*big.Int]uint)
+
+	// shift, _ := p.Coords()
+	// fmt.Printf("Searching key %016b with value %016b with shift %v and mask %08b\n", transformed_key_int, key, shift, p.maskBytes())
 
 	for _, permuted_key := range permutations {
 		permuted_key_int, err := p.toInt(permuted_key)
 		if err != nil {
 			return found_keys, err
 		}
-		source_key, ok := p.kv[permuted_key_int]
+		source_keys, ok := p.one_kv[permuted_key_int]
 		if ok {
-			found_keys[source_key] = 1
+			for _, source_key := range source_keys {
+				found_keys[source_key] = 1
+			}
 		}
 	}
 
-	transformed_key_int, err := p.toInt(transformed_key)
 	if err != nil {
 		return found_keys, err
 	}
-	source_key, ok := p.kv[transformed_key_int]
+	source_keys, ok := p.zero_kv[transformed_key_int]
 	if ok {
-		found_keys[source_key] = 0
+		for _, source_key := range source_keys {
+			found_keys[source_key] = 0
+		}
 	}
 
 	return found_keys, nil
@@ -56,49 +68,92 @@ func (p *Partition) Insert(key *big.Int) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	_, found := p.kv[transformed_key_int]
-	p.kv[transformed_key_int] = key
 
-	for _, permuted_key := range permuted_keys {
-		permuted_key_int, err := p.toInt(permuted_key)
-		if err != nil {
-			return false, err
+	// shift, _ := p.Coords()
+	// fmt.Printf("Inserting key %016b with value %016b with shift %v and mask %08b\n", transformed_key_int, key, shift, p.maskBytes())
+
+	if insertKey(&p.zero_kv, transformed_key_int, key) {
+		for _, permuted_key := range permuted_keys {
+			permuted_key_int, err := p.toInt(permuted_key)
+			if err != nil {
+				return false, err
+			}
+
+			insertKey(&p.one_kv, permuted_key_int, key)
 		}
-		p.kv[permuted_key_int] = key
+		return true, nil
 	}
 
-	return !found, nil
+	return false, nil
+}
+
+func insertKey(kv *map[interface{}][]*big.Int, key interface{}, value *big.Int) bool {
+	found_values, ok := (*kv)[key]
+
+	if ok {
+		for _, found_value := range found_values {
+			if found_value.Cmp(value) == 0 {
+				return false
+			}		
+		}
+
+		(*kv)[key] = append(found_values, value)
+	} else {
+		(*kv)[key] = []*big.Int{value}
+	}
+
+	return true
 }
 
 func (p *Partition) Remove(key *big.Int) (bool, error) {
 	transformed_key := p.transformKey(key)
-	permuted_keys := p.permuteKey(transformed_key)
-
 	transformed_key_int, err := p.toInt(transformed_key)
 	if err != nil {
 		return false, err
 	}
 
-	_, found := p.kv[transformed_key_int]
-	delete(p.kv, transformed_key_int)
+	found := removeKey(&p.zero_kv, transformed_key_int, key)
 
-	for _, permuted_key := range permuted_keys {
-		permuted_key_int, err := p.toInt(permuted_key)
-		if err != nil {
-			return false, err
+	if found {
+		permuted_keys := p.permuteKey(transformed_key)
+		for _, permuted_key := range permuted_keys {
+			permuted_key_int, err := p.toInt(permuted_key)
+			if err != nil {
+				return false, err
+			}
+
+			removeKey(&p.one_kv, permuted_key_int, key)
 		}
-		delete(p.kv, permuted_key_int)
 	}
 
 	return found, nil
 }
 
+func removeKey(kv *map[interface{}][]*big.Int, key interface{}, value *big.Int) bool {
+	found_values, ok := (*kv)[key]
+
+	if ok {
+		for i, found_value := range found_values {
+			if found_value.Cmp(value) == 0 {
+				// Seriously, THIS is how I have to delete elements in Go?!?!?!
+				copy(found_values[i:], found_values[i+1:])
+				found_values[len(found_values)-1] = nil
+				(*kv)[key] = found_values[:len(found_values)-1]
+
+				return true
+			}		
+		}
+	}
+
+	return false
+}
+
 func (p *Partition) transformKey(key *big.Int) *big.Int {
 	transformed := big.NewInt(0)
+	transformed.SetBytes(key.Bytes())
 
-	transformed.Or(transformed, key)
-	transformed.Lsh(transformed, p.shift)
-	transformed.Or(transformed, p.maskBytes())
+	transformed.Rsh(transformed, p.shift)
+	transformed.And(transformed, p.maskBytes())
 
 	return transformed
 }
