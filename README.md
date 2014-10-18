@@ -16,3 +16,6 @@ Keys are retrieved by splitting the query key into partitions and querying for
 the partition in each index.  Results are filtered by the target hamming
 distance and returned as a set.
 
+This is mostly an implementation of
+[HmSearch](http://www.cse.unsw.edu.au/~weiw/files/SSDBM13-HmSearch-Final.pdf)
+

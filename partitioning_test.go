@@ -1,14 +1,13 @@
 package main
 
 import (
-	"testing"
+	"math/big"
 	"reflect"
-
-	"gopkg.in/fatih/set.v0"
+	"testing"
 )
 
 func TestPartitioningPartitionEvenly(t *testing.T) {
-	partitioning := NewPartitioning(32, 4)
+	partitioning := NewPartitioning(32, 5)
 	expected_partitions := make([]Partition, 4, 4)
 
 	expected_partitions[0] = NewPartition(0, 8)
@@ -23,7 +22,7 @@ func TestPartitioningPartitionEvenly(t *testing.T) {
 }
 
 func TestPartitioningPartitionUnevenly(t *testing.T) {
-	partitioning := NewPartitioning(32, 5)
+	partitioning := NewPartitioning(32, 7)
 	expected_partitions := make([]Partition, 5, 5)
 
 	expected_partitions[0] = NewPartition(0, 7)
@@ -40,12 +39,11 @@ func TestPartitioningPartitionUnevenly(t *testing.T) {
 
 func TestPartitioningPartitionTooMany(t *testing.T) {
 	partitioning := NewPartitioning(4, 8)
-	expected_partitions := make([]Partition, 4, 4)
+	expected_partitions := make([]Partition, 3, 3)
 
-	expected_partitions[0] = NewPartition(0, 1)
-	expected_partitions[1] = NewPartition(1, 1)
-	expected_partitions[2] = NewPartition(2, 1)
-	expected_partitions[3] = NewPartition(3, 1)
+	expected_partitions[0] = NewPartition(0, 2)
+	expected_partitions[1] = NewPartition(2, 1)
+	expected_partitions[2] = NewPartition(3, 1)
 
 	if !reflect.DeepEqual(expected_partitions, partitioning.partitions) {
 		t.Logf("Expected partitions don't match actual (%v): %v", expected_partitions, partitioning.partitions)
@@ -82,7 +80,7 @@ func TestPartitioningFindMissingKey(t *testing.T) {
 	a := binary("11111111")
 	keys, err := partitioning.Find(a)
 
-	if keys.Size() != 0 {
+	if len(keys) != 0 {
 		t.Logf("Find returned non-empty set: %v", keys)
 		t.Fail()
 	}
@@ -131,7 +129,7 @@ func TestPartitioningInsertSecondKey(t *testing.T) {
 func TestPartitioningFindInsertedKey(t *testing.T) {
 	partitioning := NewPartitioning(4, 4)
 	a := binary("00001111")
-	expected := set.New(&a)
+	expected := map[*big.Int]uint{a: 0}
 
 	_, err := partitioning.Insert(a)
 	if err != nil {
@@ -140,7 +138,7 @@ func TestPartitioningFindInsertedKey(t *testing.T) {
 	}
 
 	keys, err := partitioning.Find(a)
-	if keys.IsEqual(expected) {
+	if !reflect.DeepEqual(keys, expected) {
 		t.Logf("Find returned unexpected set (expected %v): %v", expected, keys)
 		t.Fail()
 	}
@@ -154,11 +152,11 @@ func TestPartitioningFindPermutationOfInsertedKey(t *testing.T) {
 	partitioning := NewPartitioning(4, 4)
 	a := binary("00001111")
 	b := binary("00000111")
-	expected := set.New(&a)
+	expected := map[*big.Int]uint{a: 1}
 
 	partitioning.Insert(a)
 	keys, err := partitioning.Find(b)
-	if keys.IsEqual(expected) {
+	if !reflect.DeepEqual(keys, expected) {
 		t.Logf("Find returned unexpected set (expected %v): %v", expected, keys)
 		t.Fail()
 	}
@@ -178,7 +176,7 @@ func TestPartitioningDontFindPermutationOfInsertedKey(t *testing.T) {
 
 	partitioning.Insert(a)
 	keys, err := partitioning.Find(b)
-	if keys.Size() != 0 {
+	if len(keys) != 0 {
 		t.Logf("Find returned non-empty set: %v", keys)
 		t.Fail()
 	}
@@ -205,7 +203,7 @@ func TestPartitioningRemoveInsertedKey(t *testing.T) {
 	}
 
 	keys, err := partitioning.Find(a)
-	if keys.Size() != 0 {
+	if len(keys) != 0 {
 		t.Logf("Find returned non-empty set: %v", keys)
 		t.Fail()
 	}

@@ -3,54 +3,52 @@ package main
 import (
 	"fmt"
 	"math/big"
-
-	"gopkg.in/fatih/set.v0"
 )
 
 type Partition struct {
 	shift uint
-	mask uint
-	kv map[interface{}]big.Int
+	mask  uint
+	kv    map[interface{}]*big.Int
 }
 
 func NewPartition(shift uint, mask uint) Partition {
-	return Partition{shift: shift, mask: mask, kv: make(map[interface{}]big.Int)}
+	return Partition{shift: shift, mask: mask, kv: make(map[interface{}]*big.Int)}
 }
 
 func (p *Partition) Coords() (uint, uint) {
 	return p.shift, p.mask
 }
 
-func (p *Partition) Find(key big.Int) (set.Set, error) {
+func (p *Partition) Find(key *big.Int) (map[*big.Int]uint, error) {
 	transformed_key := p.transformKey(key)
 	permutations := p.permuteKey(transformed_key)
 
-	found_keys := set.New()
+	found_keys := make(map[*big.Int]uint)
 
-	transformed_key_int, err := p.toInt(transformed_key)
-	if err != nil {
-		return *found_keys, err
-	}
-	source_key, ok := p.kv[transformed_key_int]
-	if ok {
-		found_keys.Add(&source_key)
-	}
-
-	for _, permuted_key := range(permutations) {
+	for _, permuted_key := range permutations {
 		permuted_key_int, err := p.toInt(permuted_key)
 		if err != nil {
-			return *found_keys, err
+			return found_keys, err
 		}
 		source_key, ok := p.kv[permuted_key_int]
 		if ok {
-			found_keys.Add(&source_key)
+			found_keys[source_key] = 1
 		}
 	}
 
-	return *found_keys, nil
+	transformed_key_int, err := p.toInt(transformed_key)
+	if err != nil {
+		return found_keys, err
+	}
+	source_key, ok := p.kv[transformed_key_int]
+	if ok {
+		found_keys[source_key] = 0
+	}
+
+	return found_keys, nil
 }
 
-func (p *Partition) Insert(key big.Int) (bool, error) {
+func (p *Partition) Insert(key *big.Int) (bool, error) {
 	transformed_key := p.transformKey(key)
 	permuted_keys := p.permuteKey(transformed_key)
 
@@ -61,7 +59,7 @@ func (p *Partition) Insert(key big.Int) (bool, error) {
 	_, found := p.kv[transformed_key_int]
 	p.kv[transformed_key_int] = key
 
-	for _, permuted_key := range(permuted_keys) {
+	for _, permuted_key := range permuted_keys {
 		permuted_key_int, err := p.toInt(permuted_key)
 		if err != nil {
 			return false, err
@@ -72,7 +70,7 @@ func (p *Partition) Insert(key big.Int) (bool, error) {
 	return !found, nil
 }
 
-func (p *Partition) Remove(key big.Int) (bool, error) {
+func (p *Partition) Remove(key *big.Int) (bool, error) {
 	transformed_key := p.transformKey(key)
 	permuted_keys := p.permuteKey(transformed_key)
 
@@ -84,7 +82,7 @@ func (p *Partition) Remove(key big.Int) (bool, error) {
 	_, found := p.kv[transformed_key_int]
 	delete(p.kv, transformed_key_int)
 
-	for _, permuted_key := range(permuted_keys) {
+	for _, permuted_key := range permuted_keys {
 		permuted_key_int, err := p.toInt(permuted_key)
 		if err != nil {
 			return false, err
@@ -95,22 +93,22 @@ func (p *Partition) Remove(key big.Int) (bool, error) {
 	return found, nil
 }
 
-func (p *Partition) transformKey(key big.Int) big.Int {
+func (p *Partition) transformKey(key *big.Int) *big.Int {
 	transformed := big.NewInt(0)
 
-	transformed.Or(transformed, &key)
+	transformed.Or(transformed, key)
 	transformed.Lsh(transformed, p.shift)
 	transformed.Or(transformed, p.maskBytes())
 
-	return *transformed
+	return transformed
 }
 
-func (p *Partition) permuteKey(key big.Int) []big.Int {
-	permutations := make([]big.Int, 0, 0)
+func (p *Partition) permuteKey(key *big.Int) []*big.Int {
+	permutations := make([]*big.Int, 0, 0)
 
 	for i := 0; i < key.BitLen(); i++ {
 		permutation := big.NewInt(0)
-		permutation.Or(permutation, &key)
+		permutation.Or(permutation, key)
 
 		if key.Bit(i) == 0 {
 			permutation.SetBit(permutation, i, 1)
@@ -118,13 +116,13 @@ func (p *Partition) permuteKey(key big.Int) []big.Int {
 			permutation.SetBit(permutation, i, 0)
 		}
 
-		permutations = append(permutations, *permutation)
+		permutations = append(permutations, permutation)
 	}
 
 	return permutations
 }
 
-func (p *Partition) toInt(key big.Int) (interface{}, error) {
+func (p *Partition) toInt(key *big.Int) (interface{}, error) {
 	switch {
 	case p.mask <= 8:
 		return uint8(key.Int64()), nil
