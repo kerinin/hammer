@@ -25,14 +25,8 @@ func (p *Partition) Coords() (uint, uint) {
 
 func (p *Partition) Find(key *big.Int) (map[*big.Int]uint, error) {
 	transformed_key := p.transformKey(key)
-	transformed_key_int, err := p.toInt(transformed_key)
-
 	permutations := p.permuteKey(transformed_key)
-
 	found_keys := make(map[*big.Int]uint)
-
-	// shift, _ := p.Coords()
-	// fmt.Printf("Searching key %016b with value %016b with shift %v and mask %08b\n", transformed_key_int, key, shift, p.maskBytes())
 
 	for _, permuted_key := range permutations {
 		permuted_key_int, err := p.toInt(permuted_key)
@@ -47,6 +41,7 @@ func (p *Partition) Find(key *big.Int) (map[*big.Int]uint, error) {
 		}
 	}
 
+	transformed_key_int, err := p.toInt(transformed_key)
 	if err != nil {
 		return found_keys, err
 	}
@@ -62,17 +57,13 @@ func (p *Partition) Find(key *big.Int) (map[*big.Int]uint, error) {
 
 func (p *Partition) Insert(key *big.Int) (bool, error) {
 	transformed_key := p.transformKey(key)
-	permuted_keys := p.permuteKey(transformed_key)
-
 	transformed_key_int, err := p.toInt(transformed_key)
 	if err != nil {
 		return false, err
 	}
 
-	// shift, _ := p.Coords()
-	// fmt.Printf("Inserting key %016b with value %016b with shift %v and mask %08b\n", transformed_key_int, key, shift, p.maskBytes())
-
 	if insertKey(&p.zero_kv, transformed_key_int, key) {
+		permuted_keys := p.permuteKey(transformed_key)
 		for _, permuted_key := range permuted_keys {
 			permuted_key_int, err := p.toInt(permuted_key)
 			if err != nil {
@@ -112,9 +103,7 @@ func (p *Partition) Remove(key *big.Int) (bool, error) {
 		return false, err
 	}
 
-	found := removeKey(&p.zero_kv, transformed_key_int, key)
-
-	if found {
+	if removeKey(&p.zero_kv, transformed_key_int, key) {
 		permuted_keys := p.permuteKey(transformed_key)
 		for _, permuted_key := range permuted_keys {
 			permuted_key_int, err := p.toInt(permuted_key)
@@ -124,9 +113,10 @@ func (p *Partition) Remove(key *big.Int) (bool, error) {
 
 			removeKey(&p.one_kv, permuted_key_int, key)
 		}
+		return true, nil
 	}
 
-	return found, nil
+	return false, nil
 }
 
 func removeKey(kv *map[interface{}][]*big.Int, key interface{}, value *big.Int) bool {
