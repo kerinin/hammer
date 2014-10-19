@@ -5,5 +5,5 @@ import (
 )
 
 func main() {
-	web.Server(":8000")
+	web.Server()
 }

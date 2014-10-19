@@ -19,11 +19,17 @@ func NewPartition(shift uint, mask uint) Partition {
 	return Partition{shift: shift, mask: mask, zero_kv: zero_kv, one_kv: one_kv}
 }
 
+func (p *Partition) String() string {
+	return fmt.Sprintf("[%v,%v]", p.shift, p.mask)
+}
+
 func (p *Partition) Coords() (uint, uint) {
 	return p.shift, p.mask
 }
 
 func (p *Partition) Find(key *big.Int) (map[*big.Int]uint, error) {
+	logger.Printf("Tring to find %v in partition %v", key, p)
+
 	transformed_key := p.transformKey(key)
 	permutations := p.permuteKey(transformed_key)
 	found_keys := make(map[*big.Int]uint)
@@ -36,6 +42,7 @@ func (p *Partition) Find(key *big.Int) (map[*big.Int]uint, error) {
 		source_keys, ok := p.one_kv[permuted_key_int]
 		if ok {
 			for _, source_key := range source_keys {
+				logger.Printf("Found partial match %v for %v in partition %v", source_key, key, p)
 				found_keys[source_key] = 1
 			}
 		}
@@ -48,6 +55,7 @@ func (p *Partition) Find(key *big.Int) (map[*big.Int]uint, error) {
 	source_keys, ok := p.zero_kv[transformed_key_int]
 	if ok {
 		for _, source_key := range source_keys {
+			logger.Printf("Found exact match %v for %v in partition %v", source_key, key, p)
 			found_keys[source_key] = 0
 		}
 	}
@@ -56,6 +64,8 @@ func (p *Partition) Find(key *big.Int) (map[*big.Int]uint, error) {
 }
 
 func (p *Partition) Insert(key *big.Int) (bool, error) {
+	logger.Printf("Trying to insert %v in partition %v: %v", key, p, p.zero_kv)
+
 	transformed_key := p.transformKey(key)
 	transformed_key_int, err := p.toInt(transformed_key)
 	if err != nil {
@@ -63,6 +73,8 @@ func (p *Partition) Insert(key *big.Int) (bool, error) {
 	}
 
 	if insertKey(&p.zero_kv, transformed_key_int, key) {
+		logger.Printf("Inserted exact match %v in partition %v %v", transformed_key_int, p, p.zero_kv)
+
 		permuted_keys := p.permuteKey(transformed_key)
 		for _, permuted_key := range permuted_keys {
 			permuted_key_int, err := p.toInt(permuted_key)
@@ -70,11 +82,14 @@ func (p *Partition) Insert(key *big.Int) (bool, error) {
 				return false, err
 			}
 
+			logger.Printf("Inserted partial match %v in partition %v", permuted_key_int, p)
 			insertKey(&p.one_kv, permuted_key_int, key)
 		}
+		
 		return true, nil
 	}
 
+	logger.Printf("Found %v in partition %v, not inserting", key, p)
 	return false, nil
 }
 
@@ -84,14 +99,15 @@ func insertKey(kv *map[interface{}][]*big.Int, key interface{}, value *big.Int) 
 	if ok {
 		for _, found_value := range found_values {
 			if found_value.Cmp(value) == 0 {
+				logger.Printf("Found existing exact match, %v==%v", found_value, value)
 				return false
 			}		
 		}
-
-		(*kv)[key] = append(found_values, value)
 	} else {
-		(*kv)[key] = []*big.Int{value}
+		(*kv)[key] = make([]*big.Int, 0, 1)
 	}
+
+	(*kv)[key] = append(found_values, value)
 
 	return true
 }
@@ -151,9 +167,9 @@ func (p *Partition) transformKey(key *big.Int) *big.Int {
 func (p *Partition) permuteKey(key *big.Int) []*big.Int {
 	permutations := make([]*big.Int, 0, 0)
 
-	for i := 0; i < key.BitLen(); i++ {
+	for i := 0; i < int(p.mask); i++ {
 		permutation := big.NewInt(0)
-		permutation.Or(permutation, key)
+		permutation.SetBytes(key.Bytes())
 
 		if key.Bit(i) == 0 {
 			permutation.SetBit(permutation, i, 1)

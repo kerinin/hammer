@@ -9,12 +9,12 @@ type ScalarInsertResult struct {
 	Inserted bool
 }
 
-type VectorInsertResult struct {
-	Vector []big.Int
-	Inserted bool
-}
+// type VectorInsertResult struct {
+// 	Vector []big.Int
+// 	Inserted bool
+// }
 
 type InsertResponse struct {
-	Scalar []ScalarInsertResult
-	Vector []VectorInsertResult
+	Scalars []ScalarInsertResult
+	// Vectors []VectorInsertResult
 }

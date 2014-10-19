@@ -9,12 +9,12 @@ type ScalarFindResult struct {
 	Found []big.Int
 }
 
-type VectorFindResult struct {
-	Vector []big.Int
-	Found [][]big.Int
-}
+// type VectorFindResult struct {
+// 	Vector []big.Int
+// 	Found [][]big.Int
+// }
 
 type FindResponse struct {
-	Scalar []ScalarFindResult
-	Vector []VectorFindResult
+	Scalars []ScalarFindResult
+	// Vectors []VectorFindResult
 }
