@@ -1,9 +1,9 @@
 package main
 
 import (
-	"fmt"
+	"github.com/kerinin/hammer/web"
 )
 
 func main() {
-	fmt.Println("Hello, playground")
+	web.Server(":8000")
 }
