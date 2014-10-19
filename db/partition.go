@@ -28,7 +28,7 @@ func (p *Partition) Coords() (uint, uint) {
 }
 
 func (p *Partition) Find(key *big.Int) (map[*big.Int]uint, error) {
-	logger.Printf("Tring to find %v in partition %v", key, p)
+	logger.Info("Tring to find %v in partition %v", key, p)
 
 	transformed_key := p.transformKey(key)
 	permutations := p.permuteKey(transformed_key)
@@ -42,7 +42,7 @@ func (p *Partition) Find(key *big.Int) (map[*big.Int]uint, error) {
 		source_keys, ok := p.one_kv[permuted_key_int]
 		if ok {
 			for _, source_key := range source_keys {
-				logger.Printf("Found partial match %v for %v in partition %v", source_key, key, p)
+				logger.Debug("Found partial match %v for %v in partition %v", source_key, key, p)
 				found_keys[source_key] = 1
 			}
 		}
@@ -55,7 +55,7 @@ func (p *Partition) Find(key *big.Int) (map[*big.Int]uint, error) {
 	source_keys, ok := p.zero_kv[transformed_key_int]
 	if ok {
 		for _, source_key := range source_keys {
-			logger.Printf("Found exact match %v for %v in partition %v", source_key, key, p)
+			logger.Debug("Found exact match %v for %v in partition %v", source_key, key, p)
 			found_keys[source_key] = 0
 		}
 	}
@@ -64,7 +64,7 @@ func (p *Partition) Find(key *big.Int) (map[*big.Int]uint, error) {
 }
 
 func (p *Partition) Insert(key *big.Int) (bool, error) {
-	logger.Printf("Trying to insert %v in partition %v: %v", key, p, p.zero_kv)
+	logger.Info("Trying to insert %v in partition %v", key, p)
 
 	transformed_key := p.transformKey(key)
 	transformed_key_int, err := p.toInt(transformed_key)
@@ -73,7 +73,7 @@ func (p *Partition) Insert(key *big.Int) (bool, error) {
 	}
 
 	if insertKey(&p.zero_kv, transformed_key_int, key) {
-		logger.Printf("Inserted exact match %v in partition %v %v", transformed_key_int, p, p.zero_kv)
+		logger.Debug("Inserted exact match %v in partition %v", transformed_key_int, p)
 
 		permuted_keys := p.permuteKey(transformed_key)
 		for _, permuted_key := range permuted_keys {
@@ -82,14 +82,14 @@ func (p *Partition) Insert(key *big.Int) (bool, error) {
 				return false, err
 			}
 
-			logger.Printf("Inserted partial match %v in partition %v", permuted_key_int, p)
+			logger.Debug("Inserted partial match %v in partition %v", permuted_key_int, p)
 			insertKey(&p.one_kv, permuted_key_int, key)
 		}
 		
 		return true, nil
 	}
 
-	logger.Printf("Found %v in partition %v, not inserting", key, p)
+	logger.Debug("Found %v in partition %v, not inserting", key, p)
 	return false, nil
 }
 
@@ -99,7 +99,6 @@ func insertKey(kv *map[interface{}][]*big.Int, key interface{}, value *big.Int) 
 	if ok {
 		for _, found_value := range found_values {
 			if found_value.Cmp(value) == 0 {
-				logger.Printf("Found existing exact match, %v==%v", found_value, value)
 				return false
 			}		
 		}

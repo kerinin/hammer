@@ -1,12 +1,13 @@
 package db
 
 import (
-	"log"
-	"os"
+	"github.com/op/go-logging"
 )
 
-var logger *log.Logger
+var logger = logging.MustGetLogger("hammer.db")
+var logFormat = logging.MustStringFormatter("[db] %{level} %{color}%{message}%{color:reset}")
 
 func init() {
-	logger = log.New(os.Stdout, "[db]      ", log.Lshortfile)
+	logging.SetFormatter(logFormat)
+	logging.SetLevel(logging.WARNING, "hammer.db")
 }
