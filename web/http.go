@@ -5,6 +5,7 @@ import (
 	"log"
 	"regexp"
 	"strconv"
+	"sync"
 
 	"encoding/json"
 	"math/big"
@@ -27,6 +28,7 @@ func Server() {
 
 	m.Post("/db/(?P<bits>\\d+)/(?P<tolerance>\\d+)/(?P<namespace>.*)/insert$", binding.Json(InsertRequest{}), insertHandler)
 	m.Post("/db/(?P<bits>\\d+)/(?P<tolerance>\\d+)/(?P<namespace>.*)/find$", binding.Json(FindRequest{}), findHandler)
+	m.Post("/db/(?P<bits>\\d+)/(?P<tolerance>\\d+)/(?P<namespace>.*)/remove$", binding.Json(RemoveRequest{}), removeHandler)
 
 	m.Run()
 }
@@ -127,6 +129,57 @@ func insertHandler(request InsertRequest, params martini.Params, logger *log.Log
 		logger.Printf("Inserted into %v %016b: %v", insert_db_key, safe_scalar, inserted)
 
 		response.Scalars = append(response.Scalars, ScalarInsertResult{Scalar: *safe_scalar, Inserted: inserted})
+	}
+
+	json_bytes, err := json.Marshal(response)
+	if err != nil {
+		return 500, err.Error()
+	}
+
+	return 200, string(json_bytes)
+}
+
+func removeHandler(request RemoveRequest, params martini.Params, logger *log.Logger) (int, string) {
+	logger.Printf("Handling Remove with request:%v, params:%v", request, params)
+
+	bits, err := strconv.ParseUint(params["bits"], 0, 64)
+	if err != nil {
+		return 500, err.Error()
+	}
+	tolerance, err := strconv.ParseUint(params["tolerance"], 0, 64)
+	if err != nil {
+		return 500, err.Error()
+	}
+	namespace := params["namespace"]
+	remove_db_key := fmt.Sprintf("%v/%v/%v", bits, tolerance, namespace)
+	response := RemoveResponse{}
+
+	databases_mutex.RLock()
+	remove_db, ok := databases[remove_db_key]
+	databases_mutex.RUnlock()
+	if !ok {
+		logger.Printf("Initializing db %v", remove_db_key)
+		remove_db = db.NewPartitioning(uint(bits), uint(tolerance))
+		databases_mutex.Lock()
+		databases[remove_db_key] = remove_db
+		databases_mutex.Unlock()
+	}
+
+	scalars := request.Scalars
+	response.Scalars = make([]ScalarRemoveResult, 0, len(scalars))
+
+	for _, scalar := range request.Scalars {
+		safe_scalar := big.NewInt(0)
+		safe_scalar.SetBytes(scalar.Bytes())
+
+		removed, err := remove_db.Remove(safe_scalar)
+		if err != nil {
+			return 500, err.Error()
+		}
+
+		logger.Printf("Removed from %v %016b: %v", remove_db_key, safe_scalar, removed)
+
+		response.Scalars = append(response.Scalars, ScalarRemoveResult{Scalar: *safe_scalar, Removed: removed})
 	}
 
 	json_bytes, err := json.Marshal(response)
