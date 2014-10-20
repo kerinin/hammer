@@ -2,12 +2,15 @@ package db
 
 import (
 	"fmt"
+	"sync"
 	"math/big"
 )
 
 type Partition struct {
 	shift uint
 	mask  uint
+	zero_mutex sync.RWMutex
+	one_mutex sync.RWMutex
 	zero_kv    map[interface{}][]*big.Int
 	one_kv    map[interface{}][]*big.Int
 }
@@ -16,7 +19,10 @@ func NewPartition(shift uint, mask uint) Partition {
 	zero_kv := make(map[interface{}][]*big.Int)
 	one_kv := make(map[interface{}][]*big.Int)
 
-	return Partition{shift: shift, mask: mask, zero_kv: zero_kv, one_kv: one_kv}
+	zero_mutex := sync.RWMutex{}
+	one_mutex := sync.RWMutex{}
+
+	return Partition{shift: shift, mask: mask, zero_kv: zero_kv, one_kv: one_kv, zero_mutex: zero_mutex, one_mutex: one_mutex}
 }
 
 func (p *Partition) String() string {
@@ -39,6 +45,7 @@ func (p *Partition) Find(key *big.Int) (map[*big.Int]uint, error) {
 		if err != nil {
 			return found_keys, err
 		}
+		p.one_mutex.RLock()
 		source_keys, ok := p.one_kv[permuted_key_int]
 		if ok {
 			for _, source_key := range source_keys {
@@ -46,12 +53,14 @@ func (p *Partition) Find(key *big.Int) (map[*big.Int]uint, error) {
 				found_keys[source_key] = 1
 			}
 		}
+		p.one_mutex.RUnlock()
 	}
 
 	transformed_key_int, err := p.toInt(transformed_key)
 	if err != nil {
 		return found_keys, err
 	}
+	p.zero_mutex.RLock()
 	source_keys, ok := p.zero_kv[transformed_key_int]
 	if ok {
 		for _, source_key := range source_keys {
@@ -59,6 +68,7 @@ func (p *Partition) Find(key *big.Int) (map[*big.Int]uint, error) {
 			found_keys[source_key] = 0
 		}
 	}
+	p.zero_mutex.RUnlock()
 
 	return found_keys, nil
 }
@@ -72,7 +82,10 @@ func (p *Partition) Insert(key *big.Int) (bool, error) {
 		return false, err
 	}
 
+	p.zero_mutex.Lock()
 	if insertKey(&p.zero_kv, transformed_key_int, key) {
+		p.zero_mutex.Unlock()
+
 		logger.Debug("Inserted exact match %v in partition %v", transformed_key_int, p)
 
 		permuted_keys := p.permuteKey(transformed_key)
@@ -83,10 +96,14 @@ func (p *Partition) Insert(key *big.Int) (bool, error) {
 			}
 
 			logger.Debug("Inserted partial match %v in partition %v", permuted_key_int, p)
+			p.one_mutex.Lock()
 			insertKey(&p.one_kv, permuted_key_int, key)
+			p.one_mutex.Unlock()
 		}
 		
 		return true, nil
+	} else {
+		p.zero_mutex.Unlock()
 	}
 
 	logger.Debug("Found %v in partition %v, not inserting", key, p)
@@ -118,7 +135,10 @@ func (p *Partition) Remove(key *big.Int) (bool, error) {
 		return false, err
 	}
 
+	p.zero_mutex.Lock()
 	if removeKey(&p.zero_kv, transformed_key_int, key) {
+		p.zero_mutex.Unlock()
+
 		permuted_keys := p.permuteKey(transformed_key)
 		for _, permuted_key := range permuted_keys {
 			permuted_key_int, err := p.toInt(permuted_key)
@@ -126,9 +146,13 @@ func (p *Partition) Remove(key *big.Int) (bool, error) {
 				return false, err
 			}
 
+			p.one_mutex.Lock()
 			removeKey(&p.one_kv, permuted_key_int, key)
+			p.one_mutex.Unlock()
 		}
 		return true, nil
+	} else {
+		p.zero_mutex.Unlock()
 	}
 
 	return false, nil

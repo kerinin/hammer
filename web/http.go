@@ -15,11 +15,13 @@ import (
 )
 
 var databases map[string]db.Partitioning
+var databases_mutex sync.RWMutex
 var findRegex = regexp.MustCompile(`\/db\/(\d+)\/(\d+)\/(.*)\/find`)
 var insertRegex = regexp.MustCompile(`\/db\/(\d+)\/(\d+)\/(.*)\/insert`)
 
 func Server() {
 	databases = make(map[string]db.Partitioning)
+	databases_mutex = sync.RWMutex{}
 
 	m := martini.Classic()
 
@@ -44,11 +46,15 @@ func findHandler(request FindRequest, params martini.Params, logger *log.Logger)
 	find_db_key := fmt.Sprintf("%v/%v/%v", bits, tolerance, namespace)
 	response := FindResponse{}
 
+	databases_mutex.RLock()
 	find_db, ok := databases[find_db_key]
+	databases_mutex.RUnlock()
 	if !ok {
 		logger.Printf("Initializing db %v", find_db_key)
 		find_db = db.NewPartitioning(uint(bits), uint(tolerance))
+		databases_mutex.Lock()
 		databases[find_db_key] = find_db
+		databases_mutex.Unlock()
 	}
 
 	scalars := request.Scalars
@@ -95,11 +101,15 @@ func insertHandler(request InsertRequest, params martini.Params, logger *log.Log
 	insert_db_key := fmt.Sprintf("%v/%v/%v", bits, tolerance, namespace)
 	response := InsertResponse{}
 
+	databases_mutex.RLock()
 	insert_db, ok := databases[insert_db_key]
+	databases_mutex.RUnlock()
 	if !ok {
 		logger.Printf("Initializing db %v", insert_db_key)
 		insert_db = db.NewPartitioning(uint(bits), uint(tolerance))
+		databases_mutex.Lock()
 		databases[insert_db_key] = insert_db
+		databases_mutex.Unlock()
 	}
 
 	scalars := request.Scalars
