@@ -1,6 +1,7 @@
 package db
 
 import (
+	"fmt"
 	"math"
 	"math/big"
 )
@@ -52,6 +53,10 @@ func NewPartitioning(bits uint, tolerance uint) Partitioning {
 	}
 
 	return Partitioning{bits: bits, tolerance: tolerance, partition_count: partition_count, partitions: partitions}
+}
+
+func (p Partitioning) String() string {
+	return fmt.Sprintf("{%d/%d}", p.bits, p.tolerance)
 }
 
 /*
