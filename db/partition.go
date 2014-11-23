@@ -3,7 +3,6 @@ package db
 import (
 	"os"
 	"fmt"
-	"github.com/bitly/dablooms/godablooms"
 	"math/big"
 	"sync"
 )
@@ -13,24 +12,11 @@ type Partition struct {
 	mask       uint
 	zero_mutex sync.RWMutex
 	one_mutex  sync.RWMutex
-	zero_bloom *dablooms.ScalingBloom
-	one_bloom  *dablooms.ScalingBloom
 	zero_kv    map[interface{}][]Key
 	one_kv     map[interface{}][]Key
 }
 
 func NewPartition(shift uint, mask uint) Partition {
-	os.Remove("zero_bloom.dat")
-	zero_bloom := dablooms.NewScalingBloom(100000, 0.5, "zero_bloom.dat")
-	if zero_bloom == nil {
-		logger.Fatal("Failed to create zero bloom")
-	}
-	os.Remove("one_bloom.dat")
-	one_bloom := dablooms.NewScalingBloom(100000, 0.5, "one_bloom.dat")
-	if one_bloom == nil {
-		logger.Fatal("Failed to create one bloom")
-	}
-
 	zero_kv := make(map[interface{}][]Key)
 	one_kv := make(map[interface{}][]Key)
 
@@ -40,8 +26,6 @@ func NewPartition(shift uint, mask uint) Partition {
 	return Partition{
 		shift:      shift,
 		mask:       mask,
-		zero_bloom: zero_bloom,
-		one_bloom:  one_bloom,
 		zero_kv:    zero_kv,
 		one_kv:     one_kv,
 		zero_mutex: zero_mutex,
@@ -65,26 +49,22 @@ func (p *Partition) Find(key Key) (map[Key]uint, error) {
 
 	for _, permuted_key := range transformed_key.Permutations(p.mask) {
 		p.one_mutex.RLock()
-		if p.one_bloom.Check(permuted_key.Bytes()) {
-			source_keys, ok := p.one_kv[permuted_key.Int(p.mask)]
-			if ok {
-				for _, source_key := range source_keys {
-					logger.Debug("Found partial match %v for %v in partition %v", source_key, key, p)
-					found_keys[source_key] = 1
-				}
+		source_keys, ok := p.one_kv[permuted_key.Int(p.mask)]
+		if ok {
+			for _, source_key := range source_keys {
+				logger.Debug("Found partial match %v for %v in partition %v", source_key, key, p)
+				found_keys[source_key] = 1
 			}
 		}
 		p.one_mutex.RUnlock()
 	}
 
 	p.zero_mutex.RLock()
-	if p.zero_bloom.Check(transformed_key.Bytes()) {
-		source_keys, ok := p.zero_kv[transformed_key.Int(p.mask)]
-		if ok {
-			for _, source_key := range source_keys {
-				logger.Debug("Found exact match %v for %v in partition %v", source_key, key, p)
-				found_keys[source_key] = 0
-			}
+	source_keys, ok := p.zero_kv[transformed_key.Int(p.mask)]
+	if ok {
+		for _, source_key := range source_keys {
+			logger.Debug("Found exact match %v for %v in partition %v", source_key, key, p)
+			found_keys[source_key] = 0
 		}
 	}
 	p.zero_mutex.RUnlock()
@@ -100,7 +80,6 @@ func (p *Partition) Insert(key Key) (bool, error) {
 	p.zero_mutex.Lock()
 	if insertKey(&p.zero_kv, transformed_key.Int(p.mask), key) {
 		// NOTE: That second bit should be monitonically increasing
-		p.zero_bloom.Add(transformed_key.Bytes(), 1)
 		p.zero_mutex.Unlock()
 
 		logger.Debug("Inserted exact match %v in partition %v", transformed_key.Int(p.mask), p)
@@ -108,10 +87,7 @@ func (p *Partition) Insert(key Key) (bool, error) {
 		p.one_mutex.Lock()
 		for _, permuted_key := range transformed_key.Permutations(p.mask) {
 			logger.Debug("Inserted partial match %v in partition %v", permuted_key.Int(p.mask), p)
-			if insertKey(&p.one_kv, permuted_key.Int(p.mask), key) {
-				// NOTE: That second bit should be monitonically increasing
-				p.one_bloom.Add(permuted_key.Bytes(), 1)
-			}
+			insertKey(&p.one_kv, permuted_key.Int(p.mask), key)
 		}
 		p.one_mutex.Unlock()
 
@@ -148,15 +124,11 @@ func (p *Partition) Remove(key Key) (bool, error) {
 	p.zero_mutex.Lock()
 	if removeKey(&p.zero_kv, transformed_key.Int(p.mask), key) {
 		// NOTE: That second bit should match the value on insertion
-		p.zero_bloom.Remove(transformed_key.Bytes(), 1)
 		p.zero_mutex.Unlock()
 
 		p.one_mutex.Lock()
 		for _, permuted_key := range transformed_key.Permutations(p.mask) {
-			if removeKey(&p.one_kv, permuted_key.Int(p.mask), key) {
-				// NOTE: That second bit should match the value on insertion
-				p.one_bloom.Remove(permuted_key.Bytes(), 1)
-			}
+			removeKey(&p.one_kv, permuted_key.Int(p.mask), key)
 		}
 		p.one_mutex.Unlock()
 
