@@ -3,6 +3,7 @@ package db
 import (
 	"fmt"
 	"math/big"
+	"encoding/json"
 	"github.com/cznic/mathutil"
 )
 
@@ -37,6 +38,17 @@ func (k Key) String() string {
 
 func (k Key) Cmp(other Key) int {
 	return k.value.Cmp(other.value)
+}
+
+func (k *Key) MarshalJSON() ([]byte, error) {
+	return json.Marshal(k.value)
+}
+ 
+func (k *Key) UnmarshalJSON(data []byte) error {
+	value := big.NewInt(0)
+	err := json.Unmarshal(data, &value)
+	k.value = value
+	return err
 }
 
 func (k Key) Hamming(other Key) uint {

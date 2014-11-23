@@ -1,15 +1,15 @@
 package web
 
 import (
-	"math/big"
+	"github.com/kerinin/hammer/db"
 )
 
 type AddRequest struct {
-	Scalars []big.Int `json:"Scalars" binding:"required"`
+	Scalars []db.Key `json:"Scalars" binding:"required"`
 }
 
 type ScalarAddResult struct {
-	Scalar big.Int
+	Scalar db.Key
 	Added bool
 }
 

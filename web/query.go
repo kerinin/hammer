@@ -1,16 +1,16 @@
 package web
 
 import (
-	"math/big"
+	"github.com/kerinin/hammer/db"
 )
 
 type QueryRequest struct {
-	Scalars []big.Int `json:"Scalars" binding:"required"`
+	Scalars []db.Key `json:"Scalars" binding:"required"`
 }
 
 type ScalarQueryResult struct {
-	Scalar big.Int
-	Found []big.Int
+	Scalar db.Key
+	Found []db.Key
 }
 
 type QueryResponse struct {

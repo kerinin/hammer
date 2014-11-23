@@ -8,74 +8,74 @@ import (
 	"testing"
 )
 
-// func TestPartitioningPartitionEvenly(t *testing.T) {
-// 	partitioning := NewPartitioning(32, 5)
-// 	expected_partitions := make([]Partition, 4, 4)
-// 
-// 	expected_partitions[0] = NewPartition(0, 8)
-// 	expected_partitions[1] = NewPartition(8, 8)
-// 	expected_partitions[2] = NewPartition(16, 8)
-// 	expected_partitions[3] = NewPartition(24, 8)
-// 
-// 	if !reflect.DeepEqual(expected_partitions, partitioning.partitions) {
-// 		t.Logf("Expected partitions don't match actual (%v): %v", expected_partitions, partitioning.partitions)
-// 		t.Fail()
-// 	}
-// }
-// 
-// func TestPartitioningPartitionUnevenly(t *testing.T) {
-// 	partitioning := NewPartitioning(32, 7)
-// 	expected_partitions := make([]Partition, 5, 5)
-// 
-// 	expected_partitions[0] = NewPartition(0, 7)
-// 	expected_partitions[1] = NewPartition(7, 7)
-// 	expected_partitions[2] = NewPartition(14, 6)
-// 	expected_partitions[3] = NewPartition(20, 6)
-// 	expected_partitions[4] = NewPartition(26, 6)
-// 
-// 	if !reflect.DeepEqual(expected_partitions, partitioning.partitions) {
-// 		t.Logf("Expected partitions don't match actual (%v): %v", expected_partitions, partitioning.partitions)
-// 		t.Fail()
-// 	}
-// }
-// 
-// func TestPartitioningPartitionTooMany(t *testing.T) {
-// 	partitioning := NewPartitioning(4, 8)
-// 	expected_partitions := make([]Partition, 3, 3)
-// 
-// 	expected_partitions[0] = NewPartition(0, 2)
-// 	expected_partitions[1] = NewPartition(2, 1)
-// 	expected_partitions[2] = NewPartition(3, 1)
-// 
-// 	if !reflect.DeepEqual(expected_partitions, partitioning.partitions) {
-// 		t.Logf("Expected partitions don't match actual (%v): %v", expected_partitions, partitioning.partitions)
-// 		t.Fail()
-// 	}
-// }
-// 
-// func TestPartitioningPartitionZero(t *testing.T) {
-// 	partitioning := NewPartitioning(32, 0)
-// 	expected_partitions := make([]Partition, 1, 1)
-// 
-// 	expected_partitions[0] = NewPartition(0, 32)
-// 
-// 	if !reflect.DeepEqual(expected_partitions, partitioning.partitions) {
-// 		t.Logf("Expected partitions don't match actual (%v): %v", expected_partitions, partitioning.partitions)
-// 		t.Fail()
-// 	}
-// }
-// 
-// func TestPartitioningPartitionWithNoBytes(t *testing.T) {
-// 	partitioning := NewPartitioning(0, 0)
-// 	expected_partitions := make([]Partition, 1, 1)
-// 
-// 	expected_partitions[0] = NewPartition(0, 0)
-// 
-// 	if !reflect.DeepEqual(expected_partitions, partitioning.partitions) {
-// 		t.Logf("Expected partitions don't match actual (%v): %v", expected_partitions, partitioning.partitions)
-// 		t.Fail()
-// 	}
-// }
+func TestPartitioningPartitionEvenly(t *testing.T) {
+	partitioning := NewPartitioning(32, 5)
+	expected_partitions := make([]Partition, 4, 4)
+
+	expected_partitions[0] = NewPartition(0, 8)
+	expected_partitions[1] = NewPartition(8, 8)
+	expected_partitions[2] = NewPartition(16, 8)
+	expected_partitions[3] = NewPartition(24, 8)
+
+	if !reflect.DeepEqual(expected_partitions, partitioning.partitions) {
+		t.Logf("Expected partitions don't match actual (%v): %v", expected_partitions, partitioning.partitions)
+		t.Fail()
+	}
+}
+
+func TestPartitioningPartitionUnevenly(t *testing.T) {
+	partitioning := NewPartitioning(32, 7)
+	expected_partitions := make([]Partition, 5, 5)
+
+	expected_partitions[0] = NewPartition(0, 7)
+	expected_partitions[1] = NewPartition(7, 7)
+	expected_partitions[2] = NewPartition(14, 6)
+	expected_partitions[3] = NewPartition(20, 6)
+	expected_partitions[4] = NewPartition(26, 6)
+
+	if !reflect.DeepEqual(expected_partitions, partitioning.partitions) {
+		t.Logf("Expected partitions don't match actual (%v): %v", expected_partitions, partitioning.partitions)
+		t.Fail()
+	}
+}
+
+func TestPartitioningPartitionTooMany(t *testing.T) {
+	partitioning := NewPartitioning(4, 8)
+	expected_partitions := make([]Partition, 3, 3)
+
+	expected_partitions[0] = NewPartition(0, 2)
+	expected_partitions[1] = NewPartition(2, 1)
+	expected_partitions[2] = NewPartition(3, 1)
+
+	if !reflect.DeepEqual(expected_partitions, partitioning.partitions) {
+		t.Logf("Expected partitions don't match actual (%v): %v", expected_partitions, partitioning.partitions)
+		t.Fail()
+	}
+}
+
+func TestPartitioningPartitionZero(t *testing.T) {
+	partitioning := NewPartitioning(32, 0)
+	expected_partitions := make([]Partition, 1, 1)
+
+	expected_partitions[0] = NewPartition(0, 32)
+
+	if !reflect.DeepEqual(expected_partitions, partitioning.partitions) {
+		t.Logf("Expected partitions don't match actual (%v): %v", expected_partitions, partitioning.partitions)
+		t.Fail()
+	}
+}
+
+func TestPartitioningPartitionWithNoBytes(t *testing.T) {
+	partitioning := NewPartitioning(0, 0)
+	expected_partitions := make([]Partition, 1, 1)
+
+	expected_partitions[0] = NewPartition(0, 0)
+
+	if !reflect.DeepEqual(expected_partitions, partitioning.partitions) {
+		t.Logf("Expected partitions don't match actual (%v): %v", expected_partitions, partitioning.partitions)
+		t.Fail()
+	}
+}
 
 func TestPartitioningFindMissingKey(t *testing.T) {
 	partitioning := NewPartitioning(8, 2)
@@ -333,91 +333,91 @@ func TestPartitioningConsistencyUnderLoad(t *testing.T) {
 	}
 }
 
-var partitioning10 Partitioning = NewPartitioning(32, 4)
-var partitioning100 Partitioning = NewPartitioning(32, 4)
-var partitioning1000 Partitioning = NewPartitioning(32, 4)
-var partitioning10000 Partitioning = NewPartitioning(32, 4)
-var partitioning100000 Partitioning = NewPartitioning(32, 4)
-
-func init() {
-	for i := 0; i < 10; i++ {
-		key := rand.Uint32()
-		key_big := NewKey(big.NewInt(int64(key)))
-		partitioning10.Insert(key_big)
-	}
-	for i := 0; i < 100; i++ {
-		key := rand.Uint32()
-		key_big := NewKey(big.NewInt(int64(key)))
-		partitioning100.Insert(key_big)
-	}
-	for i := 0; i < 1000; i++ {
-		key := rand.Uint32()
-		key_big := NewKey(big.NewInt(int64(key)))
-		partitioning1000.Insert(key_big)
-	}
-	for i := 0; i < 10000; i++ {
-		key := rand.Uint32()
-		key_big := NewKey(big.NewInt(int64(key)))
-		partitioning10000.Insert(key_big)
-	}
-	for i := 0; i < 100000; i++ {
-		key := rand.Uint32()
-		key_big := NewKey(big.NewInt(int64(key)))
-		partitioning100000.Insert(key_big)
-	}
-}
-
-func Benchmark10(b *testing.B) {
-	for i := 0; i < b.N; i++ {
-		key := rand.Uint32()
-		key_big := NewKey(big.NewInt(int64(key)))
-
-		partitioning10.Insert(key_big)
-		partitioning10.Find(key_big)
-		partitioning10.Remove(key_big)
-	}
-}
-
-func Benchmark100(b *testing.B) {
-	for i := 0; i < b.N; i++ {
-		key := rand.Uint32()
-		key_big := NewKey(big.NewInt(int64(key)))
-
-		partitioning100.Insert(key_big)
-		partitioning100.Find(key_big)
-		partitioning100.Remove(key_big)
-	}
-}
-
-func Benchmark1000(b *testing.B) {
-	for i := 0; i < b.N; i++ {
-		key := rand.Uint32()
-		key_big := NewKey(big.NewInt(int64(key)))
-
-		partitioning1000.Insert(key_big)
-		partitioning1000.Find(key_big)
-		partitioning1000.Remove(key_big)
-	}
-}
-
-func Benchmark10000(b *testing.B) {
-	for i := 0; i < b.N; i++ {
-		key := rand.Uint32()
-		key_big := NewKey(big.NewInt(int64(key)))
-
-		partitioning10000.Insert(key_big)
-		partitioning10000.Find(key_big)
-		partitioning10000.Remove(key_big)
-	}
-}
-
-func Benchmark100000(b *testing.B) {
-	for i := 0; i < b.N; i++ {
-		key := rand.Uint32()
-		key_big := NewKey(big.NewInt(int64(key)))
-
-		partitioning100000.Insert(key_big)
-		partitioning100000.Find(key_big)
-		partitioning100000.Remove(key_big)
-	}
-}
+// var partitioning10 Partitioning = NewPartitioning(32, 4)
+// var partitioning100 Partitioning = NewPartitioning(32, 4)
+// var partitioning1000 Partitioning = NewPartitioning(32, 4)
+// var partitioning10000 Partitioning = NewPartitioning(32, 4)
+// var partitioning100000 Partitioning = NewPartitioning(32, 4)
+// 
+// func init() {
+// 	for i := 0; i < 10; i++ {
+// 		key := rand.Uint32()
+// 		key_big := NewKey(big.NewInt(int64(key)))
+// 		partitioning10.Insert(key_big)
+// 	}
+// 	for i := 0; i < 100; i++ {
+// 		key := rand.Uint32()
+// 		key_big := NewKey(big.NewInt(int64(key)))
+// 		partitioning100.Insert(key_big)
+// 	}
+// 	for i := 0; i < 1000; i++ {
+// 		key := rand.Uint32()
+// 		key_big := NewKey(big.NewInt(int64(key)))
+// 		partitioning1000.Insert(key_big)
+// 	}
+// 	for i := 0; i < 10000; i++ {
+// 		key := rand.Uint32()
+// 		key_big := NewKey(big.NewInt(int64(key)))
+// 		partitioning10000.Insert(key_big)
+// 	}
+// 	for i := 0; i < 100000; i++ {
+// 		key := rand.Uint32()
+// 		key_big := NewKey(big.NewInt(int64(key)))
+// 		partitioning100000.Insert(key_big)
+// 	}
+// }
+// 
+// func Benchmark10(b *testing.B) {
+// 	for i := 0; i < b.N; i++ {
+// 		key := rand.Uint32()
+// 		key_big := NewKey(big.NewInt(int64(key)))
+// 
+// 		partitioning10.Insert(key_big)
+// 		partitioning10.Find(key_big)
+// 		partitioning10.Remove(key_big)
+// 	}
+// }
+// 
+// func Benchmark100(b *testing.B) {
+// 	for i := 0; i < b.N; i++ {
+// 		key := rand.Uint32()
+// 		key_big := NewKey(big.NewInt(int64(key)))
+// 
+// 		partitioning100.Insert(key_big)
+// 		partitioning100.Find(key_big)
+// 		partitioning100.Remove(key_big)
+// 	}
+// }
+// 
+// func Benchmark1000(b *testing.B) {
+// 	for i := 0; i < b.N; i++ {
+// 		key := rand.Uint32()
+// 		key_big := NewKey(big.NewInt(int64(key)))
+// 
+// 		partitioning1000.Insert(key_big)
+// 		partitioning1000.Find(key_big)
+// 		partitioning1000.Remove(key_big)
+// 	}
+// }
+// 
+// func Benchmark10000(b *testing.B) {
+// 	for i := 0; i < b.N; i++ {
+// 		key := rand.Uint32()
+// 		key_big := NewKey(big.NewInt(int64(key)))
+// 
+// 		partitioning10000.Insert(key_big)
+// 		partitioning10000.Find(key_big)
+// 		partitioning10000.Remove(key_big)
+// 	}
+// }
+// 
+// func Benchmark100000(b *testing.B) {
+// 	for i := 0; i < b.N; i++ {
+// 		key := rand.Uint32()
+// 		key_big := NewKey(big.NewInt(int64(key)))
+// 
+// 		partitioning100000.Insert(key_big)
+// 		partitioning100000.Find(key_big)
+// 		partitioning100000.Remove(key_big)
+// 	}
+// }

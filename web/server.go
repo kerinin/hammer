@@ -3,7 +3,6 @@ package web
 import (
 	"log"
 
-	"math/big"
 	"net/http"
 	"encoding/json"
 
@@ -49,17 +48,14 @@ func (s *Server) handleAdd(request AddRequest, params martini.Params, logger *lo
 	response.Scalars = make([]ScalarAddResult, 0, len(scalars))
 
 	for _, scalar := range request.Scalars {
-		safe_scalar := big.NewInt(0)
-		safe_scalar.SetBytes(scalar.Bytes())
-
-		added, err := s.database.Insert(safe_scalar)
+		added, err := s.database.Insert(scalar)
 		if err != nil {
 			return 500, err.Error()
 		}
 
 		// logger.Printf("Added %016b: %v", safe_scalar, added)
 
-		response.Scalars = append(response.Scalars, ScalarAddResult{Scalar: *safe_scalar, Added: added})
+		response.Scalars = append(response.Scalars, ScalarAddResult{Scalar: scalar, Added: added})
 	}
 
 	json_bytes, err := json.Marshal(response)
@@ -78,17 +74,14 @@ func (s *Server) handleDelete(request DeleteRequest, params martini.Params, logg
 	response.Scalars = make([]ScalarDeleteResult, 0, len(scalars))
 
 	for _, scalar := range request.Scalars {
-		safe_scalar := big.NewInt(0)
-		safe_scalar.SetBytes(scalar.Bytes())
-
-		deleted, err := s.database.Remove(safe_scalar)
+		deleted, err := s.database.Remove(scalar)
 		if err != nil {
 			return 500, err.Error()
 		}
 
 		// logger.Printf("Deleted %016b: %v", safe_scalar, deleted)
 
-		response.Scalars = append(response.Scalars, ScalarDeleteResult{Scalar: *safe_scalar, Deleted: deleted})
+		response.Scalars = append(response.Scalars, ScalarDeleteResult{Scalar: scalar, Deleted: deleted})
 	}
 
 	json_bytes, err := json.Marshal(response)
@@ -107,21 +100,18 @@ func (s *Server) handleQuery(request QueryRequest, params martini.Params, logger
 	response.Scalars = make([]ScalarQueryResult, 0, len(scalars))
 
 	for _, scalar := range request.Scalars {
-		safe_scalar := big.NewInt(0)
-		safe_scalar.SetBytes(scalar.Bytes())
-
-		found_map, err := s.database.Find(safe_scalar)
+		found_map, err := s.database.Find(scalar)
 		if err != nil {
 			return 500, err.Error()
 		}
 
-		found := make([]big.Int, 0, len(found_map))
+		found := make([]db.Key, 0, len(found_map))
 		for i, _ := range found_map {
-			found = append(found, *i)
+			found = append(found, i)
 		}
 
 		// logger.Printf("Queried %016b: %v", safe_scalar, found_map)
-		response.Scalars = append(response.Scalars, ScalarQueryResult{Scalar: *safe_scalar, Found: found})
+		response.Scalars = append(response.Scalars, ScalarQueryResult{Scalar: scalar, Found: found})
 	}
 
 	json_bytes, err := json.Marshal(response)
