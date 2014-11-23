@@ -3,7 +3,6 @@ package db
 import (
 	"fmt"
 	"math"
-	"math/big"
 )
 
 type Partitioning struct {
@@ -56,15 +55,15 @@ func NewPartitioning(bits uint, tolerance uint) Partitioning {
 }
 
 func (p Partitioning) String() string {
-	return fmt.Sprintf("{%d/%d}", p.bits, p.tolerance)
+	return fmt.Sprintf("{%d/%d:%d}", p.bits, p.tolerance, p.partition_count)
 }
 
 /*
  * Returns a map from keys to their hamming distance to the query
  */
-func (p *Partitioning) Find(key *big.Int) (map[*big.Int]uint, error) {
-	candidates := make(map[*big.Int][2]uint)
-	matches := make(map[*big.Int]uint)
+func (p *Partitioning) Find(key Key) (map[Key]uint, error) {
+	candidates := make(map[Key][2]uint)
+	matches := make(map[Key]uint)
 
 	for _, partition := range p.partitions {
 		p_candidates, err := partition.Find(key)
@@ -91,7 +90,7 @@ func (p *Partitioning) Find(key *big.Int) (map[*big.Int]uint, error) {
 			// "If k is an even number, S must have at least one exact-matching
 			// partition, or two 1-matching partitions"
 			if v[0] >= 1 || v[1] >= 2 {
-				if h := hamming(k, key); h <= p.tolerance {
+				if h := k.Hamming(key); h <= p.tolerance {
 					matches[k] = h
 				}
 			}
@@ -102,7 +101,7 @@ func (p *Partitioning) Find(key *big.Int) (map[*big.Int]uint, error) {
 			// where at least one of the matches should be an exact match, or S
 			// must have at least three 1-matching partitions"
 			if (v[0] >= 1 && (v[0]+v[1]) >= 2) || v[1] >= 3 {
-				if h := hamming(k, key); h <= p.tolerance {
+				if h := k.Hamming(key); h <= p.tolerance {
 					matches[k] = h
 				}
 			}
@@ -112,7 +111,7 @@ func (p *Partitioning) Find(key *big.Int) (map[*big.Int]uint, error) {
 	return matches, nil
 }
 
-func (p *Partitioning) Insert(key *big.Int) (bool, error) {
+func (p *Partitioning) Insert(key Key) (bool, error) {
 	any_inserted := false
 
 	for _, partition := range p.partitions {
@@ -127,7 +126,7 @@ func (p *Partitioning) Insert(key *big.Int) (bool, error) {
 	return any_inserted, nil
 }
 
-func (p *Partitioning) Remove(key *big.Int) (bool, error) {
+func (p *Partitioning) Remove(key Key) (bool, error) {
 	any_removed := false
 
 	for _, partition := range p.partitions {

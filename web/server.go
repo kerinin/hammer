@@ -42,7 +42,7 @@ func (s *Server) Run() {
 }
 
 func (s *Server) handleAdd(request AddRequest, params martini.Params, logger *log.Logger) (int, string) {
-	logger.Printf("Handling Add with db:%v, request:%v, params:%v", s.database, request, params)
+	// logger.Printf("Handling Add with db:%v, request:%v, params:%v", s.database, request, params)
 
 	scalars := request.Scalars
 	response := AddResponse{}
@@ -57,7 +57,7 @@ func (s *Server) handleAdd(request AddRequest, params martini.Params, logger *lo
 			return 500, err.Error()
 		}
 
-		logger.Printf("Added %016b: %v", safe_scalar, added)
+		// logger.Printf("Added %016b: %v", safe_scalar, added)
 
 		response.Scalars = append(response.Scalars, ScalarAddResult{Scalar: *safe_scalar, Added: added})
 	}
@@ -71,7 +71,7 @@ func (s *Server) handleAdd(request AddRequest, params martini.Params, logger *lo
 }
 
 func (s *Server) handleDelete(request DeleteRequest, params martini.Params, logger *log.Logger) (int, string) {
-	logger.Printf("Handling Delete with db:%v, request:%v, params:%v", s.database, request, params)
+	// logger.Printf("Handling Delete with db:%v, request:%v, params:%v", s.database, request, params)
 
 	scalars := request.Scalars
 	response := DeleteResponse{}
@@ -86,7 +86,7 @@ func (s *Server) handleDelete(request DeleteRequest, params martini.Params, logg
 			return 500, err.Error()
 		}
 
-		logger.Printf("Deleted %016b: %v", safe_scalar, deleted)
+		// logger.Printf("Deleted %016b: %v", safe_scalar, deleted)
 
 		response.Scalars = append(response.Scalars, ScalarDeleteResult{Scalar: *safe_scalar, Deleted: deleted})
 	}
@@ -100,7 +100,7 @@ func (s *Server) handleDelete(request DeleteRequest, params martini.Params, logg
 }
 
 func (s *Server) handleQuery(request QueryRequest, params martini.Params, logger *log.Logger) (int, string) {
-	logger.Printf("Handling Query with db:%v, request:%v, params:%v", s.database, request, params)
+	// logger.Printf("Handling Query with db:%v, request:%v, params:%v", s.database, request, params)
 
 	scalars := request.Scalars
 	response := QueryResponse{}
@@ -120,7 +120,7 @@ func (s *Server) handleQuery(request QueryRequest, params martini.Params, logger
 			found = append(found, *i)
 		}
 
-		logger.Printf("Queried %016b: %v", safe_scalar, found_map)
+		// logger.Printf("Queried %016b: %v", safe_scalar, found_map)
 		response.Scalars = append(response.Scalars, ScalarQueryResult{Scalar: *safe_scalar, Found: found})
 	}
 

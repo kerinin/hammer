@@ -4,13 +4,11 @@ import (
 	// "fmt"
 	"reflect"
 	"testing"
-
-	"math/big"
 )
 
 func TestPartitionFindMissingKey(t *testing.T) {
 	partition := NewPartition(4, 4)
-	a := binary("00001111")
+	a := NewKeyFromBinaryString("00001111")
 	keys, err := partition.Find(a)
 
 	if len(keys) != 0 {
@@ -25,7 +23,7 @@ func TestPartitionFindMissingKey(t *testing.T) {
 
 func TestPartitionFirstInsertion(t *testing.T) {
 	partition := NewPartition(4, 4)
-	a := binary("00001111")
+	a := NewKeyFromBinaryString("00001111")
 
 	inserted, err := partition.Insert(a)
 	if !inserted {
@@ -40,8 +38,8 @@ func TestPartitionFirstInsertion(t *testing.T) {
 
 func TestPartitionSecondInsertion(t *testing.T) {
 	partition := NewPartition(4, 4)
-	a := binary("00001111")
-	b := binary("00001111")
+	a := NewKeyFromBinaryString("00001111")
+	b := NewKeyFromBinaryString("00001111")
 
 	inserted, err := partition.Insert(a)
 	if err != nil {
@@ -62,9 +60,9 @@ func TestPartitionSecondInsertion(t *testing.T) {
 
 func TestPartitionFindInsertedKey(t *testing.T) {
 	partition := NewPartition(4, 4)
-	a := binary("00001111")
-	b := binary("00001111")
-	expected := make(map[*big.Int]uint)
+	a := NewKeyFromBinaryString("00001111")
+	b := NewKeyFromBinaryString("00001111")
+	expected := make(map[Key]uint)
 	expected[a] = 0
 
 	_, err := partition.Insert(a)
@@ -86,9 +84,9 @@ func TestPartitionFindInsertedKey(t *testing.T) {
 
 func TestPartitionFindPermutationOfInsertedKey(t *testing.T) {
 	partition := NewPartition(4, 4)
-	a := binary("11110000")
-	b := binary("11100000")
-	expected := make(map[*big.Int]uint)
+	a := NewKeyFromBinaryString("11110000")
+	b := NewKeyFromBinaryString("11100000")
+	expected := make(map[Key]uint)
 	expected[a] = 0
 
 	partition.Insert(a)
@@ -105,9 +103,9 @@ func TestPartitionFindPermutationOfInsertedKey(t *testing.T) {
 
 func TestPartitionRemoveInsertedKey(t *testing.T) {
 	partition := NewPartition(4, 4)
-	a := binary("00001111")
-	b := binary("00001111")
-	c := binary("00001111")
+	a := NewKeyFromBinaryString("00001111")
+	b := NewKeyFromBinaryString("00001111")
+	c := NewKeyFromBinaryString("00001111")
 
 	partition.Insert(a)
 
@@ -134,7 +132,7 @@ func TestPartitionRemoveInsertedKey(t *testing.T) {
 
 func TestPartitionRemoveMissingKey(t *testing.T) {
 	partition := NewPartition(4, 4)
-	a := binary("00001111")
+	a := NewKeyFromBinaryString("00001111")
 
 	removed, err := partition.Remove(a)
 	if removed {
