@@ -8,6 +8,7 @@ import (
 type Partitioning struct {
 	bits            uint
 	tolerance       uint
+	lru_size		int
 	partition_count uint
 	partitions      []Partition
 }
@@ -17,7 +18,7 @@ type Partitioning struct {
  * tolerance: Queries will return all keys whose hamming distance to the query
  *            is equal to or less than this value
  */
-func NewPartitioning(bits uint, tolerance uint) Partitioning {
+func NewPartitioning(bits, tolerance uint, lru_size int) Partitioning {
 	var partition_count uint
 
 	switch {
@@ -41,21 +42,27 @@ func NewPartitioning(bits uint, tolerance uint) Partitioning {
 		shift := i * head_width
 		mask := head_width
 
-		partitions[i] = NewPartition(shift, mask)
+		partitions[i] = NewPartition(shift, mask, lru_size)
 	}
 
 	for i := uint(0); i < tail_count; i++ {
 		shift := (head_count * head_width) + (i * tail_width)
 		mask := tail_width
 
-		partitions[head_count+i] = NewPartition(shift, mask)
+		partitions[head_count+i] = NewPartition(shift, mask, lru_size)
 	}
 
-	return Partitioning{bits: bits, tolerance: tolerance, partition_count: partition_count, partitions: partitions}
+	return Partitioning{
+		bits: bits, 
+		tolerance: tolerance,
+		lru_size: lru_size,
+		partition_count: partition_count,
+		partitions: partitions,
+	}
 }
 
 func (p Partitioning) String() string {
-	return fmt.Sprintf("{%d/%d:%d}", p.bits, p.tolerance, p.partition_count)
+	return fmt.Sprintf("{%d/%d:%d}", p.bits, p.tolerance, p.lru_size)
 }
 
 /*

@@ -38,13 +38,20 @@ func main() {
 					Usage: "return keys with hamming distance equal-to or less-than this",
 					// EnvVar: "HAMMER_TOLERANCE",
 				},
+				cli.IntFlag{
+					Name: "max-keys, m",
+					Value: 100000,
+					Usage: "the maximum number of keys to keep in memory",
+					// EnvVar: "HAMMER_MAX_KEYS",
+				},
 			},
 			Action: func(c *cli.Context) {
 				bind := c.String("bind")
 				bits := uint(c.Int("bits"))
 				tolerance := uint(c.Int("tolerance"))
+				max_keys := c.Int("max-keys")
 
-				database := db.NewPartitioning(bits, tolerance)
+				database := db.NewPartitioning(bits, tolerance, max_keys)
 
 				web.NewServer(bind, database).Run()
 			},
