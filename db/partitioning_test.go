@@ -9,13 +9,13 @@ import (
 )
 
 func TestPartitioningPartitionEvenly(t *testing.T) {
-	partitioning := NewPartitioning(32, 5, 10)
+	partitioning := NewLruPartitioning(32, 5, 10)
 	expected_partitions := make([]Partition, 4, 4)
 
-	expected_partitions[0] = NewPartition(0, 8, 10)
-	expected_partitions[1] = NewPartition(8, 8, 10)
-	expected_partitions[2] = NewPartition(16, 8, 10)
-	expected_partitions[3] = NewPartition(24, 8, 10)
+	expected_partitions[0] = Partition{shift: 0, mask: 8, zero_kv: NewLruKV(10), one_kv: NewLruKV(10)}
+	expected_partitions[1] = Partition{shift: 8, mask: 8, zero_kv: NewLruKV(10), one_kv: NewLruKV(10)}
+	expected_partitions[2] = Partition{shift: 16, mask: 8, zero_kv: NewLruKV(10), one_kv: NewLruKV(10)}
+	expected_partitions[3] = Partition{shift: 24, mask: 8, zero_kv: NewLruKV(10), one_kv: NewLruKV(10)}
 
 	if !reflect.DeepEqual(expected_partitions, partitioning.partitions) {
 		t.Logf("Expected partitions don't match actual (%v): %v", expected_partitions, partitioning.partitions)
@@ -24,14 +24,14 @@ func TestPartitioningPartitionEvenly(t *testing.T) {
 }
 
 func TestPartitioningPartitionUnevenly(t *testing.T) {
-	partitioning := NewPartitioning(32, 7, 10)
+	partitioning := NewLruPartitioning(32, 7, 10)
 	expected_partitions := make([]Partition, 5, 5)
 
-	expected_partitions[0] = NewPartition(0, 7, 10)
-	expected_partitions[1] = NewPartition(7, 7, 10)
-	expected_partitions[2] = NewPartition(14, 6, 10)
-	expected_partitions[3] = NewPartition(20, 6, 10)
-	expected_partitions[4] = NewPartition(26, 6, 10)
+	expected_partitions[0] = Partition{shift: 0, mask: 7, zero_kv: NewLruKV(10), one_kv: NewLruKV(10)}
+	expected_partitions[1] = Partition{shift: 7, mask: 7, zero_kv: NewLruKV(10), one_kv: NewLruKV(10)}
+	expected_partitions[2] = Partition{shift: 14, mask: 6, zero_kv: NewLruKV(10), one_kv: NewLruKV(10)}
+	expected_partitions[3] = Partition{shift: 20, mask: 6, zero_kv: NewLruKV(10), one_kv: NewLruKV(10)}
+	expected_partitions[4] = Partition{shift: 26, mask: 6, zero_kv: NewLruKV(10), one_kv: NewLruKV(10)}
 
 	if !reflect.DeepEqual(expected_partitions, partitioning.partitions) {
 		t.Logf("Expected partitions don't match actual (%v): %v", expected_partitions, partitioning.partitions)
@@ -40,12 +40,12 @@ func TestPartitioningPartitionUnevenly(t *testing.T) {
 }
 
 func TestPartitioningPartitionTooMany(t *testing.T) {
-	partitioning := NewPartitioning(4, 8, 10)
+	partitioning := NewLruPartitioning(4, 8, 10)
 	expected_partitions := make([]Partition, 3, 3)
 
-	expected_partitions[0] = NewPartition(0, 2, 10)
-	expected_partitions[1] = NewPartition(2, 1, 10)
-	expected_partitions[2] = NewPartition(3, 1, 10)
+	expected_partitions[0] = Partition{shift: 0, mask: 2, zero_kv: NewLruKV(10), one_kv: NewLruKV(10)}
+	expected_partitions[1] = Partition{shift: 2, mask: 1, zero_kv: NewLruKV(10), one_kv: NewLruKV(10)}
+	expected_partitions[2] = Partition{shift: 3, mask: 1, zero_kv: NewLruKV(10), one_kv: NewLruKV(10)}
 
 	if !reflect.DeepEqual(expected_partitions, partitioning.partitions) {
 		t.Logf("Expected partitions don't match actual (%v): %v", expected_partitions, partitioning.partitions)
@@ -54,10 +54,10 @@ func TestPartitioningPartitionTooMany(t *testing.T) {
 }
 
 func TestPartitioningPartitionZero(t *testing.T) {
-	partitioning := NewPartitioning(32, 0, 10)
+	partitioning := NewLruPartitioning(32, 0, 10)
 	expected_partitions := make([]Partition, 1, 1)
 
-	expected_partitions[0] = NewPartition(0, 32, 10)
+	expected_partitions[0] = Partition{shift: 0, mask: 32, zero_kv: NewLruKV(10), one_kv: NewLruKV(10)}
 
 	if !reflect.DeepEqual(expected_partitions, partitioning.partitions) {
 		t.Logf("Expected partitions don't match actual (%v): %v", expected_partitions, partitioning.partitions)
@@ -66,10 +66,10 @@ func TestPartitioningPartitionZero(t *testing.T) {
 }
 
 func TestPartitioningPartitionWithNoBytes(t *testing.T) {
-	partitioning := NewPartitioning(0, 0, 10)
+	partitioning := NewLruPartitioning(0, 0, 10)
 	expected_partitions := make([]Partition, 1, 1)
 
-	expected_partitions[0] = NewPartition(0, 0, 10)
+	expected_partitions[0] = Partition{shift: 0, mask: 0, zero_kv: NewLruKV(10), one_kv: NewLruKV(10)}
 
 	if !reflect.DeepEqual(expected_partitions, partitioning.partitions) {
 		t.Logf("Expected partitions don't match actual (%v): %v", expected_partitions, partitioning.partitions)
@@ -78,7 +78,7 @@ func TestPartitioningPartitionWithNoBytes(t *testing.T) {
 }
 
 func TestPartitioningFindMissingKey(t *testing.T) {
-	partitioning := NewPartitioning(8, 2, 10)
+	partitioning := NewLruPartitioning(8, 2, 10)
 	a := NewKeyFromBinaryString("11111111")
 	keys, err := partitioning.Find(a)
 
@@ -93,7 +93,7 @@ func TestPartitioningFindMissingKey(t *testing.T) {
 }
 
 func TestPartitioningInsertFirstKey(t *testing.T) {
-	partitioning := NewPartitioning(8, 2, 10)
+	partitioning := NewLruPartitioning(8, 2, 10)
 	a := NewKeyFromBinaryString("11111111")
 
 	inserted, err := partitioning.Insert(a)
@@ -108,7 +108,7 @@ func TestPartitioningInsertFirstKey(t *testing.T) {
 }
 
 func TestPartitioningInsertSecondKey(t *testing.T) {
-	partitioning := NewPartitioning(4, 4, 10)
+	partitioning := NewLruPartitioning(4, 4, 10)
 	a := NewKeyFromBinaryString("00001111")
 	b := NewKeyFromBinaryString("00001111")
 
@@ -130,7 +130,7 @@ func TestPartitioningInsertSecondKey(t *testing.T) {
 }
 
 func TestPartitioningFindInsertedKey(t *testing.T) {
-	partitioning := NewPartitioning(4, 4, 10)
+	partitioning := NewLruPartitioning(4, 4, 10)
 	a := NewKeyFromBinaryString("00001111")
 	b := NewKeyFromBinaryString("00001111")
 	expected := map[Key]uint{a: 0}
@@ -153,7 +153,7 @@ func TestPartitioningFindInsertedKey(t *testing.T) {
 }
 
 func TestPartitioningFindPermutationOfInsertedKey(t *testing.T) {
-	partitioning := NewPartitioning(4, 4, 10)
+	partitioning := NewLruPartitioning(4, 4, 10)
 	a := NewKeyFromBinaryString("00001111")
 	b := NewKeyFromBinaryString("00000111")
 	expected := map[Key]uint{a: 1}
@@ -171,7 +171,7 @@ func TestPartitioningFindPermutationOfInsertedKey(t *testing.T) {
 }
 
 func TestPartitioningFindPermutationsOfMultipleSimilarKeys(t *testing.T) {
-	partitioning := NewPartitioning(8, 4, 10)
+	partitioning := NewLruPartitioning(8, 4, 10)
 	a := NewKeyFromBinaryString("00000000")
 	b := NewKeyFromBinaryString("10000000")
 	c := NewKeyFromBinaryString("10000001")
@@ -197,7 +197,7 @@ func TestPartitioningFindPermutationsOfMultipleSimilarKeys(t *testing.T) {
 }
 
 func TestPartitioningDontFindPermutationOfInsertedKey(t *testing.T) {
-	partitioning := NewPartitioning(4, 2, 10)
+	partitioning := NewLruPartitioning(4, 2, 10)
 	a := NewKeyFromBinaryString("00001111")
 	b := NewKeyFromBinaryString("00110011")
 
@@ -214,7 +214,7 @@ func TestPartitioningDontFindPermutationOfInsertedKey(t *testing.T) {
 }
 
 func TestPartitioningRemoveInsertedKey(t *testing.T) {
-	partitioning := NewPartitioning(4, 4, 10)
+	partitioning := NewLruPartitioning(4, 4, 10)
 	a := NewKeyFromBinaryString("00001111")
 	b := NewKeyFromBinaryString("00001111")
 	c := NewKeyFromBinaryString("00001111")
@@ -243,7 +243,7 @@ func TestPartitioningRemoveInsertedKey(t *testing.T) {
 }
 
 func TestPartitioningRemoveMissingKey(t *testing.T) {
-	partitioning := NewPartitioning(4, 4, 10)
+	partitioning := NewLruPartitioning(4, 4, 10)
 	a := NewKeyFromBinaryString("00001111")
 
 	removed, err := partitioning.Remove(a)
@@ -258,7 +258,7 @@ func TestPartitioningRemoveMissingKey(t *testing.T) {
 }
 
 func TestPartitioningConsistencyUnderLoad(t *testing.T) {
-	partitioning := NewPartitioning(16, 4, 100000)
+	partitioning := NewLruPartitioning(16, 4, 100000)
 
 	var expected_present [65536]bool
 	var expected_absent [65536]bool
@@ -333,11 +333,11 @@ func TestPartitioningConsistencyUnderLoad(t *testing.T) {
 	}
 }
 
-// var partitioning10 Partitioning = NewPartitioning(32, 4, 10)
-// var partitioning100 Partitioning = NewPartitioning(32, 4, 10)
-// var partitioning1000 Partitioning = NewPartitioning(32, 4, 10)
-// var partitioning10000 Partitioning = NewPartitioning(32, 4, 10)
-// var partitioning100000 Partitioning = NewPartitioning(32, 4, 10)
+// var partitioning10 Partitioning = NewLruPartitioning(32, 4, 10)
+// var partitioning100 Partitioning = NewLruPartitioning(32, 4, 100)
+// var partitioning1000 Partitioning = NewLruPartitioning(32, 4, 1000)
+// var partitioning10000 Partitioning = NewLruPartitioning(32, 4, 10000)
+// var partitioning100000 Partitioning = NewLruPartitioning(32, 4, 100000)
 // 
 // func init() {
 // 	for i := 0; i < 10; i++ {

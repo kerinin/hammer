@@ -8,9 +8,19 @@ import (
 type Partitioning struct {
 	bits            uint
 	tolerance       uint
-	lru_size		int
 	partition_count uint
 	partitions      []Partition
+}
+
+func NewLruPartitioning(bits, tolerance uint, lru_size int) Partitioning {
+	return NewPartitioning(bits, tolerance, func(shift, mask uint) Partition {
+		return Partition{
+			shift: shift,
+			mask: mask,
+			zero_kv: KV(NewLruKV(lru_size)),
+			one_kv: KV(NewLruKV(lru_size)),
+		}
+	})
 }
 
 /*
@@ -18,7 +28,7 @@ type Partitioning struct {
  * tolerance: Queries will return all keys whose hamming distance to the query
  *            is equal to or less than this value
  */
-func NewPartitioning(bits, tolerance uint, lru_size int) Partitioning {
+func NewPartitioning(bits, tolerance uint, partition_func func(shift, mask uint) Partition) Partitioning {
 	var partition_count uint
 
 	switch {
@@ -42,27 +52,26 @@ func NewPartitioning(bits, tolerance uint, lru_size int) Partitioning {
 		shift := i * head_width
 		mask := head_width
 
-		partitions[i] = NewPartition(shift, mask, lru_size)
+		partitions[i] = partition_func(shift, mask)
 	}
 
 	for i := uint(0); i < tail_count; i++ {
 		shift := (head_count * head_width) + (i * tail_width)
 		mask := tail_width
 
-		partitions[head_count+i] = NewPartition(shift, mask, lru_size)
+		partitions[head_count+i] = partition_func(shift, mask)
 	}
 
 	return Partitioning{
 		bits: bits, 
 		tolerance: tolerance,
-		lru_size: lru_size,
 		partition_count: partition_count,
 		partitions: partitions,
 	}
 }
 
 func (p Partitioning) String() string {
-	return fmt.Sprintf("{%d/%d:%d}", p.bits, p.tolerance, p.lru_size)
+	return fmt.Sprintf("{%d/%d}", p.bits, p.tolerance)
 }
 
 /*
