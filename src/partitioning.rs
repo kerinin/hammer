@@ -107,7 +107,7 @@ mod test {
 
     #[test]
     fn partition_evenly() {
-        let a: Partitioning<HashMap<Vec<u8>, Vec<u8>>> = Partitioning::new(32, 4);
+        let a: Partitioning<HashMap<Vec<u8>, Vec<u8>>> = Partitioning::new(32, 5);
         let b = Partitioning {partitions: vec![
             Partition::new(0, 8),
             Partition::new(8, 8),
@@ -120,7 +120,7 @@ mod test {
 
     #[test]
     fn partition_unevenly() {
-        let a: Partitioning<HashMap<Vec<u8>, Vec<u8>>> = Partitioning::new(32, 5);
+        let a: Partitioning<HashMap<Vec<u8>, Vec<u8>>> = Partitioning::new(32, 7);
         let b = Partitioning {partitions: vec![
             Partition::new(0, 7),
             Partition::new(7, 7),
@@ -136,8 +136,7 @@ mod test {
     fn partition_too_many() {
         let a: Partitioning<HashMap<Vec<u8>, Vec<u8>>> = Partitioning::new(4, 8);
         let b = Partitioning {partitions: vec![
-            Partition::new(0, 1),
-            Partition::new(1, 1),
+            Partition::new(0, 2),
             Partition::new(2, 1),
             Partition::new(3, 1),
             ]};
@@ -175,6 +174,22 @@ mod test {
     }
 
     #[test]
+    fn insert_first_key() {
+        let mut p: Partitioning<HashMap<Vec<u8>, Vec<u8>>> = Partitioning::new(8, 2);
+        let a = vec![0b11111111u8];
+
+        assert!(p.insert(a.clone()));
+    }
+
+    #[test]
+    fn insert_second_key() {
+        let mut p: Partitioning<HashMap<Vec<u8>, Vec<u8>>> = Partitioning::new(8, 2);
+        let a = vec![0b11111111u8];
+
+        assert!(!p.insert(a.clone()));
+    }
+
+    #[test]
     fn find_inserted_key() {
         let mut p: Partitioning<HashMap<Vec<u8>, Vec<u8>>> = Partitioning::new(8, 2);
         let a = vec![0b11111111u8];
@@ -188,11 +203,56 @@ mod test {
         assert_eq!(Some(b), keys);
     }
 
-    /*
-     * Want to verify that permutations don't crowd each other out
-     */
+    #[test]
+    fn find_permutations_of_inserted_key() {
+        let mut p: Partitioning<HashMap<Vec<u8>, Vec<u8>>> = Partitioning::new(8, 2);
+        let a = vec![0b00001111u8];
+        let b = vec![0b00000111u8];
+        let mut c: HashSet<Vec<u8>> = HashSet::new();
+        c.insert(a.clone());
+
+        p.insert(a.clone());
+
+        let keys = p.find(b.clone());
+
+        assert_eq!(Some(c), keys);
+    }
+
     #[test]
     fn find_permutations_of_multiple_similar_keys() {
+        let mut p: Partitioning<HashMap<Vec<u8>, Vec<u8>>> = Partitioning::new(8, 2);
+        let a = vec![0b00000000u8];
+        let b = vec![0b10000000u8];
+        let c = vec![0b10000001u8];
+        let d = vec![0b11000001u8];
+        let e = vec![0b11000011u8];
+        let mut f: HashSet<Vec<u8>> = HashSet::new();
+        f.insert(b.clone());
+        f.insert(c.clone());
+        f.insert(d.clone());
+        f.insert(e.clone());
+
+        p.insert(b.clone());
+        p.insert(c.clone());
+        p.insert(d.clone());
+        p.insert(e.clone());
+
+        let keys = p.find(a.clone());
+
+        assert_eq!(Some(f), keys);
+    }
+
+    #[test]
+    fn dont_find_permutations_of_inserted_keys() {
+        let mut p: Partitioning<HashMap<Vec<u8>, Vec<u8>>> = Partitioning::new(8, 2);
+        let a = vec![0b00001111u8];
+        let b = vec![0b00110011u8];
+
+        p.insert(b.clone());
+
+        let keys = p.find(a.clone());
+
+        assert_eq!(None, keys);
     }
 
     #[test]
@@ -282,5 +342,47 @@ mod test {
      */
     #[test]
     fn stability_under_load() {
+        let mut p: Partitioning<HashMap<Vec<u8>, Vec<u8>>> = Partitioning::new(16, 4);
+
+        let mut expected_present: Vec<bool> = Vec::with_capacity(65536);
+        let mut expected_absent: Vec<bool> = Vec::with_capacity(65536);
+
+        let mut rng = task_rng();
+        let seq = rng.gen_iter::<uint>();
+
+        for i in seq.take(100000u) {
+            if expected_present[i] {
+                p.remove(vec![i as u8]);
+                //expected_present[i] = false;
+                //expected_absent[i] = true;
+            } else {
+                p.insert(vec![i as u8]);
+                //expected_present[i] = true;
+                //expected_absent[i] = false;
+            }
+
+            if i % 1000 == 0 {
+                //for k, b in expected_present {
+                //    let found bool = false;
+                //    for key in p.find(k) {
+                //        if key == k {
+                //            found = true
+                //        }
+                //    }
+                //    assert!(found)
+                //}
+
+                //for k, b in expected_absent {
+                //    let found bool = false;
+                //    for key in p.find(k) {
+                //        if key == k {
+                //            found = true
+                //        }
+                //    }
+                //    assert!(!found)
+                //}
+            }
+        }
+
     }
 }

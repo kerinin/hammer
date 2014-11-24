@@ -165,13 +165,28 @@ mod test {
     }
 
     #[test]
-    fn find_inserted_key() {
+    fn first_inserted_key() {
         let mut partition = Partition::new(4, 4);
         let a = vec![0b00001111u8];
         let mut b: HashSet<Vec<u8>> = HashSet::new();
         b.insert(a.clone());
 
         assert!(partition.insert(a.clone()));
+
+        let keys = partition.find(a.clone());
+
+        assert_eq!(Some(b), keys);
+    }
+
+    #[test]
+    fn second_inserted_key() {
+        let mut partition = Partition::new(4, 4);
+        let a = vec![0b00001111u8];
+        let mut b: HashSet<Vec<u8>> = HashSet::new();
+        b.insert(a.clone());
+        partition.insert(a.clone());
+
+        assert!(!partition.insert(a.clone()));
 
         let keys = partition.find(a.clone());
 
