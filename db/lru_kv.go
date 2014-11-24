@@ -14,7 +14,18 @@ func NewLruKV(lru_size int) *LruKV {
 	return &LruKV{kv: kv}
 }
 
-func (l *LruKV) Get(key interface{}) ([]Key, bool) {
+func NewLruPartitioning(bits, tolerance uint, lru_size int) Partitioning {
+	return NewPartitioning(bits, tolerance, func(shift, mask uint) Partition {
+		return Partition{
+			shift: shift,
+			mask: mask,
+			zero_kv: KV(NewLruKV(lru_size)),
+			one_kv: KV(NewLruKV(lru_size)),
+		}
+	})
+}
+
+func (l *LruKV) Get(key interface{}) (*map[Key]bool, bool) {
 	found_values, ok := l.kv.Get(key)
 
 	if ok {

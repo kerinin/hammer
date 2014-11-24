@@ -1,13 +1,12 @@
 package db
 
 import (
-	// "fmt"
 	"reflect"
 	"testing"
 )
 
 func TestPartitionFindMissingKey(t *testing.T) {
-	partition := Partition{shift: 4, mask: 4, zero_kv: NewLruKV(10), one_kv: NewLruKV(10)}
+	partition := Partition{shift: 4, mask: 4, zero_kv: NewMapKV(), one_kv: NewMapKV()}
 	a := NewKeyFromBinaryString("00001111")
 	keys, err := partition.Find(a)
 
@@ -22,7 +21,7 @@ func TestPartitionFindMissingKey(t *testing.T) {
 }
 
 func TestPartitionFirstInsertion(t *testing.T) {
-	partition := Partition{shift: 4, mask: 4, zero_kv: NewLruKV(10), one_kv: NewLruKV(10)}
+	partition := Partition{shift: 4, mask: 4, zero_kv: NewMapKV(), one_kv: NewMapKV()}
 	a := NewKeyFromBinaryString("00001111")
 
 	inserted, err := partition.Insert(a)
@@ -37,7 +36,7 @@ func TestPartitionFirstInsertion(t *testing.T) {
 }
 
 func TestPartitionSecondInsertion(t *testing.T) {
-	partition := Partition{shift: 4, mask: 4, zero_kv: NewLruKV(10), one_kv: NewLruKV(10)}
+	partition := Partition{shift: 4, mask: 4, zero_kv: NewMapKV(), one_kv: NewMapKV()}
 	a := NewKeyFromBinaryString("00001111")
 	b := NewKeyFromBinaryString("00001111")
 
@@ -59,7 +58,7 @@ func TestPartitionSecondInsertion(t *testing.T) {
 }
 
 func TestPartitionFindInsertedKey(t *testing.T) {
-	partition := Partition{shift: 4, mask: 4, zero_kv: NewLruKV(10), one_kv: NewLruKV(10)}
+	partition := Partition{shift: 4, mask: 4, zero_kv: NewMapKV(), one_kv: NewMapKV()}
 	a := NewKeyFromBinaryString("00001111")
 	b := NewKeyFromBinaryString("00001111")
 	expected := make(map[Key]uint)
@@ -83,7 +82,7 @@ func TestPartitionFindInsertedKey(t *testing.T) {
 }
 
 func TestPartitionFindPermutationOfInsertedKey(t *testing.T) {
-	partition := Partition{shift: 4, mask: 4, zero_kv: NewLruKV(10), one_kv: NewLruKV(10)}
+	partition := Partition{shift: 4, mask: 4, zero_kv: NewMapKV(), one_kv: NewMapKV()}
 	a := NewKeyFromBinaryString("11110000")
 	b := NewKeyFromBinaryString("11100000")
 	expected := make(map[Key]uint)
@@ -102,7 +101,7 @@ func TestPartitionFindPermutationOfInsertedKey(t *testing.T) {
 }
 
 func TestPartitionRemoveInsertedKey(t *testing.T) {
-	partition := Partition{shift: 4, mask: 4, zero_kv: NewLruKV(10), one_kv: NewLruKV(10)}
+	partition := Partition{shift: 4, mask: 4, zero_kv: NewMapKV(), one_kv: NewMapKV()}
 	a := NewKeyFromBinaryString("00001111")
 	b := NewKeyFromBinaryString("00001111")
 	c := NewKeyFromBinaryString("00001111")
@@ -131,7 +130,7 @@ func TestPartitionRemoveInsertedKey(t *testing.T) {
 }
 
 func TestPartitionRemoveMissingKey(t *testing.T) {
-	partition := Partition{shift: 4, mask: 4, zero_kv: NewLruKV(10), one_kv: NewLruKV(10)}
+	partition := Partition{shift: 4, mask: 4, zero_kv: NewMapKV(), one_kv: NewMapKV()}
 	a := NewKeyFromBinaryString("00001111")
 
 	removed, err := partition.Remove(a)

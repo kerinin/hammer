@@ -12,17 +12,6 @@ type Partitioning struct {
 	partitions      []Partition
 }
 
-func NewLruPartitioning(bits, tolerance uint, lru_size int) Partitioning {
-	return NewPartitioning(bits, tolerance, func(shift, mask uint) Partition {
-		return Partition{
-			shift: shift,
-			mask: mask,
-			zero_kv: KV(NewLruKV(lru_size)),
-			one_kv: KV(NewLruKV(lru_size)),
-		}
-	})
-}
-
 /*
  * bits:      The bit size of the keys to be stored
  * tolerance: Queries will return all keys whose hamming distance to the query
