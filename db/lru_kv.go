@@ -25,7 +25,7 @@ func NewLruPartitioning(bits, tolerance uint, lru_size int) Partitioning {
 	})
 }
 
-func (l *LruKV) Get(key interface{}) (*map[Key]bool, bool) {
+func (l *LruKV) Get(key interface{}) ([]Key, bool) {
 	found_values, ok := l.kv.Get(key)
 
 	if ok {
