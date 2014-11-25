@@ -7,8 +7,13 @@ use std::fmt;
 use self::num::rational::Ratio;
 
 use super::partition::{Partition};
+use super::find_result::{FindResult, ZeroVariant, OneVariant};
+use super::result_accumulator::ResultAccumulator;
 
 struct Partitioning<T> {
+    bits: uint,
+    tolerance: uint,
+    partition_count: uint,
     partitions: Vec<Partition<T>>,
 }
 
@@ -32,9 +37,15 @@ impl Partitioning<HashMap<Vec<u8>, Vec<u8>>> {
     /*
      * Partition the keyspace as evenly as possible
      */
-    fn new(bits: uint, max_hamming_distance: uint) -> Partitioning<HashMap<Vec<u8>, Vec<u8>>> {
+    fn new(bits: uint, tolerance: uint) -> Partitioning<HashMap<Vec<u8>, Vec<u8>>> {
 
-        let partition_count = max(1, min(bits, max_hamming_distance));
+        let partition_count = if tolerance == 0 {
+            1
+        } else if tolerance > bits {
+            (bits + 3) / 2
+        } else {
+            (tolerance + 3) / 2
+        };
 
         let head_width = Ratio::new(bits, partition_count).ceil().to_integer() as uint;
         let tail_width = Ratio::new(bits, partition_count).floor().to_integer() as uint;
@@ -58,25 +69,27 @@ impl Partitioning<HashMap<Vec<u8>, Vec<u8>>> {
             partitions.push(Partition::new(shift, mask));
         }
 
-        return Partitioning {partitions: partitions};
+        return Partitioning {
+            bits: bits,
+            tolerance: tolerance,
+            partition_count: partition_count,
+            partitions: partitions,
+        };
     }
 
-    /*
-     * Find all keys withing `hamming_distance` of `key`
-     */
     fn find(&self, key: Vec<u8>) -> Option<HashSet<Vec<u8>>> {
-        let initial: HashSet<Vec<u8>> = HashSet::new();
+        let mut results = ResultAccumulator::new(self.tolerance, key.clone());
 
-        let found_keys = self.partitions.iter()
-            .fold(initial, |res, partition| match partition.find(key.clone()) {
-                Some(keys) => res.union(&keys).map(|i| i.clone()).collect::<HashSet<Vec<u8>>>(),
-                None => res,
-            });
-
-        match found_keys.len() {
-            0 => return None,
-            _ => return Some(found_keys),
+        for partition in self.partitions.iter() {
+            //match partition.find(key.clone()) {
+            //    Some(keys) => for k in keys.iter() {
+            //        results.merge(k);
+            //    },
+            //    None => (),
+            //}
         }
+
+        return results.found_values()
     }
 
     /*
@@ -108,12 +121,16 @@ mod test {
     #[test]
     fn partition_evenly() {
         let a: Partitioning<HashMap<Vec<u8>, Vec<u8>>> = Partitioning::new(32, 5);
-        let b = Partitioning {partitions: vec![
-            Partition::new(0, 8),
-            Partition::new(8, 8),
-            Partition::new(16, 8),
-            Partition::new(24, 8)
-            ]};
+        let b = Partitioning {
+            bits: 32,
+            tolerance: 5,
+            partition_count: 4,
+            partitions: vec![
+                Partition::new(0, 8),
+                Partition::new(8, 8),
+                Partition::new(16, 8),
+                Partition::new(24, 8)
+                    ]};
 
         assert_eq!(a, b);
     }
@@ -121,13 +138,17 @@ mod test {
     #[test]
     fn partition_unevenly() {
         let a: Partitioning<HashMap<Vec<u8>, Vec<u8>>> = Partitioning::new(32, 7);
-        let b = Partitioning {partitions: vec![
-            Partition::new(0, 7),
-            Partition::new(7, 7),
-            Partition::new(14, 6),
-            Partition::new(20, 6),
-            Partition::new(26, 6)
-            ]};
+        let b = Partitioning {
+            bits: 32,
+            tolerance: 7,
+            partition_count: 5,
+            partitions: vec![
+                Partition::new(0, 7),
+                Partition::new(7, 7),
+                Partition::new(14, 6),
+                Partition::new(20, 6),
+                Partition::new(26, 6)
+                    ]};
 
         assert_eq!(a, b);
     }
@@ -135,11 +156,16 @@ mod test {
     #[test]
     fn partition_too_many() {
         let a: Partitioning<HashMap<Vec<u8>, Vec<u8>>> = Partitioning::new(4, 8);
-        let b = Partitioning {partitions: vec![
-            Partition::new(0, 2),
-            Partition::new(2, 1),
-            Partition::new(3, 1),
-            ]};
+        let b = Partitioning {
+            bits: 4,
+            tolerance: 8,
+            partition_count: 3,
+            partitions: vec![
+                Partition::new(0, 2),
+                Partition::new(2, 1),
+                Partition::new(3, 1),
+            ]
+        };
 
         assert_eq!(a, b);
     }
@@ -147,9 +173,14 @@ mod test {
     #[test]
     fn partition_zero() {
         let a: Partitioning<HashMap<Vec<u8>, Vec<u8>>> = Partitioning::new(32, 0);
-        let b = Partitioning {partitions: vec![
-            Partition::new(0, 32),
-            ]};
+        let b = Partitioning {
+            bits: 32,
+            tolerance: 0,
+            partition_count: 1,
+            partitions: vec![
+                Partition::new(0, 32),
+            ]
+        };
 
         assert_eq!(a, b);
     }
@@ -157,9 +188,14 @@ mod test {
     #[test]
     fn partition_with_no_bytes() {
         let a: Partitioning<HashMap<Vec<u8>, Vec<u8>>> = Partitioning::new(0, 0);
-        let b = Partitioning {partitions: vec![
-            Partition::new(0, 0),
-            ]};
+        let b = Partitioning {
+            bits: 0,
+            tolerance: 0,
+            partition_count: 1,
+            partitions: vec![
+                Partition::new(0, 0),
+            ]
+        };
 
         assert_eq!(a, b);
     }
@@ -243,19 +279,6 @@ mod test {
     }
 
     #[test]
-    fn dont_find_permutations_of_inserted_keys() {
-        let mut p: Partitioning<HashMap<Vec<u8>, Vec<u8>>> = Partitioning::new(8, 2);
-        let a = vec![0b00001111u8];
-        let b = vec![0b00110011u8];
-
-        p.insert(b.clone());
-
-        let keys = p.find(a.clone());
-
-        assert_eq!(None, keys);
-    }
-
-    #[test]
     fn find_permutation_of_inserted_key() {
         let mut rng1 = task_rng();
         let mut rng2 = task_rng();
@@ -290,8 +313,11 @@ mod test {
         let mut rng2 = task_rng();
         let bits = 8u;
         let max_hd = 3u;
+        // Generate random uints
         let shifts_seq = rng1.gen_iter::<uint>()
+            // Select a random number of elements in the range [0,bits]
             .map(|i| sample(&mut rng2, range(0, bits), i % bits))
+            // Filter selections with less than the max tolerance
             .filter(|shifts| shifts.len() > max_hd);
 
         for shifts in shifts_seq.take(1000u) {

@@ -7,12 +7,14 @@ use std::fmt;
 use self::num::rational::Ratio;
 
 use super::permutable::Permutable;
+use super::find_result::{FindResult, ZeroVariant, OneVariant};
 
 pub struct Partition<T> {
     shift: uint,
     mask: uint,
 
-    kv: T,
+    zero_kv: T,
+    one_kv: T,
 }
 
 impl<T> fmt::Show for Partition<T> {
@@ -25,13 +27,15 @@ impl<T: PartialEq> PartialEq for Partition<T> {
     fn eq(&self, other: &Partition<T>) -> bool {
         return self.shift.eq(&other.shift) &&
             self.mask.eq(&other.mask) &&
-            self.kv.eq(&other.kv);
+            self.zero_kv.eq(&other.zero_kv) &&
+            self.one_kv.eq(&other.one_kv);
     }
 
     fn ne(&self, other: &Partition<T>) -> bool {
         return self.shift.ne(&other.shift) ||
             self.mask.ne(&other.mask) ||
-            self.kv.ne(&other.kv);
+            self.zero_kv.ne(&other.zero_kv) ||
+            self.one_kv.ne(&other.one_kv);
     }
 }
 
@@ -50,29 +54,42 @@ impl<T> Partition<T> {
 
 impl Partition<HashMap<Vec<u8>, Vec<u8>>> {
     pub fn new(shift: uint, mask: uint) -> Partition<HashMap<Vec<u8>, Vec<u8>>> {
-        let kv: HashMap<Vec<u8>, Vec<u8>> = HashMap::new();
-        return Partition {shift: shift, mask: mask, kv: kv};
+        let zero_kv: HashMap<Vec<u8>, Vec<u8>> = HashMap::new();
+        let one_kv: HashMap<Vec<u8>, Vec<u8>> = HashMap::new();
+        return Partition {shift: shift, mask: mask, zero_kv: zero_kv, one_kv: one_kv};
     }
 }
 
 impl<T: Map<Vec<u8>, Vec<u8>> + MutableMap<Vec<u8>, Vec<u8>>> Partition<T> {
 
-    pub fn find(&self, key: Vec<u8>) -> Option<HashSet<Vec<u8>>> {
+    pub fn find(&self, key: Vec<u8>) -> Option<Vec<FindResult<Vec<u8>>>> {
         let transformed_key = self.transform_key(key);
         let permutations = self.permute_key(transformed_key.clone());
-        let mut found_keys: HashSet<Vec<u8>> = HashSet::new();
+        let mut found_keys: Vec<FindResult<Vec<u8>>> = vec![];
 
-        match self.kv.find(&transformed_key) {
+        match self.zero_kv.find(&transformed_key) {
             Some(key) => {
-                found_keys.insert(key.clone());
+                found_keys.push(ZeroVariant(key.clone()));
+            },
+            None => {},
+        }
+        match self.one_kv.find(&transformed_key) {
+            Some(key) => {
+                found_keys.push(OneVariant(key.clone()));
             },
             None => {},
         }
 
         for k in permutations.iter() {
-            match self.kv.find(k) {
+            match self.zero_kv.find(k) {
                 Some(key) => {
-                    found_keys.insert(key.clone());
+                    found_keys.push(ZeroVariant(key.clone()));
+                },
+                None => {},
+            }
+            match self.one_kv.find(k) {
+                Some(key) => {
+                    found_keys.push(OneVariant(key.clone()));
                 },
                 None => {},
             }
@@ -88,9 +105,9 @@ impl<T: Map<Vec<u8>, Vec<u8>> + MutableMap<Vec<u8>, Vec<u8>>> Partition<T> {
         let transformed_key = self.transform_key(key.clone());
         let permutations = self.permute_key(transformed_key.clone());
 
-        if self.kv.insert(transformed_key, key.clone()) {
+        if self.zero_kv.insert(transformed_key, key.clone()) {
             for k in permutations.iter() {
-                self.kv.insert(k.clone(), key.clone());
+                self.one_kv.insert(k.clone(), key.clone());
             }
             return true;
         } else {
@@ -102,9 +119,9 @@ impl<T: Map<Vec<u8>, Vec<u8>> + MutableMap<Vec<u8>, Vec<u8>>> Partition<T> {
         let transformed_key = self.transform_key(key.clone());
         let permutations = self.permute_key(transformed_key.clone());
 
-        if self.kv.remove(&transformed_key) {
+        if self.zero_kv.remove(&transformed_key) {
             for k in permutations.iter() {
-                self.kv.remove(k);
+                self.one_kv.remove(k);
             }
             return true;
         } else {
@@ -147,6 +164,7 @@ impl<T: Map<Vec<u8>, Vec<u8>> + MutableMap<Vec<u8>, Vec<u8>>> Partition<T> {
 mod test {
     use std::collections::{HashSet};
     use super::{Partition};
+    use super::super::find_result::{FindResult, ZeroVariant, OneVariant};
 
     #[test]
     fn mask_bytes() {
@@ -168,29 +186,27 @@ mod test {
     fn first_inserted_key() {
         let mut partition = Partition::new(4, 4);
         let a = vec![0b00001111u8];
-        let mut b: HashSet<Vec<u8>> = HashSet::new();
-        b.insert(a.clone());
+        let b = Some(vec![ZeroVariant(a.clone())]);
 
         assert!(partition.insert(a.clone()));
 
         let keys = partition.find(a.clone());
 
-        assert_eq!(Some(b), keys);
+        assert_eq!(b, keys);
     }
 
     #[test]
     fn second_inserted_key() {
         let mut partition = Partition::new(4, 4);
         let a = vec![0b00001111u8];
-        let mut b: HashSet<Vec<u8>> = HashSet::new();
-        b.insert(a.clone());
+        let b = Some(vec![ZeroVariant(a.clone())]);
         partition.insert(a.clone());
 
         assert!(!partition.insert(a.clone()));
 
         let keys = partition.find(a.clone());
 
-        assert_eq!(Some(b), keys);
+        assert_eq!(b, keys);
     }
 
     #[test]
@@ -198,14 +214,13 @@ mod test {
         let mut partition = Partition::new(4, 4);
         let a = vec![0b00001111u8];
         let b = vec![0b00000111u8];
-        let mut c: HashSet<Vec<u8>> = HashSet::new();
-        c.insert(a.clone());
+        let c = Some(vec![OneVariant(a.clone())]);
 
         assert!(partition.insert(a.clone()));
 
         let keys = partition.find(b.clone());
 
-        assert_eq!(Some(c), keys);
+        assert_eq!(c, keys);
     }
 
     #[test]
