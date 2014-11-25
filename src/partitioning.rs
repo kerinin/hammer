@@ -81,12 +81,12 @@ impl Partitioning<HashMap<Vec<u8>, Vec<u8>>> {
         let mut results = ResultAccumulator::new(self.tolerance, key.clone());
 
         for partition in self.partitions.iter() {
-            //match partition.find(key.clone()) {
-            //    Some(keys) => for k in keys.iter() {
-            //        results.merge(k);
-            //    },
-            //    None => (),
-            //}
+            match partition.find(key.clone()) {
+                Some(keys) => for k in keys.iter() {
+                    results.merge(k);
+                },
+                None => (),
+            }
         }
 
         return results.found_values()
@@ -379,34 +379,44 @@ mod test {
         for i in seq.take(100000u) {
             if expected_present[i] {
                 p.remove(vec![i as u8]);
-                //expected_present[i] = false;
-                //expected_absent[i] = true;
+                *expected_present.get_mut(i) = false;
+                *expected_absent.get_mut(i) = true;
             } else {
                 p.insert(vec![i as u8]);
-                //expected_present[i] = true;
-                //expected_absent[i] = false;
+                *expected_present.get_mut(i) = true;
+                *expected_absent.get_mut(i) = false;
             }
 
             if i % 1000 == 0 {
-                //for k, b in expected_present {
-                //    let found bool = false;
-                //    for key in p.find(k) {
-                //        if key == k {
-                //            found = true
-                //        }
-                //    }
-                //    assert!(found)
-                //}
+                for i in range(0, expected_present.len()) {
+                    let mut found = false;
+                    let b = expected_present[i];
+                    match p.find(vec![i as u8]) {
+                        Some(set) => for key in set.iter() {
+                            if *key == vec![i as u8] {
+                                found = true;
+                            };
+                        },
+                        None => (),
+                    }
 
-                //for k, b in expected_absent {
-                //    let found bool = false;
-                //    for key in p.find(k) {
-                //        if key == k {
-                //            found = true
-                //        }
-                //    }
-                //    assert!(!found)
-                //}
+                    assert!(found)
+                }
+
+                for i in range(0, expected_absent.len()) {
+                    let mut found = false;
+                    let b = expected_present[i];
+                    match p.find(vec![i as u8]) {
+                        Some(set) => for key in set.iter() {
+                            if *key == vec![i as u8] {
+                                found = true;
+                            };
+                        },
+                        None => (),
+                    }
+
+                    assert!(!found)
+                }
             }
         }
 

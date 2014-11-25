@@ -13,21 +13,28 @@ pub struct ResultAccumulator {
 
 impl ResultAccumulator {
     pub fn new(tolerance: uint, query: Vec<u8>) -> ResultAccumulator {
-        let candidates: HashMap<Vec<u8>, Vec<uint>> = HashMap::new();
+        let mut candidates: HashMap<Vec<u8>, Vec<uint>> = HashMap::new();
         return ResultAccumulator {tolerance: tolerance, query: query, candidates: candidates};
     }
 
-    pub fn merge(&mut self, other: FindResult<Vec<u8>>) {
-        //match other {
-        //    ZeroVariant(ref value) => match self.candidates.get(value) {
-        //        Some(counts) => self.candidates.insert(value, vec![counts[0] + 1, counts[1]]),
-        //        None => self.candidates.insert(value, vec![1, 0]),
-        //    },
-        //    OneVariant(ref value) => match self.candidates.get(value) {
-        //        Some(counts) => self.candidates.insert(value, vec![counts[0], counts[1] + 1]),
-        //        None => self.candidates.insert(value, vec![0, 1]),
-        //    },
-        //}
+    pub fn merge(&mut self, other: &FindResult<Vec<u8>>) {
+        // The intermediate assignment here is to work around Rust not letting me
+        // both match on self.candidates and mutate it.  The match appears to
+        // require an immutable borrow and the insert obviously requires a mutable 
+        // one.  This may be by design, as it enforces the consistency of the
+        // value of `counts`
+        let (key, value) = match *other {
+            ZeroVariant(ref value) => match self.candidates.find(value) {
+                Some(counts) => (value.clone(), vec![counts[0] + 1, counts[1]]),
+                None => (value.clone(), vec![1u, 0u]),
+            },
+            OneVariant(ref value) => match self.candidates.find(value) {
+                Some(counts) => (value.clone(), vec![counts[0], counts[1] + 1]),
+                None => (value.clone(), vec![0u, 1u]),
+            },
+        };
+
+        self.candidates.insert(key, value);
     }
 
     pub fn found_values(&self) -> Option<HashSet<Vec<u8>>> {
