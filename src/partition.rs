@@ -1,6 +1,6 @@
 extern crate num;
 
-use std::collections::{HashMap, HashSet, Map, MutableMap};
+use std::collections::{HashMap, Map, MutableMap};
 use std::iter::Repeat;
 use std::fmt;
 
@@ -162,9 +162,8 @@ impl<T: Map<Vec<u8>, Vec<u8>> + MutableMap<Vec<u8>, Vec<u8>>> Partition<T> {
 
 #[cfg(test)]
 mod test {
-    use std::collections::{HashSet};
     use super::{Partition};
-    use super::super::find_result::{FindResult, ZeroVariant, OneVariant};
+    use super::super::find_result::{ZeroVariant, OneVariant};
 
     #[test]
     fn mask_bytes() {

@@ -13,7 +13,7 @@ pub struct ResultAccumulator {
 
 impl ResultAccumulator {
     pub fn new(tolerance: uint, query: Vec<u8>) -> ResultAccumulator {
-        let mut candidates: HashMap<Vec<u8>, Vec<uint>> = HashMap::new();
+        let candidates: HashMap<Vec<u8>, Vec<uint>> = HashMap::new();
         return ResultAccumulator {tolerance: tolerance, query: query, candidates: candidates};
     }
 

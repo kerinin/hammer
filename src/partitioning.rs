@@ -1,13 +1,11 @@
 extern crate num;
 
 use std::collections::{HashMap,HashSet};
-use std::cmp::{min,max};
 use std::fmt;
 
 use self::num::rational::Ratio;
 
 use super::partition::{Partition};
-use super::find_result::{FindResult, ZeroVariant, OneVariant};
 use super::result_accumulator::ResultAccumulator;
 
 struct Partitioning<T> {
@@ -19,7 +17,7 @@ struct Partitioning<T> {
 
 impl<T> fmt::Show for Partitioning<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::FormatError> {
-        write!(f, "{}", self.partitions)
+        write!(f, "({}:{}:{})", self.bits, self.tolerance, self.partition_count)
     }
 }
 
@@ -113,7 +111,6 @@ impl Partitioning<HashMap<Vec<u8>, Vec<u8>>> {
 mod test {
     use std::collections::{HashSet,HashMap};
     use std::rand::{task_rng, sample, Rng};
-    use std::iter::Repeat;
     use super::{Partitioning};
     use partition::{Partition};
     use permutable::{Permutable};
