@@ -35,11 +35,17 @@ impl<T: PartialEq> PartialEq for FindResult<T> {
     }
 }
 
-impl<T: fmt::Show> fmt::Show for FindResult<T> {
+impl<T: fmt::Binary + fmt::Show> fmt::Show for FindResult<Vec<T>> {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::FormatError> {
         match *self {
-            ZeroVariant(ref value) => write!(f, "(0:{:})", value),
-            OneVariant(ref value) => write!(f, "(1:{:})", value),
+            ZeroVariant(ref value) => write!(
+                f, "(0:{})", 
+                value.iter().map(|b| format!("{:08t}", *b)).collect::<Vec<String>>()
+                ),
+            OneVariant(ref value) => write!(
+                f, "(1:{})", 
+                value.iter().map(|b| format!("{:08t}", *b)).collect::<Vec<String>>()
+                ),
         }
     }
 }

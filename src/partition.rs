@@ -1,10 +1,9 @@
 extern crate num;
 
 use std::collections::{HashMap, Map, MutableMap};
+use std::collections::bitv;
 use std::iter::Repeat;
 use std::fmt;
-
-use self::num::rational::Ratio;
 
 use super::permutable::Permutable;
 use super::find_result::{FindResult, ZeroVariant, OneVariant};
@@ -64,36 +63,28 @@ impl<T: Map<Vec<u8>, Vec<u8>> + MutableMap<Vec<u8>, Vec<u8>>> Partition<T> {
 
     pub fn find(&self, key: Vec<u8>) -> Option<Vec<FindResult<Vec<u8>>>> {
         let transformed_key = self.transform_key(key);
-        let permutations = self.permute_key(transformed_key.clone());
         let mut found_keys: Vec<FindResult<Vec<u8>>> = vec![];
 
         match self.zero_kv.find(&transformed_key) {
             Some(key) => {
                 found_keys.push(ZeroVariant(key.clone()));
             },
-            None => {},
+            None => {
+                let s = transformed_key.clone().iter().map(|b| format!("{:08t}", *b)).collect::<Vec<String>>();
+                println!("Didn't find 0:{}", s);
+            },
         }
+
         match self.one_kv.find(&transformed_key) {
             Some(key) => {
                 found_keys.push(OneVariant(key.clone()));
             },
-            None => {},
+            None => {
+                let s = transformed_key.clone().iter().map(|b| format!("{:08t}", *b)).collect::<Vec<String>>();
+                println!("Didn't find 1:{}", s);
+            },
         }
 
-        for k in permutations.iter() {
-            match self.zero_kv.find(k) {
-                Some(key) => {
-                    found_keys.push(ZeroVariant(key.clone()));
-                },
-                None => {},
-            }
-            match self.one_kv.find(k) {
-                Some(key) => {
-                    found_keys.push(OneVariant(key.clone()));
-                },
-                None => {},
-            }
-        }
 
         match found_keys.len() {
             0 => return None,
@@ -105,9 +96,16 @@ impl<T: Map<Vec<u8>, Vec<u8>> + MutableMap<Vec<u8>, Vec<u8>>> Partition<T> {
         let transformed_key = self.transform_key(key.clone());
         let permutations = self.permute_key(transformed_key.clone());
 
-        if self.zero_kv.insert(transformed_key, key.clone()) {
+        if self.zero_kv.insert(transformed_key.clone(), key.clone()) {
+
+            let transformed_str = transformed_key.clone().iter().map(|b| format!("{:08t}", *b)).collect::<Vec<String>>();
+            println!("Inserted 0:{}", transformed_str);
+
             for k in permutations.iter() {
                 self.one_kv.insert(k.clone(), key.clone());
+
+                let k_str = k.iter().map(|b| format!("{:08t}", *b)).collect::<Vec<String>>();
+                println!("Inserted 1:{}", k_str);
             }
             return true;
         } else {
@@ -143,19 +141,21 @@ impl<T: Map<Vec<u8>, Vec<u8>> + MutableMap<Vec<u8>, Vec<u8>>> Partition<T> {
      * Returns an array containing all possible binary 1-permutations of the key
      */
     fn permute_key(&self, key: Vec<u8>) -> Vec<Vec<u8>> {
-        let byte_count = Ratio::new(self.shift + self.mask, 8).ceil().to_integer();
-        let zero: &u8 = &0;
-
-        let mask = vec![0b10000000u8]
-            .iter()
-            .chain(Repeat::new(zero))
-            .take(byte_count)
-            .map(|i| *i)
-            .collect::<Vec<u8>>();
-
+        let key_bitv = bitv::from_bytes(key.as_slice());
+        //let key_str = key.iter().map(|b| format!("{:08t}", *b)).collect::<Vec<String>>();
+        //println!("permuting {}", key_str);
+        
         return range(0u, self.mask)
-            .map(|i| mask.clone().shr(&i))
-            .map(|mask| key.clone().bitxor(&mask))
+            .map(|i| -> Vec<u8> {
+                let mut permutation = key_bitv.clone();
+                let old_val = permutation.get(i);
+                permutation.set(i, !old_val);
+
+                //let permutation_str = permutation.to_bytes().iter().map(|b| format!("{:08t}", *b)).collect::<Vec<String>>();
+                //println!("returing permutation {} -> {}", key_str, permutation_str);
+
+                permutation.to_bytes()
+            })
             .collect::<Vec<Vec<u8>>>();
     }
 }
@@ -185,27 +185,29 @@ mod test {
     fn first_inserted_key() {
         let mut partition = Partition::new(4, 4);
         let a = vec![0b00001111u8];
-        let b = Some(vec![ZeroVariant(a.clone())]);
+        let b = vec![0b00000011u8];
+        let expected = Some(vec![ZeroVariant(a.clone())]);
 
         assert!(partition.insert(a.clone()));
 
+        partition.insert(b.clone());
         let keys = partition.find(a.clone());
 
-        assert_eq!(b, keys);
+        assert_eq!(expected, keys);
     }
 
     #[test]
     fn second_inserted_key() {
         let mut partition = Partition::new(4, 4);
         let a = vec![0b00001111u8];
-        let b = Some(vec![ZeroVariant(a.clone())]);
+        let expected = Some(vec![ZeroVariant(a.clone())]);
         partition.insert(a.clone());
 
         assert!(!partition.insert(a.clone()));
 
         let keys = partition.find(a.clone());
 
-        assert_eq!(b, keys);
+        assert_eq!(expected, keys);
     }
 
     #[test]
@@ -213,13 +215,17 @@ mod test {
         let mut partition = Partition::new(4, 4);
         let a = vec![0b00001111u8];
         let b = vec![0b00000111u8];
-        let c = Some(vec![OneVariant(a.clone())]);
-
-        assert!(partition.insert(a.clone()));
+        let c = vec![0b00000011u8];
+        let d = vec![0b00000001u8];
+        let expected = Some(vec![OneVariant(a.clone()), ZeroVariant(b.clone()), OneVariant(c.clone())]);
+        partition.insert(a.clone());
+        partition.insert(b.clone());
+        partition.insert(c.clone());
+        partition.insert(d.clone());
 
         let keys = partition.find(b.clone());
 
-        assert_eq!(c, keys);
+        assert_eq!(expected, keys);
     }
 
     #[test]

@@ -1,6 +1,6 @@
 extern crate num;
 
-use  std::collections::bitv;
+use std::collections::bitv;
 
 use super::permutable::{Permutable};
 
