@@ -1,5 +1,3 @@
-extern crate num;
-
 use std::fmt;
 use std::hash;
 use std::hash::sip;

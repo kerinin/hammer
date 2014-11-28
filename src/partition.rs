@@ -1,5 +1,3 @@
-extern crate num;
-
 use std::collections::bitv;
 use std::iter::Repeat;
 use std::fmt;
