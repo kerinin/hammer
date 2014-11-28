@@ -7,10 +7,11 @@ use std::hash;
 use std::collections::{HashSet};
 use self::num::rational::Ratio;
 
+use super::value;
 use super::partition::{Partition};
 use super::result_accumulator::ResultAccumulator;
 
-struct Partitioning<T> {
+pub struct Partitioning<T> {
     bits: uint,
     tolerance: uint,
     partition_count: uint,
@@ -33,11 +34,11 @@ impl<T: cmp::Eq + hash::Hash + PartialEq> PartialEq for Partitioning<T> {
     }
 }
 
-impl Partitioning<Vec<u8>> {
+impl<T: value::Value> Partitioning<T> {
     /*
      * Partition the keyspace as evenly as possible
      */
-    fn new(bits: uint, tolerance: uint) -> Partitioning<Vec<u8>> {
+    fn new(bits: uint, tolerance: uint) -> Partitioning<T> {
 
         let partition_count = if tolerance == 0 {
             1
@@ -53,13 +54,14 @@ impl Partitioning<Vec<u8>> {
         let head_count = bits % partition_count;
         let tail_count = partition_count - head_count;
 
-        let mut partitions: Vec<Partition<Vec<u8>>> = vec![];
+        let mut partitions: Vec<Partition<T>> = vec![];
 
         for i in range(0, head_count) {
             let shift = i * head_width;
             let mask = head_width;
+            let p: Partition<T> = Partition::new(shift, mask);
 
-            partitions.push(Partition::new(shift, mask));
+            partitions.push(p);
         }
 
         for i in range(0, tail_count) {
@@ -77,8 +79,8 @@ impl Partitioning<Vec<u8>> {
         };
     }
 
-    fn find(&self, key: Vec<u8>) -> Option<HashSet<Vec<u8>>> {
-        let mut results = ResultAccumulator::new(self.tolerance, key.clone());
+    fn find(&self, key: T) -> Option<HashSet<T>> {
+        let mut results: ResultAccumulator<T> = ResultAccumulator::new(self.tolerance, key.clone());
 
         for partition in self.partitions.iter() {
             let found = partition.find(key.clone());
@@ -95,7 +97,7 @@ impl Partitioning<Vec<u8>> {
      * Insert `key` into indices
      * Returns true if key was added to ANY index
      */
-    fn insert(&mut self, key: Vec<u8>) -> bool {
+    fn insert(&mut self, key: T) -> bool {
         let mut inserted = false;
 
         for p in self.partitions.iter_mut() {
@@ -109,7 +111,7 @@ impl Partitioning<Vec<u8>> {
      * Remove `key` from indices
      * Returns true if key was removed from ANY index
      */
-    fn remove(&mut self, key: Vec<u8>) -> bool {
+    fn remove(&mut self, key: T) -> bool {
         let mut removed = false;
 
         for p in self.partitions.iter_mut() {

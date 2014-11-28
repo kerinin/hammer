@@ -1,21 +1,22 @@
 use std::collections::{HashMap, HashSet};
 
+use super::value;
 use super::find_result::{FindResult, ZeroVariant, OneVariant};
 use super::hamming::{Hamming};
 
-pub struct ResultAccumulator {
+pub struct ResultAccumulator<T> {
     tolerance: uint,
-    query: Vec<u8>,
-    candidates: HashMap<Vec<u8>, Vec<uint>>,
+    query: T,
+    candidates: HashMap<T, Vec<uint>>,
 }
 
-impl ResultAccumulator {
-    pub fn new(tolerance: uint, query: Vec<u8>) -> ResultAccumulator {
-        let candidates: HashMap<Vec<u8>, Vec<uint>> = HashMap::new();
+impl<T: value::Value> ResultAccumulator<T> {
+    pub fn new(tolerance: uint, query: T) -> ResultAccumulator<T> {
+        let candidates: HashMap<T, Vec<uint>> = HashMap::new();
         return ResultAccumulator {tolerance: tolerance, query: query, candidates: candidates};
     }
 
-    pub fn merge(&mut self, other: &FindResult<Vec<u8>>) {
+    pub fn merge(&mut self, other: &FindResult<T>) {
         // The intermediate assignment here is to work around Rust not letting me
         // both match on self.candidates and mutate it.  The match appears to
         // require an immutable borrow and the insert obviously requires a mutable 
@@ -35,8 +36,8 @@ impl ResultAccumulator {
         self.candidates.insert(key, value);
     }
 
-    pub fn found_values(&self) -> Option<HashSet<Vec<u8>>> {
-        let mut matches: HashSet<Vec<u8>> = HashSet::new();
+    pub fn found_values(&self) -> Option<HashSet<T>> {
+        let mut matches: HashSet<T> = HashSet::new();
 
         if self.tolerance % 2 == 0 {
             for (candidate, counts) in self.candidates.iter() {

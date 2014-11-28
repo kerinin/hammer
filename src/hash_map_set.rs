@@ -11,14 +11,12 @@ pub struct HashMapSet<K, V> {
     data: HashMap<K, HashSet<V>>,
 }
 
-impl HashMapSet<Vec<u8>, Vec<u8>> {
-    pub fn new() -> HashMapSet<Vec<u8>, Vec<u8>> {
-        let data: HashMap<Vec<u8>, HashSet<Vec<u8>>> = HashMap::new();
+impl<K: hash::Hash + cmp::Eq + clone::Clone, V: hash::Hash + cmp::Eq + clone::Clone> HashMapSet<K, V> {
+    pub fn new() -> HashMapSet<K, V> {
+        let data: HashMap<K, HashSet<V>> = HashMap::new();
         return HashMapSet {data: data};
     }
-}
 
-impl<K: hash::Hash + cmp::Eq + clone::Clone, V: hash::Hash + cmp::Eq + clone::Clone> HashMapSet<K, V> {
     pub fn insert(&mut self, key: K, value: V) -> bool {
         match self.data.entry(key.clone()) {
             Vacant(entry) => {

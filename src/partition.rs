@@ -38,15 +38,21 @@ impl<T: cmp::Eq + hash::Hash + PartialEq> PartialEq for Partition<T> {
     }
 }
 
-impl Partition<Vec<u8>> {
-    pub fn new(shift: uint, mask: uint) -> Partition<Vec<u8>> {
-        let zero_kv: HashMapSet<Vec<u8>, Vec<u8>> = HashMapSet::new();
-        let one_kv: HashMapSet<Vec<u8>, Vec<u8>> = HashMapSet::new();
-        return Partition {shift: shift, mask: mask, zero_kv: zero_kv, one_kv: one_kv};
-    }
-}
+//impl Partition<Vec<u8>> {
+//    pub fn new(shift: uint, mask: uint) -> Partition<Vec<u8>> {
+//        let zero_kv: HashMapSet<Vec<u8>, Vec<u8>> = HashMapSet::new();
+//        let one_kv: HashMapSet<Vec<u8>, Vec<u8>> = HashMapSet::new();
+//        return Partition {shift: shift, mask: mask, zero_kv: zero_kv, one_kv: one_kv};
+//    }
+//}
 
 impl<T: value::Value> Partition<T> {
+    pub fn new(shift: uint, mask: uint) -> Partition<T> {
+        let zero_kv: HashMapSet<T, T> = HashMapSet::new();
+        let one_kv: HashMapSet<T, T> = HashMapSet::new();
+        return Partition {shift: shift, mask: mask, zero_kv: zero_kv, one_kv: one_kv};
+    }
+
     pub fn find(&self, key: T) -> HashSet<FindResult<T>> {
         let mut found_keys: HashSet<FindResult<T>> = HashSet::new();
 
