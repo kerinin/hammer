@@ -1,14 +1,14 @@
 use std::iter::Repeat;
 use std::vec::Vec;
 
-pub trait Permutable<V, I, Result> {
-    fn bitxor(&self, rhs: &V) -> Result;
-    fn bitand(&self, rhs: &V) -> Result;
-    fn shl(&self, rhs: &I) -> Result;
-    fn shr(&self, rhs: &I) -> Result;
+pub trait Permutable {
+    fn bitxor(&self, &Self) -> Self;
+    fn bitand(&self, &Self) -> Self;
+    fn shl(&self, &uint) -> Self;
+    fn shr(&self, &uint) -> Self;
 }
 
-impl Permutable<Vec<u8>, uint, Vec<u8>> for Vec<u8> {
+impl Permutable for Vec<u8> {
     /*
      * Returns the result of bitxor-ing each byte of self and other.
      * If other is shorter than self, 0 will be used, if self is shorter than
