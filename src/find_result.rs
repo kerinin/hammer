@@ -1,10 +1,24 @@
 extern crate num;
 
 use std::fmt;
+use std::hash;
+use std::hash::sip;
 
 pub enum FindResult<T> {
     ZeroVariant(T),
     OneVariant(T),
+}
+
+impl<T: hash::Hash> hash::Hash for FindResult<T> {
+    fn hash(&self, state: &mut sip::SipState) {
+        match *self {
+            ZeroVariant(ref self_value) => self_value.hash(state),
+            OneVariant(ref self_value) => self_value.hash(state),
+        }
+    }
+}
+
+impl<T: PartialEq> Eq for FindResult<T> {
 }
 
 impl<T: PartialEq> PartialEq for FindResult<T> {
