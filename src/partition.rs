@@ -65,11 +65,14 @@ impl Partition<Vec<u8>> {
     pub fn find(&self, key: Vec<u8>) -> HashSet<FindResult<Vec<u8>>> {
         let mut found_keys: HashSet<FindResult<Vec<u8>>> = HashSet::new();
 
-        let transformed_key = self.transform_key(key);
+        let transformed_key = self.transform_key(key.clone());
         match self.zero_kv.find(&transformed_key) {
             Some(keys) => {
-                for key in keys.iter() {
-                    found_keys.insert(ZeroVariant(key.clone()));
+                for k in keys.iter() {
+                    let s = transformed_key.clone().iter().map(|b| format!("{:08t}", *b)).collect::<Vec<String>>();
+                    println!("Did find 0:{}", s);
+
+                    found_keys.insert(ZeroVariant(k.clone()));
                 }
             },
             None => {
@@ -80,8 +83,11 @@ impl Partition<Vec<u8>> {
 
         match self.one_kv.find(&transformed_key) {
             Some(keys) => {
-                for key in keys.iter() {
-                    found_keys.insert(OneVariant(key.clone()));
+                for k in keys.iter() {
+                    let s = transformed_key.clone().iter().map(|b| format!("{:08t}", *b)).collect::<Vec<String>>();
+                    println!("Did find 1:{}", s);
+
+                    found_keys.insert(OneVariant(k.clone()));
                 }
             },
             None => {
@@ -90,6 +96,8 @@ impl Partition<Vec<u8>> {
             },
         }
 
+        let s = key.clone().iter().map(|b| format!("{:08t}", *b)).collect::<Vec<String>>();
+        println!("Found {} keys for query {}", found_keys, s);
         found_keys
     }
 
@@ -97,10 +105,19 @@ impl Partition<Vec<u8>> {
         let transformed_key = self.transform_key(key.clone());
 
         if self.zero_kv.insert(transformed_key.clone(), key.clone()) {
+            let s = transformed_key.clone().iter().map(|b| format!("{:08t}", *b)).collect::<Vec<String>>();
+            println!("Inserted {} into 0:{}", s, self);
+
             for k in self.permute_key(transformed_key.clone()).iter() {
                 self.one_kv.insert(k.clone(), key.clone());
+
+                let s = k.clone().iter().map(|b| format!("{:08t}", *b)).collect::<Vec<String>>();
+                println!("Inserted {} into 1:{}", s, self);
             }
             return true;
+        } else {
+            let s = transformed_key.clone().iter().map(|b| format!("{:08t}", *b)).collect::<Vec<String>>();
+            println!("Didn't insert {} into 0:{}", s, self);
         }
         return false;
     }

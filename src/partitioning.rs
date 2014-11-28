@@ -93,18 +93,30 @@ impl Partitioning<Vec<u8>> {
 
     /*
      * Insert `key` into indices
+     * Returns true if key was added to ANY index
      */
     fn insert(&mut self, key: Vec<u8>) -> bool {
-        return self.partitions.iter_mut()
-            .any(|x| x.insert(key.clone()));
+        let mut inserted = false;
+
+        for p in self.partitions.iter_mut() {
+            inserted = p.insert(key.clone()) || inserted
+        }
+
+        inserted
     }
 
     /*
      * Remove `key` from indices
+     * Returns true if key was removed from ANY index
      */
     fn remove(&mut self, key: Vec<u8>) -> bool {
-        return self.partitions.iter_mut()
-            .any(|x| x.remove(key.clone()));
+        let mut removed = false;
+
+        for p in self.partitions.iter_mut() {
+            removed = p.remove(key.clone()) || removed
+        }
+
+        removed
     }
 }
 
@@ -220,6 +232,8 @@ mod test {
         let mut p: Partitioning<Vec<u8>> = Partitioning::new(8, 2);
         let a = vec![0b11111111u8];
 
+        p.insert(a.clone());
+
         assert!(!p.insert(a.clone()));
     }
 
@@ -242,7 +256,7 @@ mod test {
         let mut p: Partitioning<Vec<u8>> = Partitioning::new(8, 2);
         let a = vec![0b00001111u8];
         let b = vec![0b00000111u8];
-        let mut c: HashSet<Vec<u8>> = HashSet::new();
+        let mut c = HashSet::new();
         c.insert(a.clone());
 
         p.insert(a.clone());
@@ -254,7 +268,7 @@ mod test {
 
     #[test]
     fn find_permutations_of_multiple_similar_keys() {
-        let mut p: Partitioning<Vec<u8>> = Partitioning::new(8, 2);
+        let mut p: Partitioning<Vec<u8>> = Partitioning::new(8, 4);
         let a = vec![0b00000000u8];
         let b = vec![0b10000000u8];
         let c = vec![0b10000001u8];
