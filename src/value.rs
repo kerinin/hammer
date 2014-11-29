@@ -1,3 +1,4 @@
+use std;
 use std::cmp;
 use std::clone;
 use std::hash;
@@ -7,7 +8,8 @@ use std::collections::bitv;
 
 use super::permutable::Permutable;
 
-pub trait Value: Permutable + cmp::Eq + hash::Hash + clone::Clone + fmt::Show + iter::FromIterator<u8> {
+//pub trait Value: Permutable + cmp::Eq + hash::Hash + clone::Clone + fmt::Show + iter::FromIterator<u8> {
+pub trait Value: Permutable + cmp::Eq + hash::Hash + clone::Clone + fmt::Show {
     fn transform(&self, shift: uint, mask: uint) -> Self;
     fn permutations(&self, n: uint) -> Vec<Self>;
     fn hamming(&self, rhs: &Self) -> uint;
@@ -15,7 +17,7 @@ pub trait Value: Permutable + cmp::Eq + hash::Hash + clone::Clone + fmt::Show + 
 
 impl Value for Vec<u8> {
     fn transform(&self, shift: uint, mask: uint) -> Vec<u8> {
-        let shifted = self.shl(&shift);
+        let shifted = self.p_shl(&shift);
 
         let full_byte_count = mask / 8;
         let tail_bits = mask % 8;
@@ -24,7 +26,7 @@ impl Value for Vec<u8> {
         let mut mask = iter::Repeat::new(0b11111111u8).take(full_byte_count).collect::<Vec<u8>>();
         mask.push(partial_mask);
 
-        shifted.bitand(&mask)
+        shifted.p_bitand(&mask)
     }
 
     fn permutations(&self, n: uint) -> Vec<Vec<u8>> {
@@ -42,9 +44,33 @@ impl Value for Vec<u8> {
     }
 
     fn hamming(&self, other: &Vec<u8>) -> uint {
-        let shared_bits = self.bitxor(other);
+        let shared_bits = self.p_bitxor(other);
         let shared_bitv = bitv::from_bytes(shared_bits.as_slice());
 
         return shared_bitv.iter().filter(|x| *x).count();
+    }
+}
+
+impl Value for uint {
+    fn transform(&self, shift: uint, mask: uint) -> uint {
+        let shifted = self.p_shl(&shift);
+
+        let ones = std::uint::MAX;
+        let mask = ones.p_shl(&(std::uint::BITS - mask));
+
+        shifted.p_bitand(&mask)
+    }
+
+    fn permutations(&self, n: uint) -> Vec<uint> {
+        return range(0u, n)
+            .map(|i| -> uint {
+                let delta = 1u.p_shr(&i);
+                self.clone().bitxor(&delta)
+            })
+        .collect::<Vec<uint>>();
+    }
+
+    fn hamming(&self, other: &uint) -> uint {
+        self.bitxor(other).count_ones()
     }
 }

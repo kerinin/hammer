@@ -1,13 +1,11 @@
 extern crate num;
 
 use std::fmt;
-use std::cmp;
-use std::hash;
 
 use std::collections::{HashSet};
 use self::num::rational::Ratio;
 
-use super::value;
+use super::value::Value;
 use super::partition::{Partition};
 use super::result_accumulator::ResultAccumulator;
 
@@ -24,7 +22,7 @@ impl<T> fmt::Show for Partitioning<T> {
     }
 }
 
-impl<T: cmp::Eq + hash::Hash + PartialEq> PartialEq for Partitioning<T> {
+impl<T: Value> PartialEq for Partitioning<T> {
     fn eq(&self, other: &Partitioning<T>) -> bool {
         return self.partitions.eq(&other.partitions);
     }
@@ -34,11 +32,11 @@ impl<T: cmp::Eq + hash::Hash + PartialEq> PartialEq for Partitioning<T> {
     }
 }
 
-impl<T: value::Value> Partitioning<T> {
+impl<T: Value> Partitioning<T> {
     /*
      * Partition the keyspace as evenly as possible
      */
-    fn new(bits: uint, tolerance: uint) -> Partitioning<T> {
+    pub fn new(bits: uint, tolerance: uint) -> Partitioning<T> {
 
         let partition_count = if tolerance == 0 {
             1
@@ -79,7 +77,7 @@ impl<T: value::Value> Partitioning<T> {
         };
     }
 
-    fn find(&self, key: T) -> Option<HashSet<T>> {
+    pub fn find(&self, key: T) -> Option<HashSet<T>> {
         let mut results: ResultAccumulator<T> = ResultAccumulator::new(self.tolerance, key.clone());
 
         for partition in self.partitions.iter() {
@@ -97,7 +95,7 @@ impl<T: value::Value> Partitioning<T> {
      * Insert `key` into indices
      * Returns true if key was added to ANY index
      */
-    fn insert(&mut self, key: T) -> bool {
+    pub fn insert(&mut self, key: T) -> bool {
         let mut inserted = false;
 
         for p in self.partitions.iter_mut() {
@@ -111,7 +109,7 @@ impl<T: value::Value> Partitioning<T> {
      * Remove `key` from indices
      * Returns true if key was removed from ANY index
      */
-    fn remove(&mut self, key: T) -> bool {
+    pub fn remove(&mut self, key: T) -> bool {
         let mut removed = false;
 
         for p in self.partitions.iter_mut() {
@@ -307,7 +305,7 @@ mod test {
 
             let mut b = a.clone();
             for shift in shifts.iter() {
-                b = b.bitxor(&vec![0b10000000u8].shr(shift));
+                b = b.p_bitxor(&vec![0b10000000u8].p_shr(shift));
             }
 
             let mut c: HashSet<Vec<u8>> = HashSet::new();
@@ -340,7 +338,7 @@ mod test {
 
             let mut b = a.clone();
             for shift in shifts.iter() {
-                b = b.bitxor(&vec![0b10000000u8].shr(shift));
+                b = b.p_bitxor(&vec![0b10000000u8].p_shr(shift));
             }
 
             let mut c: HashSet<Vec<u8>> = HashSet::new();
@@ -438,6 +436,5 @@ mod test {
                 }
             }
         }
-
     }
 }

@@ -1,11 +1,15 @@
 use std::iter::Repeat;
 use std::vec::Vec;
 
+/*
+ * This is sort of annoying, but these traits aren't implemented for byte arrays,
+ * and Rust doesn't allow implementations of non-owned traits for non-owned types.
+ */
 pub trait Permutable {
-    fn bitxor(&self, &Self) -> Self;
-    fn bitand(&self, &Self) -> Self;
-    fn shl(&self, &uint) -> Self;
-    fn shr(&self, &uint) -> Self;
+    fn p_bitxor(&self, &Self) -> Self;
+    fn p_bitand(&self, &Self) -> Self;
+    fn p_shl(&self, &uint) -> Self;
+    fn p_shr(&self, &uint) -> Self;
 }
 
 impl Permutable for Vec<u8> {
@@ -14,7 +18,7 @@ impl Permutable for Vec<u8> {
      * If other is shorter than self, 0 will be used, if self is shorter than
      * other, the trailing bytes of other will be ignored
      */
-    fn bitxor(&self, other: &Vec<u8>) -> Vec<u8> {
+    fn p_bitxor(&self, other: &Vec<u8>) -> Vec<u8> {
         let zero: &u8 = &0;
         let other_then_zero = other.iter().chain(Repeat::new(zero));
 
@@ -29,7 +33,7 @@ impl Permutable for Vec<u8> {
      * If other is shorter than self, self will be truncated to the same length.
      * If self is shorter than other, the trailing bytes of other will be ignored.
      */
-    fn bitand(&self, other: &Vec<u8>) -> Vec<u8> {
+    fn p_bitand(&self, other: &Vec<u8>) -> Vec<u8> {
 
         return self.iter()
             .zip(other.iter())
@@ -41,7 +45,7 @@ impl Permutable for Vec<u8> {
      * Returns a new byte array with RHS bits removed from the left side, and
      * pads the left-most byte with zeros (if necessary)
      */
-    fn shl(&self, rhs: &uint) -> Vec<u8> {
+    fn p_shl(&self, rhs: &uint) -> Vec<u8> {
         if rhs == &0 { return self.clone(); }
 
         let to_drop = rhs / 8;
@@ -90,7 +94,7 @@ impl Permutable for Vec<u8> {
      * Returns a new byte array with RHS bits removed from the left side, and
      * pads the right-most byte with zeros (if necessary)
      */
-    fn shr(&self, rhs: &uint) -> Vec<u8> {
+    fn p_shr(&self, rhs: &uint) -> Vec<u8> {
         if rhs == &0 { return self.clone(); }
 
         let to_drop = rhs / 8;
@@ -136,6 +140,24 @@ impl Permutable for Vec<u8> {
     }
 }
 
+impl Permutable for uint {
+    fn p_bitxor(&self, other: &uint) -> uint {
+        self.bitxor(other)
+    }
+
+    fn p_bitand(&self, other: &uint) -> uint {
+        self.bitand(other)
+    }
+
+    fn p_shl(&self, rhs: &uint) -> uint {
+        self.shl(rhs)
+    }
+
+    fn p_shr(&self, rhs: &uint) -> uint {
+        self.shr(rhs)
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::{Permutable};
@@ -146,7 +168,7 @@ mod test {
         let b = vec![0b11111111u8, 0b11111111u8, 0b00000000u8, 0b00000000u8];
         let c = vec![0b00000000u8, 0b11111111u8, 0b11111111u8, 0b00000000u8];
 
-        assert_eq!(a.bitxor(&b), c);
+        assert_eq!(a.p_bitxor(&b), c);
     }
 
     #[test]
@@ -155,7 +177,7 @@ mod test {
         let b = vec![0b11111111u8, 0b11111111u8, 0b00000000u8, 0b00000000u8];
         let c = vec![0b00000000u8, 0b11111111u8, 0b11111111u8, 0b00000000u8, 0b11111111u8, 0b00000000u8];
 
-        assert_eq!(a.bitxor(&b), c);
+        assert_eq!(a.p_bitxor(&b), c);
     }
 
     #[test]
@@ -164,7 +186,7 @@ mod test {
         let b = vec![0b11111111u8, 0b11111111u8, 0b00000000u8, 0b00000000u8, 0b11111111u8, 0b00000000u8];
         let c = vec![0b00000000u8, 0b11111111u8, 0b11111111u8, 0b00000000u8];
 
-        assert_eq!(a.bitxor(&b), c);
+        assert_eq!(a.p_bitxor(&b), c);
     }
 
     #[test]
@@ -173,7 +195,7 @@ mod test {
         let b = vec![0b11111111u8, 0b11111111u8, 0b00000000u8, 0b00000000u8];
         let c = vec![0b11111111u8, 0b00000000u8, 0b00000000u8, 0b00000000u8];
 
-        assert_eq!(a.bitand(&b), c);
+        assert_eq!(a.p_bitand(&b), c);
     }
 
     #[test]
@@ -182,7 +204,7 @@ mod test {
         let b = vec![0b11111111u8, 0b11111111u8, 0b00000000u8, 0b00000000u8];
         let c = vec![0b11111111u8, 0b00000000u8, 0b00000000u8, 0b00000000u8];
 
-        assert_eq!(a.bitand(&b), c);
+        assert_eq!(a.p_bitand(&b), c);
     }
 
     #[test]
@@ -191,7 +213,7 @@ mod test {
         let b = vec![0b11111111u8, 0b11111111u8, 0b00000000u8, 0b00000000u8, 0b11111111u8, 0b00000000u8];
         let c = vec![0b11111111u8, 0b00000000u8, 0b00000000u8, 0b00000000u8];
 
-        assert_eq!(a.bitand(&b), c);
+        assert_eq!(a.p_bitand(&b), c);
     }
 
     #[test]
@@ -199,7 +221,7 @@ mod test {
         let a = vec![0b00000000u8, 0b11111111u8];
         let b = vec![0b00000000u8, 0b11111111u8];
 
-        assert_eq!(a.shl(&0), b);
+        assert_eq!(a.p_shl(&0), b);
     }
 
     #[test]
@@ -207,7 +229,7 @@ mod test {
         let a = vec![0b00000000u8, 0b00000000u8, 0b11111111u8, 0b00000000u8];
         let b = vec![0b00001111u8, 0b11110000u8, 0b00000000u8];
 
-        assert_eq!(a.shl(&12), b);
+        assert_eq!(a.p_shl(&12), b);
     }
 
     #[test]
@@ -215,7 +237,7 @@ mod test {
         let a = vec![0b00000000u8];
         let b = vec![];
 
-        assert_eq!(a.shl(&8), b);
+        assert_eq!(a.p_shl(&8), b);
     }
 
     #[test]
@@ -223,7 +245,7 @@ mod test {
         let a = vec![0b00000000u8];
         let b = vec![];
 
-        assert_eq!(a.shl(&12), b);
+        assert_eq!(a.p_shl(&12), b);
     }
 
     #[test]
@@ -231,7 +253,7 @@ mod test {
         let a = vec![0b00000000u8, 0b11111111u8];
         let b = vec![0b00000000u8, 0b11111111u8];
 
-        assert_eq!(a.shr(&0), b);
+        assert_eq!(a.p_shr(&0), b);
     }
 
     #[test]
@@ -239,7 +261,7 @@ mod test {
         let a = vec![0b00000000u8, 0b11111111u8, 0b00000000u8, 0b00000000u8];
         let b = vec![0b00000000u8, 0b00001111u8, 0b11110000u8];
 
-        assert_eq!(a.shr(&12), b);
+        assert_eq!(a.p_shr(&12), b);
     }
 
     #[test]
@@ -247,7 +269,7 @@ mod test {
         let a = vec![0b00000000u8];
         let b = vec![];
 
-        assert_eq!(a.shr(&8), b);
+        assert_eq!(a.p_shr(&8), b);
     }
 
     #[test]
@@ -255,6 +277,6 @@ mod test {
         let a = vec![0b00000000u8];
         let b = vec![];
 
-        assert_eq!(a.shr(&12), b);
+        assert_eq!(a.p_shr(&12), b);
     }
 }

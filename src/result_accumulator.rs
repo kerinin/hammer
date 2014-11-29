@@ -1,8 +1,7 @@
 use std::collections::{HashMap, HashSet};
 
-use super::value;
+use super::value::Value;
 use super::find_result::{FindResult, ZeroVariant, OneVariant};
-use super::hamming::{Hamming};
 
 pub struct ResultAccumulator<T> {
     tolerance: uint,
@@ -10,7 +9,7 @@ pub struct ResultAccumulator<T> {
     candidates: HashMap<T, Vec<uint>>,
 }
 
-impl<T: value::Value> ResultAccumulator<T> {
+impl<T: Value> ResultAccumulator<T> {
     pub fn new(tolerance: uint, query: T) -> ResultAccumulator<T> {
         let candidates: HashMap<T, Vec<uint>> = HashMap::new();
         return ResultAccumulator {tolerance: tolerance, query: query, candidates: candidates};

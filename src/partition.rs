@@ -1,10 +1,8 @@
 use std::fmt;
-use std::cmp;
-use std::hash;
 
 use std::collections::{HashSet};
 
-use super::value;
+use super::value::Value;
 use super::hash_map_set::HashMapSet;
 use super::find_result::{FindResult, ZeroVariant, OneVariant};
 
@@ -22,7 +20,7 @@ impl<T> fmt::Show for Partition<T> {
     }
 }
 
-impl<T: cmp::Eq + hash::Hash + PartialEq> PartialEq for Partition<T> {
+impl<T: Value> PartialEq for Partition<T> {
     fn eq(&self, other: &Partition<T>) -> bool {
         return self.shift.eq(&other.shift) &&
             self.mask.eq(&other.mask) &&
@@ -38,15 +36,7 @@ impl<T: cmp::Eq + hash::Hash + PartialEq> PartialEq for Partition<T> {
     }
 }
 
-//impl Partition<Vec<u8>> {
-//    pub fn new(shift: uint, mask: uint) -> Partition<Vec<u8>> {
-//        let zero_kv: HashMapSet<Vec<u8>, Vec<u8>> = HashMapSet::new();
-//        let one_kv: HashMapSet<Vec<u8>, Vec<u8>> = HashMapSet::new();
-//        return Partition {shift: shift, mask: mask, zero_kv: zero_kv, one_kv: one_kv};
-//    }
-//}
-
-impl<T: value::Value> Partition<T> {
+impl<T: Value> Partition<T> {
     pub fn new(shift: uint, mask: uint) -> Partition<T> {
         let zero_kv: HashMapSet<T, T> = HashMapSet::new();
         let one_kv: HashMapSet<T, T> = HashMapSet::new();
@@ -60,30 +50,21 @@ impl<T: value::Value> Partition<T> {
         match self.zero_kv.find(&transformed_key) {
             Some(keys) => {
                 for k in keys.iter() {
-                    println!("Did find 0:{}", transformed_key.clone());
-
                     found_keys.insert(ZeroVariant(k.clone()));
                 }
             },
-            None => {
-                println!("Didn't find 0:{}", transformed_key.clone());
-            },
+            None => {},
         }
 
         match self.one_kv.find(&transformed_key) {
             Some(keys) => {
                 for k in keys.iter() {
-                    println!("Did find 1:{}", transformed_key.clone());
-
                     found_keys.insert(OneVariant(k.clone()));
                 }
             },
-            None => {
-                println!("Didn't find 1:{}", transformed_key.clone());
-            },
+            None => {},
         }
 
-        println!("Found {} keys for query {}", found_keys, key.clone());
         found_keys
     }
 
@@ -91,16 +72,11 @@ impl<T: value::Value> Partition<T> {
         let transformed_key = key.clone().transform(self.shift, self.mask);
 
         if self.zero_kv.insert(transformed_key.clone(), key.clone()) {
-            println!("Inserted {} into 0:{}", transformed_key.clone(), self);
 
             for k in transformed_key.permutations(self.mask).iter() {
                 self.one_kv.insert(k.clone(), key.clone());
-
-                println!("Inserted {} into 1:{}", k.clone(), self);
             }
             return true;
-        } else {
-            println!("Didn't insert {} into 0:{}", transformed_key.clone(), self);
         }
         return false;
     }
