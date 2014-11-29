@@ -2,8 +2,18 @@
 name = "hammer"
 version = "0.0.1"
 dependencies = [
+ "bodyparser 0.0.1 (git+https://github.com/iron/body-parser.git)",
  "iron 0.0.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "num 0.0.5 (registry+https://github.com/rust-lang/crates.io-index)",
+ "router 0.0.1 (git+https://github.com/iron/router.git)",
+]
+
+[[package]]
+name = "bodyparser"
+version = "0.0.1"
+source = "git+https://github.com/iron/body-parser.git#de6e84f0e457a9e0ecf51a1f0b68df2ed3d808c7"
+dependencies = [
+ "iron 0.0.5 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -104,6 +114,20 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "phantom 0.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "typemap 0.0.4 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "route-recognizer"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
+name = "router"
+version = "0.0.1"
+source = "git+https://github.com/iron/router.git#ee82029756306ac1bb47a69ebe98d64ffaa75662"
+dependencies = [
+ "iron 0.0.5 (registry+https://github.com/rust-lang/crates.io-index)",
+ "route-recognizer 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]

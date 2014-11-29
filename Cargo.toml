@@ -2,6 +2,15 @@
 iron = "*"
 num = "*"
 
+[dependencies.router]
+git = "https://github.com/iron/router.git"
+
+# [dependencies.logger]
+# git = "https://github.com/iron/logger.git"
+
+[dependencies.bodyparser]
+git = "https://github.com/iron/body-parser.git"
+
 [package]
 
 name = "hammer"
