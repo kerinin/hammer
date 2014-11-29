@@ -1,6 +1,5 @@
-[dependencies.num]
-
-git = "https://github.com/rust-lang/num"
+[dependencies]
+iron = "*"
 
 [package]
 

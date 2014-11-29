@@ -3,7 +3,7 @@ use std::cmp;
 use std::hash;
 
 use std::collections::{HashMap, HashSet};
-use std::collections::hashmap::{Occupied, Vacant};
+use std::collections::hash_map::{Occupied, Vacant};
 //use std::sync::{RWLock};
 
 pub struct HashMapSet<K, V> {

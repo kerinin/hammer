@@ -48,8 +48,8 @@ impl Permutable for Vec<u8> {
     fn p_shl(&self, rhs: &uint) -> Vec<u8> {
         if rhs == &0 { return self.clone(); }
 
-        let to_drop = rhs / 8;
-        let to_shift = rhs % 8;
+        let to_drop = *rhs / 8;
+        let to_shift = *rhs % 8;
         let to_unshift = 8 - to_shift;
         let mut out: Vec<u8> = vec![];
 
@@ -97,8 +97,8 @@ impl Permutable for Vec<u8> {
     fn p_shr(&self, rhs: &uint) -> Vec<u8> {
         if rhs == &0 { return self.clone(); }
 
-        let to_drop = rhs / 8;
-        let to_shift = rhs % 8;
+        let to_drop = *rhs / 8;
+        let to_shift = *rhs % 8;
         let to_unshift = 8 - to_shift;
         let mut out: Vec<u8> = vec![];
 

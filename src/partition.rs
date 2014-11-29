@@ -4,7 +4,7 @@ use std::collections::{HashSet};
 
 use super::value::Value;
 use super::hash_map_set::HashMapSet;
-use super::find_result::{FindResult, ZeroVariant, OneVariant};
+use super::find_result::FindResult;
 
 pub struct Partition<T> {
     shift: uint,
@@ -15,8 +15,8 @@ pub struct Partition<T> {
 }
 
 impl<T> fmt::Show for Partition<T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::FormatError> {
-        write!(f, "({:u},{:u})", self.shift, self.mask)
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        write!(f, "({},{})", self.shift, self.mask)
     }
 }
 
@@ -50,7 +50,7 @@ impl<T: Value> Partition<T> {
         match self.zero_kv.find(&transformed_key) {
             Some(keys) => {
                 for k in keys.iter() {
-                    found_keys.insert(ZeroVariant(k.clone()));
+                    found_keys.insert(FindResult::ZeroVariant(k.clone()));
                 }
             },
             None => {},
@@ -59,7 +59,7 @@ impl<T: Value> Partition<T> {
         match self.one_kv.find(&transformed_key) {
             Some(keys) => {
                 for k in keys.iter() {
-                    found_keys.insert(OneVariant(k.clone()));
+                    found_keys.insert(FindResult::OneVariant(k.clone()));
                 }
             },
             None => {},
@@ -99,7 +99,7 @@ mod test {
     use std::collections::{HashSet};
 
     use super::{Partition};
-    use super::super::find_result::{ZeroVariant, OneVariant};
+    use super::super::find_result::FindResult;
 
     #[test]
     fn find_missing_key() {
@@ -116,7 +116,7 @@ mod test {
         let a = vec![0b00001111u8];
         let b = vec![0b00000011u8];
         let mut expected = HashSet::new();
-        expected.insert(ZeroVariant(a.clone()));
+        expected.insert(FindResult::ZeroVariant(a.clone()));
 
         assert!(partition.insert(a.clone()));
 
@@ -131,7 +131,7 @@ mod test {
         let mut partition = Partition::new(4, 4);
         let a = vec![0b00001111u8];
         let mut expected = HashSet::new();
-        expected.insert(ZeroVariant(a.clone()));
+        expected.insert(FindResult::ZeroVariant(a.clone()));
         partition.insert(a.clone());
 
         assert!(!partition.insert(a.clone()));
@@ -149,9 +149,9 @@ mod test {
         let c = vec![0b00000011u8];
         let d = vec![0b00000001u8];
         let mut expected = HashSet::new();
-        expected.insert(OneVariant(a.clone()));
-        expected.insert(ZeroVariant(b.clone()));
-        expected.insert(OneVariant(c.clone()));
+        expected.insert(FindResult::OneVariant(a.clone()));
+        expected.insert(FindResult::ZeroVariant(b.clone()));
+        expected.insert(FindResult::OneVariant(c.clone()));
 
         partition.insert(a.clone());
         partition.insert(b.clone());

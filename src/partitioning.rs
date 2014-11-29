@@ -8,7 +8,7 @@ use self::num::rational::Ratio;
 use super::value::Value;
 use super::partition::{Partition};
 //use super::result_accumulator::ResultAccumulator;
-use super::find_result::{ZeroVariant, OneVariant};
+use super::find_result::FindResult;
 
 pub struct Partitioning<T> {
     bits: uint,
@@ -18,7 +18,7 @@ pub struct Partitioning<T> {
 }
 
 impl<T> fmt::Show for Partitioning<T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::FormatError> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         write!(f, "({}:{}:{})", self.bits, self.tolerance, self.partition_count)
     }
 }
@@ -102,12 +102,12 @@ impl<T: Value> Partitioning<T> {
         for partition in self.partitions.iter() {
             for result in partition.find(key.clone()).iter() {
                 match *result {
-                    ZeroVariant(ref value) => {
+                    FindResult::ZeroVariant(ref value) => {
                         if value.hamming(&key) <= self.tolerance { 
                             results.insert(value.clone());
                         };
                     },
-                    OneVariant(ref value) => {
+                    FindResult::OneVariant(ref value) => {
                         if value.hamming(&key) <= self.tolerance {
                             results.insert(value.clone());
                         };

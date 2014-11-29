@@ -10,8 +10,8 @@ pub enum FindResult<T> {
 impl<T: hash::Hash> hash::Hash for FindResult<T> {
     fn hash(&self, state: &mut sip::SipState) {
         match *self {
-            ZeroVariant(ref self_value) => self_value.hash(state),
-            OneVariant(ref self_value) => self_value.hash(state),
+            FindResult::ZeroVariant(ref self_value) => self_value.hash(state),
+            FindResult::OneVariant(ref self_value) => self_value.hash(state),
         }
     }
 }
@@ -22,36 +22,36 @@ impl<T: PartialEq> Eq for FindResult<T> {
 impl<T: PartialEq> PartialEq for FindResult<T> {
     fn eq(&self, other: &FindResult<T>) -> bool {
         match *self {
-            ZeroVariant(ref self_value) => match *other {
-                ZeroVariant(ref other_value) => self_value.eq(other_value),
-                OneVariant(_) => false,
+            FindResult::ZeroVariant(ref self_value) => match *other {
+                FindResult::ZeroVariant(ref other_value) => self_value.eq(other_value),
+                FindResult::OneVariant(_) => false,
             },
-            OneVariant(ref self_value) => match *other {
-                OneVariant(ref other_value) => self_value.eq(other_value),
-                ZeroVariant(_) => false,
+            FindResult::OneVariant(ref self_value) => match *other {
+                FindResult::OneVariant(ref other_value) => self_value.eq(other_value),
+                FindResult::ZeroVariant(_) => false,
             },
         }
     }
 
     fn ne(&self, other: &FindResult<T>) -> bool {
         match *self {
-            ZeroVariant(ref self_value) => match *other {
-                ZeroVariant(ref other_value) => self_value.ne(other_value),
-                OneVariant(_) => true,
+            FindResult::ZeroVariant(ref self_value) => match *other {
+                FindResult::ZeroVariant(ref other_value) => self_value.ne(other_value),
+                FindResult::OneVariant(_) => true,
             },
-            OneVariant(ref self_value) => match *other {
-                OneVariant(ref other_value) => self_value.ne(other_value),
-                ZeroVariant(_) => true,
+            FindResult::OneVariant(ref self_value) => match *other {
+                FindResult::OneVariant(ref other_value) => self_value.ne(other_value),
+                FindResult::ZeroVariant(_) => true,
             },
         }
     }
 }
 
 impl<T: fmt::Show> fmt::Show for FindResult<T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::FormatError> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         match *self {
-            ZeroVariant(ref self_value) => write!(f, "0:{}", self_value),
-            OneVariant(ref self_value) => write!(f, "1:{}", self_value),
+            FindResult::ZeroVariant(ref self_value) => write!(f, "0:{}", self_value),
+            FindResult::OneVariant(ref self_value) => write!(f, "1:{}", self_value),
         }
     }
 }
