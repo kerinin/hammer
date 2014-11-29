@@ -78,7 +78,7 @@ impl<T: Value> Partitioning<T> {
         };
     }
 
-    pub fn find(&self, key: T) -> Option<HashSet<T>> {
+    pub fn get(&self, key: T) -> Option<HashSet<T>> {
         /*
          * This is the method described in the HmSearch paper.  It's slower than
          * just checking the hamming distance, but I'm going to leave it commented
@@ -100,7 +100,7 @@ impl<T: Value> Partitioning<T> {
         let mut results: HashSet<T> = HashSet::new();
 
         for partition in self.partitions.iter() {
-            for result in partition.find(key.clone()).iter() {
+            for result in partition.get(key.clone()).iter() {
                 match *result {
                     FindResult::ZeroVariant(ref value) => {
                         if value.hamming(&key) <= self.tolerance { 
@@ -247,7 +247,7 @@ mod test {
     fn find_missing_key() {
         let p: Partitioning<Vec<u8>> = Partitioning::new(8, 2);
         let a = vec![0b11111111u8];
-        let keys = p.find(a);
+        let keys = p.get(a);
 
         assert_eq!(None, keys);
     }
@@ -279,7 +279,7 @@ mod test {
 
         assert!(p.insert(a.clone()));
 
-        let keys = p.find(a.clone());
+        let keys = p.get(a.clone());
 
         assert_eq!(Some(b), keys);
     }
@@ -294,7 +294,7 @@ mod test {
 
         p.insert(a.clone());
 
-        let keys = p.find(b.clone());
+        let keys = p.get(b.clone());
 
         assert_eq!(Some(c), keys);
     }
@@ -318,7 +318,7 @@ mod test {
         p.insert(d.clone());
         p.insert(e.clone());
 
-        let keys = p.find(a.clone());
+        let keys = p.get(a.clone());
 
         assert_eq!(Some(f), keys);
     }
@@ -346,7 +346,7 @@ mod test {
 
             assert!(p.insert(a.clone()));
 
-            let keys = p.find(b.clone());
+            let keys = p.get(b.clone());
 
             assert_eq!(Some(c), keys);
         }
@@ -379,7 +379,7 @@ mod test {
 
             assert!(p.insert(a.clone()));
 
-            let keys = p.find(b.clone());
+            let keys = p.get(b.clone());
 
             assert_eq!(None, keys);
         }
@@ -394,7 +394,7 @@ mod test {
 
         assert!(p.remove(a.clone()));
 
-        let keys = p.find(a.clone());
+        let keys = p.get(a.clone());
 
         assert_eq!(None, keys);
     }
@@ -438,10 +438,9 @@ mod test {
 
             if i % 1000 == 0 {
                 //for i in range(0, expected_present.len()) {
-                for i in range(0, 256) {
+                for i in range(0u, 256u) {
                     let mut found = false;
-                    let b = expected_present[i];
-                    match p.find(vec![i as u8]) {
+                    match p.get(vec![i as u8]) {
                         Some(set) => for key in set.iter() {
                             if *key == vec![i as u8] {
                                 found = true;
@@ -453,10 +452,9 @@ mod test {
                     assert!(found)
                 }
 
-                for i in range(0, expected_absent.len()) {
+                for i in range(0u, expected_absent.len()) {
                     let mut found = false;
-                    let b = expected_present[i];
-                    match p.find(vec![i as u8]) {
+                    match p.get(vec![i as u8]) {
                         Some(set) => for key in set.iter() {
                             if *key == vec![i as u8] {
                                 found = true;

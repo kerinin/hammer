@@ -25,7 +25,7 @@ impl Value for Vec<u8> {
         let tail_bits = mask % 8;
         let partial_mask = 0b11111111u8.shl(&(8-tail_bits));
 
-        let mut mask = iter::Repeat::new(0b11111111u8).take(full_byte_count).collect::<Vec<u8>>();
+        let mut mask = iter::repeat(0b11111111u8).take(full_byte_count).collect::<Vec<u8>>();
         mask.push(partial_mask);
 
         shifted.p_bitand(&mask)

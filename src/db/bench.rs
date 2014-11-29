@@ -38,7 +38,7 @@ fn find_existing_value(b: &mut test::Bencher) {
     p.insert(value);
 
     b.iter(|| {
-        p.find(value);
+        p.get(value);
     })
 }
 
@@ -50,7 +50,7 @@ fn find_missing_value(b: &mut test::Bencher) {
     let value = rng.gen();
 
     b.iter(|| {
-        p.find(value);
+        p.get(value);
     })
 }
 

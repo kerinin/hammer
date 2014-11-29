@@ -43,11 +43,11 @@ impl<T: Value> Partition<T> {
         return Partition {shift: shift, mask: mask, zero_kv: zero_kv, one_kv: one_kv};
     }
 
-    pub fn find(&self, key: T) -> HashSet<FindResult<T>> {
+    pub fn get(&self, key: T) -> HashSet<FindResult<T>> {
         let mut found_keys: HashSet<FindResult<T>> = HashSet::new();
 
         let transformed_key = key.clone().transform(self.shift, self.mask);
-        match self.zero_kv.find(&transformed_key) {
+        match self.zero_kv.get(&transformed_key) {
             Some(keys) => {
                 for k in keys.iter() {
                     found_keys.insert(FindResult::ZeroVariant(k.clone()));
@@ -56,7 +56,7 @@ impl<T: Value> Partition<T> {
             None => {},
         }
 
-        match self.one_kv.find(&transformed_key) {
+        match self.one_kv.get(&transformed_key) {
             Some(keys) => {
                 for k in keys.iter() {
                     found_keys.insert(FindResult::OneVariant(k.clone()));
@@ -105,7 +105,7 @@ mod test {
     fn find_missing_key() {
         let partition = Partition::new(4, 4);
         let a = vec![0b00001111u8];
-        let keys = partition.find(a);
+        let keys = partition.get(a);
 
         assert!(keys.is_empty());
     }
@@ -121,7 +121,7 @@ mod test {
         assert!(partition.insert(a.clone()));
 
         partition.insert(b.clone());
-        let keys = partition.find(a.clone());
+        let keys = partition.get(a.clone());
 
         assert_eq!(expected, keys);
     }
@@ -136,7 +136,7 @@ mod test {
 
         assert!(!partition.insert(a.clone()));
 
-        let keys = partition.find(a.clone());
+        let keys = partition.get(a.clone());
 
         assert_eq!(expected, keys);
     }
@@ -158,7 +158,7 @@ mod test {
         partition.insert(c.clone());
         partition.insert(d.clone());
 
-        let keys = partition.find(b.clone());
+        let keys = partition.get(b.clone());
 
         assert_eq!(expected, keys);
     }
@@ -172,7 +172,7 @@ mod test {
 
         assert!(partition.remove(a.clone()));
 
-        let keys = partition.find(a.clone());
+        let keys = partition.get(a.clone());
 
         assert!(keys.is_empty());
     }

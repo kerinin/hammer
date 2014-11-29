@@ -1,4 +1,4 @@
-use std::iter::Repeat;
+use std::iter;
 use std::vec::Vec;
 
 /*
@@ -20,7 +20,7 @@ impl Permutable for Vec<u8> {
      */
     fn p_bitxor(&self, other: &Vec<u8>) -> Vec<u8> {
         let zero: &u8 = &0;
-        let other_then_zero = other.iter().chain(Repeat::new(zero));
+        let other_then_zero = other.iter().chain(iter::repeat(zero));
 
         return self.iter()
             .zip(other_then_zero)

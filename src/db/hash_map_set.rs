@@ -31,8 +31,8 @@ impl<K: hash::Hash + cmp::Eq + clone::Clone, V: hash::Hash + cmp::Eq + clone::Cl
         }
     }
 
-    pub fn find(&self, key: &K) -> Option<&HashSet<V>> {
-        return self.data.find(key);
+    pub fn get(&self, key: &K) -> Option<&HashSet<V>> {
+        return self.data.get(key);
     }
 
     pub fn remove(&mut self, key: K, value: V) -> bool {
