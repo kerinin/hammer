@@ -8,7 +8,7 @@ use std::collections::bitv;
 
 use std::num::Int;
 
-use super::permutable::Permutable;
+use db::permutable::Permutable;
 
 //pub trait Value: Permutable + cmp::Eq + hash::Hash + clone::Clone + fmt::Show + iter::FromIterator<u8> {
 pub trait Value: Permutable + cmp::Eq + hash::Hash + clone::Clone + fmt::Show {

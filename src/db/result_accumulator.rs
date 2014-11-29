@@ -1,7 +1,7 @@
 use std::collections::{HashMap, HashSet};
 
-use super::value::Value;
-use super::find_result::{FindResult, ZeroVariant, OneVariant};
+use db::value::Value;
+use db::find_result::{FindResult, ZeroVariant, OneVariant};
 
 pub struct ResultAccumulator<T> {
     tolerance: uint,

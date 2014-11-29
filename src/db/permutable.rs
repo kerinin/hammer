@@ -160,7 +160,7 @@ impl Permutable for uint {
 
 #[cfg(test)]
 mod test {
-    use super::{Permutable};
+    use db::permutable::Permutable;
 
     #[test]
     fn bitxor_equally_sized_vectors() {

@@ -2,7 +2,7 @@ extern crate test;
 
 use std::rand::{task_rng, Rng};
 
-use super::partitioning::{Partitioning};
+use db::partitioning::Partitioning;
 
 #[bench]
 fn insert_new_value(b: &mut test::Bencher) {

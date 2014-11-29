@@ -1,10 +1,10 @@
 use std::fmt;
 
-use std::collections::{HashSet};
+use std::collections::HashSet;
 
-use super::value::Value;
-use super::hash_map_set::HashMapSet;
-use super::find_result::FindResult;
+use db::value::Value;
+use db::hash_map_set::HashMapSet;
+use db::find_result::FindResult;
 
 pub struct Partition<T> {
     shift: uint,

@@ -2,13 +2,13 @@ extern crate num;
 
 use std::fmt;
 
-use std::collections::{HashSet};
+use std::collections::HashSet;
 use self::num::rational::Ratio;
 
-use super::value::Value;
-use super::partition::{Partition};
-//use super::result_accumulator::ResultAccumulator;
-use super::find_result::FindResult;
+use db::value::Value;
+use db::partition::Partition;
+//use db::result_accumulator::ResultAccumulator;
+use db::find_result::FindResult;
 
 pub struct Partitioning<T> {
     bits: uint,
@@ -156,9 +156,10 @@ impl<T: Value> Partitioning<T> {
 mod test {
     use std::collections::{HashSet};
     use std::rand::{task_rng, sample, Rng};
-    use super::{Partitioning};
-    use partition::{Partition};
-    use permutable::{Permutable};
+
+    use db::partitioning::{Partitioning};
+    use db::partition::{Partition};
+    use db::permutable::{Permutable};
 
     #[test]
     fn partition_evenly() {
