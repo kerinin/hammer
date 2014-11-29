@@ -4,88 +4,78 @@ use std::rand::{task_rng, Rng};
 
 use super::partitioning::{Partitioning};
 
-
 #[bench]
-fn find_random_key_10(b: &mut test::Bencher) {
+fn insert_new_value(b: &mut test::Bencher) {
     let mut p: Partitioning<uint> = Partitioning::new(64, 4);
 
     let mut rng = task_rng();
-    let seq = rng.gen_iter::<uint>();
-
-    for i in seq.take(10u) {
-        p.insert(i);
-    }
+    let value = rng.gen();
 
     b.iter(|| {
-        let mut rng = task_rng();
-        p.find(rng.gen());
+        p.insert(value);
     })
 }
 
 #[bench]
-fn find_random_key_100(b: &mut test::Bencher) {
+fn insert_existing_value(b: &mut test::Bencher) {
     let mut p: Partitioning<uint> = Partitioning::new(64, 4);
 
     let mut rng = task_rng();
-    let seq = rng.gen_iter::<uint>();
-
-    for i in seq.take(100u) {
-        p.insert(i);
-    }
+    let value = rng.gen();
+    p.insert(value);
 
     b.iter(|| {
-        let mut rng = task_rng();
-        p.find(rng.gen());
+        p.insert(value);
     })
 }
 
 #[bench]
-fn find_random_key_1000(b: &mut test::Bencher) {
+fn find_existing_value(b: &mut test::Bencher) {
     let mut p: Partitioning<uint> = Partitioning::new(64, 4);
 
     let mut rng = task_rng();
-    let seq = rng.gen_iter::<uint>();
-
-    for i in seq.take(1000u) {
-        p.insert(i);
-    }
+    let value = rng.gen();
+    p.insert(value);
 
     b.iter(|| {
-        let mut rng = task_rng();
-        p.find(rng.gen());
+        p.find(value);
     })
 }
 
 #[bench]
-fn find_random_key_10000(b: &mut test::Bencher) {
-    let mut p: Partitioning<uint> = Partitioning::new(64, 4);
+fn find_missing_value(b: &mut test::Bencher) {
+    let p: Partitioning<uint> = Partitioning::new(64, 4);
 
     let mut rng = task_rng();
-    let seq = rng.gen_iter::<uint>();
-
-    for i in seq.take(10000u) {
-        p.insert(i);
-    }
+    let value = rng.gen();
 
     b.iter(|| {
-        let mut rng = task_rng();
-        p.find(rng.gen());
+        p.find(value);
     })
 }
 
 #[bench]
-fn find_random_key_100000(b: &mut test::Bencher) {
+fn remove_missing_value(b: &mut test::Bencher) {
     let mut p: Partitioning<uint> = Partitioning::new(64, 4);
 
     let mut rng = task_rng();
-    let seq = rng.gen_iter::<uint>();
-
-    for i in seq.take(100000u) {
-        p.insert(i);
-    }
+    let value = rng.gen();
 
     b.iter(|| {
-        let mut rng = task_rng();
-        p.find(rng.gen());
+        p.remove(value);
     })
 }
+
+#[bench]
+fn remove_existing_value(b: &mut test::Bencher) {
+    let mut p: Partitioning<uint> = Partitioning::new(64, 4);
+
+    let mut rng = task_rng();
+    let value = rng.gen();
+    p.insert(value);
+
+    b.iter(|| {
+        p.remove(value);
+    })
+}
+

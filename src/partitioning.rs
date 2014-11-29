@@ -7,7 +7,8 @@ use self::num::rational::Ratio;
 
 use super::value::Value;
 use super::partition::{Partition};
-use super::result_accumulator::ResultAccumulator;
+//use super::result_accumulator::ResultAccumulator;
+use super::find_result::{ZeroVariant, OneVariant};
 
 pub struct Partitioning<T> {
     bits: uint,
@@ -78,17 +79,48 @@ impl<T: Value> Partitioning<T> {
     }
 
     pub fn find(&self, key: T) -> Option<HashSet<T>> {
-        let mut results: ResultAccumulator<T> = ResultAccumulator::new(self.tolerance, key.clone());
+        /*
+         * This is the method described in the HmSearch paper.  It's slower than
+         * just checking the hamming distance, but I'm going to leave it commented
+         * out here becase it may be necessary for vector-hamming distances (as
+         * opposed to scalar-hamming distances).
+         */
+        //let mut results: ResultAccumulator<T> = ResultAccumulator::new(self.tolerance, key.clone());
+
+        //for partition in self.partitions.iter() {
+        //    let found = partition.find(key.clone());
+
+        //    for k in found.iter() {
+        //        results.merge(k);
+        //    }
+        //}
+
+        //return results.found_values()
+
+        let mut results: HashSet<T> = HashSet::new();
 
         for partition in self.partitions.iter() {
-            let found = partition.find(key.clone());
-
-            for k in found.iter() {
-                results.merge(k);
+            for result in partition.find(key.clone()).iter() {
+                match *result {
+                    ZeroVariant(ref value) => {
+                        if value.hamming(&key) <= self.tolerance { 
+                            results.insert(value.clone());
+                        };
+                    },
+                    OneVariant(ref value) => {
+                        if value.hamming(&key) <= self.tolerance {
+                            results.insert(value.clone());
+                        };
+                    }
+                }
             }
         }
 
-        return results.found_values()
+        if results.is_empty() {
+            None
+        } else {
+            Some(results)
+        }
     }
 
     /*
