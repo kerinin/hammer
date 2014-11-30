@@ -5,6 +5,7 @@ dependencies = [
  "bodyparser 0.0.1 (git+https://github.com/iron/body-parser.git)",
  "iron 0.0.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "num 0.0.5 (registry+https://github.com/rust-lang/crates.io-index)",
+ "persistent 0.0.1 (git+https://github.com/iron/persistent.git)",
  "router 0.0.1 (git+https://github.com/iron/router.git)",
 ]
 
@@ -95,6 +96,15 @@ version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "pkg-config 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "persistent"
+version = "0.0.1"
+source = "git+https://github.com/iron/persistent.git#a201b8d3e1ef277108b0968c4f3d8eeecfff9444"
+dependencies = [
+ "iron 0.0.5 (registry+https://github.com/rust-lang/crates.io-index)",
+ "plugin 0.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]

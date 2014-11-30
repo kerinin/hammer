@@ -2,6 +2,8 @@ use serialize::json;
 use std::clone;
 use std::fmt;
 
+use std::collections::HashSet;
+
 #[deriving(Decodable)]
 pub struct Request {
     pub scalars: Vec<uint>,
@@ -31,5 +33,5 @@ pub struct Response {
 #[deriving(Encodable)]
 pub struct ScalarResult {
     pub scalar: uint,
-    pub added: bool,
+    pub found: HashSet<uint>,
 }

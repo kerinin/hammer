@@ -31,5 +31,5 @@ pub struct Response {
 #[deriving(Encodable)]
 pub struct ScalarResult {
     pub scalar: uint,
-    pub added: bool,
+    pub deleted: bool,
 }
