@@ -1,4 +1,3 @@
-use serialize::json;
 use std::clone;
 use std::fmt;
 

@@ -1,7 +1,8 @@
 use serialize::json;
+use std::collections::HashSet;
 
 use iron::status;
-use iron::prelude::{Set, Plugin, ErrorRefExt, Chain, Request, Response, IronResult, IronError, Iron};
+use iron::prelude::{Set, Plugin, Chain, Request, Response, IronResult, Iron};
 use iron::typemap::Assoc;
 use iron::response::modifiers::{Status, Body};
 use iron::middleware::ChainBuilder;
@@ -20,7 +21,7 @@ impl Assoc<Partitioning<uint>> for DB {}
 
 pub fn serve() {
     let mut router = Router::new();
-    let mut db = Partitioning::new(64, 4);
+    let db = Partitioning::new(64, 4);
 
     router.post("/add", handle_add);
     router.post("/query", handle_query);
@@ -30,8 +31,10 @@ pub fn serve() {
     chain.link(State::<DB, Partitioning<uint>>::both(db));
     let server = Iron::new(chain);
 
-    println!("Starting Iron HTTP Server on localhost:3000");
-    server.listen("localhost:3000");
+    match server.listen("localhost:3000") {
+        Ok(..) => println!("Started Iron HTTP Server on localhost:3000"),
+        Err(e) => println!("Unable to start HTTP Server: {}", e),
+    }
 }
 
 fn handle_add(req: &mut Request) -> IronResult<Response> {
@@ -76,7 +79,10 @@ fn handle_query(req: &mut Request) -> IronResult<Response> {
                         let scalar_result = query::ScalarResult {scalar: *scalar, found: found};
                         scalar_results.push(scalar_result);
                     },
-                    None => {},
+                    None => {
+                        let scalar_result = query::ScalarResult {scalar: *scalar, found: HashSet::new()};
+                        scalar_results.push(scalar_result);
+                    },
                 }
             }
 
