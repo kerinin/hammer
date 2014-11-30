@@ -19,21 +19,33 @@ use db::partitioning::Partitioning;
 pub struct DB;
 impl Assoc<Partitioning<uint>> for DB {}
 
-pub fn serve() {
-    let mut router = Router::new();
-    let db = Partitioning::new(64, 4);
+pub struct Server {
+    pub bind: String,
+    pub bits: uint,
+    pub tolerance: uint,
+    pub lru: Option<uint>,
+}
 
-    router.post("/add", handle_add);
-    router.post("/query", handle_query);
-    router.post("/delete", handle_delete);
+impl Server {
+    pub fn serve(&self) {
+        let mut router = Router::new();
+        let db = match self.lru {
+            Some(..) => Partitioning::new(self.bits, self.tolerance),
+            None => Partitioning::new(self.bits, self.tolerance),
+        };
 
-    let mut chain = ChainBuilder::new(router);
-    chain.link(State::<DB, Partitioning<uint>>::both(db));
-    let server = Iron::new(chain);
+        router.post("/add", handle_add);
+        router.post("/query", handle_query);
+        router.post("/delete", handle_delete);
 
-    match server.listen("localhost:3000") {
-        Ok(..) => println!("Started Iron HTTP Server on localhost:3000"),
-        Err(e) => println!("Unable to start HTTP Server: {}", e),
+        let mut chain = ChainBuilder::new(router);
+        chain.link(State::<DB, Partitioning<uint>>::both(db));
+        let server = Iron::new(chain);
+
+        match server.listen(self.bind.as_slice()) {
+            Ok(..) => println!("Started Iron HTTP Server on {}", self.bind),
+            Err(e) => println!("Unable to start HTTP Server: {}", e),
+        }
     }
 }
 
