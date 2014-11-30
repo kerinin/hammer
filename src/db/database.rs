@@ -10,34 +10,34 @@ use db::partition::Partition;
 //use db::result_accumulator::ResultAccumulator;
 use db::find_result::FindResult;
 
-pub struct Partitioning<T> {
+pub struct Database<T> {
     bits: uint,
     tolerance: uint,
     partition_count: uint,
     partitions: Vec<Partition<T>>,
 }
 
-impl<T> fmt::Show for Partitioning<T> {
+impl<T> fmt::Show for Database<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         write!(f, "({}:{}:{})", self.bits, self.tolerance, self.partition_count)
     }
 }
 
-impl<T: Value> PartialEq for Partitioning<T> {
-    fn eq(&self, other: &Partitioning<T>) -> bool {
+impl<T: Value> PartialEq for Database<T> {
+    fn eq(&self, other: &Database<T>) -> bool {
         return self.partitions.eq(&other.partitions);
     }
 
-    fn ne(&self, other: &Partitioning<T>) -> bool {
+    fn ne(&self, other: &Database<T>) -> bool {
         return self.partitions.ne(&other.partitions);
     }
 }
 
-impl<T: Value> Partitioning<T> {
+impl<T: Value> Database<T> {
     /*
      * Partition the keyspace as evenly as possible
      */
-    pub fn new(bits: uint, tolerance: uint) -> Partitioning<T> {
+    pub fn new(bits: uint, tolerance: uint) -> Database<T> {
 
         let partition_count = if tolerance == 0 {
             1
@@ -70,7 +70,7 @@ impl<T: Value> Partitioning<T> {
             partitions.push(Partition::new(shift, mask));
         }
 
-        return Partitioning {
+        return Database {
             bits: bits,
             tolerance: tolerance,
             partition_count: partition_count,
@@ -157,14 +157,14 @@ mod test {
     use std::collections::{HashSet};
     use std::rand::{task_rng, sample, Rng};
 
-    use db::partitioning::{Partitioning};
+    use db::database::{Database};
     use db::partition::{Partition};
     use db::permutable::{Permutable};
 
     #[test]
     fn partition_evenly() {
-        let a: Partitioning<Vec<u8>> = Partitioning::new(32, 5);
-        let b = Partitioning {
+        let a: Database<Vec<u8>> = Database::new(32, 5);
+        let b = Database {
             bits: 32,
             tolerance: 5,
             partition_count: 4,
@@ -180,8 +180,8 @@ mod test {
 
     #[test]
     fn partition_unevenly() {
-        let a: Partitioning<Vec<u8>> = Partitioning::new(32, 7);
-        let b = Partitioning {
+        let a: Database<Vec<u8>> = Database::new(32, 7);
+        let b = Database {
             bits: 32,
             tolerance: 7,
             partition_count: 5,
@@ -198,8 +198,8 @@ mod test {
 
     #[test]
     fn partition_too_many() {
-        let a: Partitioning<Vec<u8>> = Partitioning::new(4, 8);
-        let b = Partitioning {
+        let a: Database<Vec<u8>> = Database::new(4, 8);
+        let b = Database {
             bits: 4,
             tolerance: 8,
             partition_count: 3,
@@ -215,8 +215,8 @@ mod test {
 
     #[test]
     fn partition_zero() {
-        let a: Partitioning<Vec<u8>> = Partitioning::new(32, 0);
-        let b = Partitioning {
+        let a: Database<Vec<u8>> = Database::new(32, 0);
+        let b = Database {
             bits: 32,
             tolerance: 0,
             partition_count: 1,
@@ -230,8 +230,8 @@ mod test {
 
     #[test]
     fn partition_with_no_bytes() {
-        let a: Partitioning<Vec<u8>> = Partitioning::new(0, 0);
-        let b = Partitioning {
+        let a: Database<Vec<u8>> = Database::new(0, 0);
+        let b = Database {
             bits: 0,
             tolerance: 0,
             partition_count: 1,
@@ -245,7 +245,7 @@ mod test {
 
     #[test]
     fn find_missing_key() {
-        let p: Partitioning<Vec<u8>> = Partitioning::new(8, 2);
+        let p: Database<Vec<u8>> = Database::new(8, 2);
         let a = vec![0b11111111u8];
         let keys = p.get(a);
 
@@ -254,7 +254,7 @@ mod test {
 
     #[test]
     fn insert_first_key() {
-        let mut p: Partitioning<Vec<u8>> = Partitioning::new(8, 2);
+        let mut p: Database<Vec<u8>> = Database::new(8, 2);
         let a = vec![0b11111111u8];
 
         assert!(p.insert(a.clone()));
@@ -262,7 +262,7 @@ mod test {
 
     #[test]
     fn insert_second_key() {
-        let mut p: Partitioning<Vec<u8>> = Partitioning::new(8, 2);
+        let mut p: Database<Vec<u8>> = Database::new(8, 2);
         let a = vec![0b11111111u8];
 
         p.insert(a.clone());
@@ -272,7 +272,7 @@ mod test {
 
     #[test]
     fn find_inserted_key() {
-        let mut p: Partitioning<Vec<u8>> = Partitioning::new(8, 2);
+        let mut p: Database<Vec<u8>> = Database::new(8, 2);
         let a = vec![0b11111111u8];
         let mut b: HashSet<Vec<u8>> = HashSet::new();
         b.insert(a.clone());
@@ -286,7 +286,7 @@ mod test {
 
     #[test]
     fn find_permutations_of_inserted_key() {
-        let mut p: Partitioning<Vec<u8>> = Partitioning::new(8, 2);
+        let mut p: Database<Vec<u8>> = Database::new(8, 2);
         let a = vec![0b00001111u8];
         let b = vec![0b00000111u8];
         let mut c = HashSet::new();
@@ -301,7 +301,7 @@ mod test {
 
     #[test]
     fn find_permutations_of_multiple_similar_keys() {
-        let mut p: Partitioning<Vec<u8>> = Partitioning::new(8, 4);
+        let mut p: Database<Vec<u8>> = Database::new(8, 4);
         let a = vec![0b00000000u8];
         let b = vec![0b10000000u8];
         let c = vec![0b10000001u8];
@@ -333,7 +333,7 @@ mod test {
             .map(|i| sample(&mut rng2, range(0, bits), i % max_hd));
 
         for shifts in shifts_seq.take(1000u) {
-            let mut p: Partitioning<Vec<u8>> = Partitioning::new(bits, max_hd);
+            let mut p: Database<Vec<u8>> = Database::new(bits, max_hd);
             let a = vec![0b11111111u8];
 
             let mut b = a.clone();
@@ -366,7 +366,7 @@ mod test {
             .filter(|shifts| shifts.len() > max_hd);
 
         for shifts in shifts_seq.take(1000u) {
-            let mut p: Partitioning<Vec<u8>> = Partitioning::new(bits, max_hd);
+            let mut p: Database<Vec<u8>> = Database::new(bits, max_hd);
             let a = vec![0b11111111u8];
 
             let mut b = a.clone();
@@ -387,7 +387,7 @@ mod test {
 
     #[test]
     fn remove_inserted_key() {
-        let mut p: Partitioning<Vec<u8>> = Partitioning::new(8, 2);
+        let mut p: Database<Vec<u8>> = Database::new(8, 2);
         let a = vec![0b00001111u8];
 
         p.insert(a.clone());
@@ -401,7 +401,7 @@ mod test {
 
     #[test]
     fn remove_missing_key() {
-        let mut p: Partitioning<Vec<u8>> = Partitioning::new(8, 2);
+        let mut p: Database<Vec<u8>> = Database::new(8, 2);
         let a = vec![0b00001111u8];
 
         assert!(!p.remove(a));
@@ -417,7 +417,7 @@ mod test {
         // NOTE: we need a better way of coercing values - right now we only support
         // Vec<u8> - would be much better to implement a generic so we could set 
         // values directly.  IE, we need to convert u16 to [u8] here, and that's annoying
-        let mut p: Partitioning<Vec<u8>> = Partitioning::new(16, 4);
+        let mut p: Database<Vec<u8>> = Database::new(16, 4);
 
         let mut expected_present = [false, ..65536];
         let mut expected_absent = [false, ..65536];

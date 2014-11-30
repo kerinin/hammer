@@ -1,4 +1,4 @@
-pub mod partitioning;
+pub mod database;
 mod permutable;
 mod partition;
 //mod result_accumulator;

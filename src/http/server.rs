@@ -14,10 +14,10 @@ use persistent::{State};
 use super::add;
 use super::query;
 use super::delete;
-use db::partitioning::Partitioning;
+use db::database::Database;
 
 pub struct DB;
-impl Assoc<Partitioning<uint>> for DB {}
+impl Assoc<Database<uint>> for DB {}
 
 pub struct Server {
     pub bind: String,
@@ -30,8 +30,8 @@ impl Server {
     pub fn serve(&self) {
         let mut router = Router::new();
         let db = match self.lru {
-            Some(..) => Partitioning::new(self.bits, self.tolerance),
-            None => Partitioning::new(self.bits, self.tolerance),
+            Some(..) => Database::new(self.bits, self.tolerance),
+            None => Database::new(self.bits, self.tolerance),
         };
 
         router.post("/add", handle_add);
@@ -39,7 +39,7 @@ impl Server {
         router.post("/delete", handle_delete);
 
         let mut chain = ChainBuilder::new(router);
-        chain.link(State::<DB, Partitioning<uint>>::both(db));
+        chain.link(State::<DB, Database<uint>>::both(db));
         let server = Iron::new(chain);
 
         match server.listen(self.bind.as_slice()) {
@@ -50,7 +50,7 @@ impl Server {
 }
 
 fn handle_add(req: &mut Request) -> IronResult<Response> {
-    let mutex = req.get::<State<DB, Partitioning<uint>>>().unwrap();
+    let mutex = req.get::<State<DB, Database<uint>>>().unwrap();
 
     match req.get::<BodyParser<add::Request>>() {
         Some(parsed) => {
@@ -78,7 +78,7 @@ fn handle_add(req: &mut Request) -> IronResult<Response> {
 }
 
 fn handle_query(req: &mut Request) -> IronResult<Response> {
-    let mutex = req.get::<State<DB, Partitioning<uint>>>().unwrap();
+    let mutex = req.get::<State<DB, Database<uint>>>().unwrap();
 
     match req.get::<BodyParser<query::Request>>() {
         Some(parsed) => {
@@ -113,7 +113,7 @@ fn handle_query(req: &mut Request) -> IronResult<Response> {
 }
 
 fn handle_delete(req: &mut Request) -> IronResult<Response> {
-    let mutex = req.get::<State<DB, Partitioning<uint>>>().unwrap();
+    let mutex = req.get::<State<DB, Database<uint>>>().unwrap();
 
     match req.get::<BodyParser<delete::Request>>() {
         Some(parsed) => {
