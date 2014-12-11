@@ -12,7 +12,7 @@ extern crate docopt;
 use docopt::Docopt;
 
 pub mod db;
-pub mod http;
+//pub mod http;
 
 
 docopt!(Args deriving Show, "
@@ -33,12 +33,12 @@ fn main() {
 
     println!("Runnig with args: {}", args);
 
-    let s = http::server::Server {
-        bind: args.flag_bind,
-        bits: args.flag_bits,
-        tolerance: args.flag_tolerance,
-        lru: args.flag_lru,
-    };
+    //let s = http::server::Server {
+    //    bind: args.flag_bind,
+    //    bits: args.flag_bits,
+    //    tolerance: args.flag_tolerance,
+    //    lru: args.flag_lru,
+    //};
 
-    s.serve()
+    //s.serve()
 }

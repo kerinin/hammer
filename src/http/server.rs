@@ -15,9 +15,13 @@ use super::add;
 use super::query;
 use super::delete;
 use db::database::Database;
+use db::hash_map_set::HashMapSet;
+use db::lru_set::LruSet;
+use db::store::Store;
 
 pub struct DB;
-impl Assoc<Database<uint>> for DB {}
+impl Assoc<Database<HashMapSet<uint, uint>>> for DB {}
+impl Assoc<Database<LruSet<uint, uint>>> for DB {}
 
 pub struct Server {
     pub bind: String,
@@ -39,7 +43,7 @@ impl Server {
         router.post("/delete", handle_delete);
 
         let mut chain = ChainBuilder::new(router);
-        chain.link(State::<DB, Database<uint>>::both(db));
+        chain.link(State::<DB, Database<Store<uint,uint>>>::both(db));
         let server = Iron::new(chain);
 
         match server.listen(self.bind.as_slice()) {

@@ -1,50 +1,62 @@
 use std::fmt;
 
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 use db::value::Value;
 use db::hash_map_set::HashMapSet;
+use db::lru_set::LruSet;
 use db::find_result::FindResult;
+use db::store::Store;
 
-pub struct Partition<T> {
+pub struct Partition<S> {
     shift: uint,
     mask: uint,
 
-    zero_kv: HashMapSet<T, T>,
-    one_kv: HashMapSet<T, T>,
+    zero_kv: S,
+    one_kv: S,
 }
 
-impl<T> fmt::Show for Partition<T> {
+impl<S> fmt::Show for Partition<S> {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         write!(f, "({},{})", self.shift, self.mask)
     }
 }
 
-impl<T: Value> PartialEq for Partition<T> {
-    fn eq(&self, other: &Partition<T>) -> bool {
+impl<V: PartialEq, S: Store<V, V>> PartialEq for Partition<S> {
+    fn eq(&self, other: &Partition<S>) -> bool {
         return self.shift.eq(&other.shift) &&
-            self.mask.eq(&other.mask) &&
-            self.zero_kv.eq(&other.zero_kv) &&
-            self.one_kv.eq(&other.one_kv);
+            self.mask.eq(&other.mask); // &&
+            //self.zero_kv.eq(&other.zero_kv) &&
+            //self.one_kv.eq(&other.one_kv);
     }
 
-    fn ne(&self, other: &Partition<T>) -> bool {
+    fn ne(&self, other: &Partition<S>) -> bool {
         return self.shift.ne(&other.shift) ||
-            self.mask.ne(&other.mask) ||
-            self.zero_kv.ne(&other.zero_kv) ||
-            self.one_kv.ne(&other.one_kv);
+            self.mask.ne(&other.mask); // ||
+            //self.zero_kv.ne(&other.zero_kv) ||
+            //self.one_kv.ne(&other.one_kv);
     }
 }
 
-impl<T: Value> Partition<T> {
-    pub fn new(shift: uint, mask: uint) -> Partition<T> {
-        let zero_kv: HashMapSet<T, T> = HashMapSet::new();
-        let one_kv: HashMapSet<T, T> = HashMapSet::new();
+impl<V: Value> Partition<HashMapSet<V, V>> {
+    pub fn new(shift: uint, mask: uint) -> Partition<HashMapSet<V, V>> {
+        let zero_kv: HashMapSet<V, V> = HashMapSet::new();
+        let one_kv: HashMapSet<V, V> = HashMapSet::new();
         return Partition {shift: shift, mask: mask, zero_kv: zero_kv, one_kv: one_kv};
     }
+}
 
-    pub fn get(&self, key: T) -> HashSet<FindResult<T>> {
-        let mut found_keys: HashSet<FindResult<T>> = HashSet::new();
+impl<V: Value> Partition<LruSet<V, V>> {
+    pub fn with_capacity(shift: uint, mask: uint, capacity: uint) -> Partition<LruSet<V, V>> {
+        let zero_kv: LruSet<V, V> = LruSet::with_capacity(capacity);
+        let one_kv: LruSet<V, V> = LruSet::with_capacity(capacity);
+        return Partition {shift: shift, mask: mask, zero_kv: zero_kv, one_kv: one_kv};
+    }
+}
+
+impl<V: Value, S: Store<V, V>> Partition<S> {
+    pub fn get(&mut self, key: V) -> HashSet<FindResult<V>> {
+        let mut found_keys: HashSet<FindResult<V>> = HashSet::new();
 
         let transformed_key = key.clone().transform(self.shift, self.mask);
         match self.zero_kv.get(&transformed_key) {
@@ -68,7 +80,7 @@ impl<T: Value> Partition<T> {
         found_keys
     }
 
-    pub fn insert(&mut self, key: T) -> bool {
+    pub fn insert(&mut self, key: V) -> bool {
         let transformed_key = key.clone().transform(self.shift, self.mask);
 
         if self.zero_kv.insert(transformed_key.clone(), key.clone()) {
@@ -81,7 +93,7 @@ impl<T: Value> Partition<T> {
         return false;
     }
 
-    pub fn remove(&mut self, key: T) -> bool {
+    pub fn remove(&mut self, key: V) -> bool {
         let transformed_key = key.clone().transform(self.shift, self.mask);
 
         if self.zero_kv.remove(transformed_key.clone(), key.clone()) {
@@ -103,7 +115,7 @@ mod test {
 
     #[test]
     fn find_missing_key() {
-        let partition = Partition::new(4, 4);
+        let mut partition = Partition::new(4, 4);
         let a = vec![0b00001111u8];
         let keys = partition.get(a);
 
