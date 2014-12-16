@@ -1,8 +1,9 @@
-mod eviction;
-mod arc;
+//mod arc;
+//mod entry;
+//mod eviction;
+//mod ghosted_list;
+mod list;
 
-trait EvictingStore<V, T> {
-    fn insert(&mut self, value: V) -> (token: T, evictions: Vec<Eviction>); 
-
-    fn get(&mut self, token: T) -> Option<V>;
-}
+//trait EvictingStore<T, V> {
+//    fn get(&mut self, token: T) -> (Option<V>, Vec<Eviction<T, V>>);
+//}

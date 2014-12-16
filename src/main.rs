@@ -11,8 +11,9 @@ extern crate docopt;
 
 use docopt::Docopt;
 
-pub mod db;
+//pub mod db;
 //pub mod http;
+pub mod evicting_store;
 
 
 docopt!(Args deriving Show, "
@@ -29,9 +30,9 @@ Options:
 
 #[cfg(not(test))]
 fn main() {
-    let args: Args = Args::docopt().decode().unwrap_or_else(|e| e.exit());
+    //let args: Args = Args::docopt().decode().unwrap_or_else(|e| e.exit());
 
-    println!("Runnig with args: {}", args);
+    //println!("Runnig with args: {}", args);
 
     //let s = http::server::Server {
     //    bind: args.flag_bind,

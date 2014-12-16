@@ -1,204 +1,171 @@
-enum CachedPage<V,T> {
-    FoundT1(Page<V,T>),
-    FoundT2(Page<V,T>),
-    FoundB1(Page<V,T>),
-    FoundB2(Page<V,T>),
-    Missing,
-}
-
 struct ARC<T, V> {
     // Cache size
-    c: uint,
-
+    c:                      uint,
     // Frequency/Recency tradeoff parameter
-    p: uint,
-
-    // Pages - 2c
-    pages: Array<Page<T,V>>,
-
-    // Entries - c
-    entries: Array<Entry<T,V>>,
-
-    // Page lookup
-    pages_lookup: HashMap<T, &Page<T,V>>,
-
-    // List Pointers
-    t1_lru: Option<&Page<T,V>>,
-    t2_lru: Option<&Page<T,V>>,
-    b1_lru: Option<&Page<T,V>>,
-    b2_lru: Option<&Page<T,V>>,
-
+    p:                      uint,
     // Counters
-    t1_len: uint,
-    t2_len: uint,
-    b1_len: uint,
-    b2_len: uint,
-    used_pages: uint,
+    used_top_nodes:         uint,
+    used_bottom_nodes:      uint,
+
+    top:                    Array<CachedNode<T, V>>,
+    bottom:                 Array<GhostNode<T, V>>,
+
+    recent:                 GhostList<T, V>,
+    frequent:               GhostList<T, V>,
 }
 
-impl ARC<V,T> {
+impl ARC<T, V> {
     fn with_capacity(c: uint) -> &ARC {
-        let pages = [Entry<T,V> ..2 * c];
-        let entries = [Entry<T,V> ..c]
-        let page_lookup: HashMap<T, &Page<T,V>> = HashMap::with_capacity(2 * c);
+        let top =               Array::with_capacity(c);
+        let bottom =            Array::with_capacity(c);
+        let recent =            GhostList::new();
+        let frequent =          GhostList::new();
 
         &ARC {
-            c: c, 
-            p: 0,
-            pages: pages,
-            entries: entries,
-            page_lookup: page_lookup,
-            t1_lru: None,
-            t2_lru: None,
-            b1_lru: None,
-            b2_lru: None,
-            t1_len: 0,
-            t2_len: 0,
-            b1_len: 0,
-            b2_len: 0,
-            used_pages: 0,
+            c:                  c,
+            p:                  0,
+            used_top_nodes:     0,
+            used_bottom_nodes:  0,
+            top:                top,
+            bottom:             bottom,
+            recent:             recent,
+            frequent:           frequent,
         }
     }
 
-    fn get_page(token: T) -> CachedPage<T, V> {
-        match self.page_lookup.get(token) {
-            Some(page) => match page.state {
-                T1 => FoundT1(page),
-                T2 => FoundT2(page),
-                B1 => FoundB1(page),
-                B2 => FoundB2(page),
-            },
-            None => Missing,
-        }
-    }
-
-    fn replace(&mut self, page: Page<V,T>) {
-        if !self.t1.empty() && (self.t1.len() > self.p || (self.b2.include(token) && self.t1.len() == self.p)) {
-            page.flush();
-            self.move_t1_to_b1(page);
+    /*
+     * Shifts an entry from the LRU position in one of the top caches to the MRU
+     * position in the corresponding bottom cache (L1->B1 or L2->B2), and returns 
+     * the newly emptied entry from the top cache
+     */
+    fn replace(&mut self, token_in_bottom_frequent: bool, target: &GhostNode) -> &CachedPage<T, V> {
+        if !self.t1.empty() && (self.t1.len() > self.p || (token_in_bottom_frequent && self.t1.len() == self.p)) {
+            return self.recent.replace(target);
         } else {
-            page.flush();
-            self.move_t2_to_b2(token)
+            return self.frequent.replace(target);
         }
     }
 }
 
-impl<V, T> EvictingStore<V, T> for ARC<V, T> {
-    fn insert(&mut self, value: V) -> (token: T, evictions: Vec<Eviction<V,T>>) {
-    }
-
+impl<T, V> EvictingStore<T, V> for ARC<T, V> {
     /*
      * NOTE: This method is taken almost verbatim from page 123 of
      * https://www.usenix.org/legacy/event/fast03/tech/full_papers/megiddo/megiddo.pdf
      */
-    fn get(&mut self, token: T) -> Option<V> {
-        match self.get_page(token) {
-            FoundT1(page), FoundT2(page) => {
-                /*
-                 * Token was found in one of the 'hot' caches, and should be ready
-                 * to return
-                 */
-                self.make_t2_mru(page);
-                return Some(page.data);
+    fn get(&mut self, token: T) -> (Option<V>, Vec<Eviction<T, V>>) {
+        match self.recent.find(token) {
+            Some(Top(top_node)) => {
+                self.recent.remove_top(top_node);
+
+                self.frequent.top.push_front(top_node);
+                return (top_node.value(), vec![]);
             },
-
-            FoundB1(page) => {
-                /*
-                 * Token was found in the buffer cache for 'Recent' data
-                 *
-                 * This means the token was fetched once, but hasn't been fetched 
-                 * in awhile, and is on the way towards being evicted completely
-                 * from the system
-                 */
-
+            Some(Bottom(bottom_node)) => {
                 // Adaptation
-                let delta = if self.b1_len >= self.b2_len {
+                let delta = if self.recent.bottom.len() >= self.frequent.bottom.len() {
                     1
                 } else {
-                    self.b2_len / self.b1_len
+                    self.frequent.bottom.len() / self.recent.bottom.len()
                 }
                 self.p = min(self.p + delta, c);
 
                 // OK now...
-                self.replace(page);
-                self.make_t2_mru(page);
+                self.recent.bottom.remove(bottom_node);
+                let &mut top_node = self.replace(false, bottom_node);
 
-                page.fetch();
-                return page.data;
+                let eviction = Eviction::new(top_node.token(), top_node.value());
+
+                self.frequent.top.push_front(top_node);
+                top_node.fetch(token);
+                return (top_node.value(), vec![eviction]);
             },
+            None => {},
+        };
+        match self.frequent.find(token) {
+            Some(Top(top_node)) => {
+                self.frequent.top.remove(top_node);
 
-            FoundB2(page) => {
-                /*
-                 * Token was found in the buffer cache for 'Frequent' data
-                 *
-                 * This means the token was fetched a couple times, but hasn't 
-                 * been fetched in awhile, and is on the way towards being evicted 
-                 * completely from the system
-                 */
-                
-                let delta = if self.b1_len <= self.b2_len {
+                self.frequent.top.push_front(top_node);
+                return top_node.value();
+            },
+            Some(Bottom(bottom_node)) => {
+                // Adaptation
+                let delta = if self.frequent.bottom.len() >= self.recent.bottom.len() {
                     1
                 } else {
-                    self.b1_len / self.b2_len
+                    self.recent.bottom.len() / self.frequent.bottom.len()
                 }
                 self.p = max(self.p - delta, 0);
-                self.replace(page);
-                self.make_t2_mru(page);
 
-                page.fetch();
-                return page.data;
+                // OK now...
+                self.frequent.bottom.remove(bottom_node);
+                let &mut top_node = self.replace(true, bottom_node);
+
+                let eviction = Eviction::new(top_node.token(), top_node.value());
+
+                self.frequent.top.push_front(top_node);
+                top_node.fetch(token);
+                return (top_node.value(), vec![eviction]);
             },
+            None => {},
+        };
 
-            Missing => {
-                if self.t1_len + self.b1_len == self.c {
-                    if self.t1_len < self.c {
-                        /*
-                         * Token wasn't found at all, and the 'Recenct data' 
-                         * cache is at capacity with some elements in the buffer
-                         */
-                        let mut page = self.zero_b1_lru() // Rather than deleting...
-                        self.replace(page);
-                        page.fetch(token);
-                        self.make_t1_mru(page);
-                        return page.data;
+        /*
+         * Cache miss
+         */
+        if self.recent.top.len() + self.recent.bottom.len() == self.c {
+            if self.recent.top.len() < self.c {
+                let &mut bottom_node = self.recent.bottom.back;
+                self.recent.bottom.remove(bottom_node);
+                let &mut top_node = self.replace(false, bottom_node);
 
-                    } else {
-                        /*
-                         * Token wasn't found at all, and the 'Recent data' cache 
-                         * is at capacity with an empty buffer cache
-                         */
-                        let mut page = self.zero_b1_lru() // Rather than deleting...
-                        page.fetch(token);
-                        self.make_t1_mru(page);
-                        return page.data;
-                    }
+                let eviction = Eviction::new(top_node.token(), top_node.value());
 
-                } else {
-                    if self.t1.len() + self.t2.len() + self.b1.len() + self.b2.len() == self.c {
-                        /*
-                         * Token wasn't found at all. The 'Recenct data' cache is 
-                         * below capacity and the whole system is at capacity
-                         */
-                        let mut page = self.zero_b2_lru();
-                        self.replace(page);
-                        page.fetch(token);
-                        self.make_t1_mru(page);
-                        return page.data;
+                self.recent.top.push_front(top_node);
+                top_node.fetch(token);
+                return (top_node.value(), vec![eviction]);
 
-                    } else if self.t1.len() + self.t2.len() + self.b1.len() + self.b2.len() >= self.c {
-                        /*
-                         * Token wasn't found at all. The 'Recenct data' cache is 
-                         * below capacity and the whole system is below capacity
-                         */
-                        let mut page = self.next_zero_page();
-                        self.replace(page);
-                        page.fetch(token);
-                        self.make_t1_mru(page);
-                        return page.data;
-                    }
-                }
+            } else {
+                let &mut top_node = self.recent.top.back;
+                self.recent.top.remove(top_node);
 
+                let eviction = Eviction::new(top_node.token(), top_node.value());
+
+                self.recent.top.push_front(top_node);
+                top_node.fetch(token);
+                return (top_node.value(), vec![eviction]);
+            }
+
+        } else if self.recent.top.len() + self.recent.bottom.len() < self.c {
+            if self.t1.len() + self.t2.len() + self.b1.len() + self.b2.len() == 2 * self.c {
+                let &mut bottom_node = self.frequent.bottom.back;
+                self.frequent.bottom.remove(bottom_node);
+                let &mut top_node = self.replace(false, bottom_node);
+
+                let eviction = Eviction::new(top_node.token(), top_node.value());
+
+                self.recent.top.push_front(top_node);
+                top_node.fetch(token);
+                return (top_node.value(), vec![eviction]);
+
+            } else if self.t1.len() + self.t2.len() + self.b1.len() + self.b2.len() >= self.c {
+                let &mut bottom_node = self.bottom[self.used_bottom_nodes];
+                self.used_bottom_nodes++;
+                let &mut top_node = self.replace(false, bottom_node);
+
+                let eviction = Eviction::new(top_node.token(), top_node.value());
+
+                self.recent.top.push_front(top_node);
+                top_node.fetch(token);
+                return (top_node.value(), vec![eviction]);
             }
         }
+
+        let &mut top_node = self.top[self.used_top_nodes];
+        self.used_top_nodes++;
+
+        self.recent.push_front(top_node);
+        top_node.fetch(token);
+        return top_node.value();
     }
 }

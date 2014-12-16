@@ -1,5 +1,5 @@
 trait Entry<T, V> {
-    fn new(token: T) -> Self;
-    fn fetch(&mut self) -> V;
-    fn flush(&mut self);
+    fn new() -> Self;
+    fn fetch(&mut self, token: T) -> V;
+    fn value(self) -> Option(V);
 }
