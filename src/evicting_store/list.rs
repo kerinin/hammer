@@ -1,6 +1,6 @@
-struct List<N> {
-    front: Option<&N>,
-    back: Option<&N>,
+struct List<'a> {
+    front: Option<&'a Node<'a> + 'a>,
+    back: Option<&'a Node<'a> + 'a>,
     n: uint,
 }
 
@@ -11,25 +11,28 @@ enum NodeLocation {
     NotInList,
 }
 
-trait Node {
-    fn prev(&self) -> Option<&Node>;
-    fn next(&self) -> Option<&Node>;
+trait Node<'a> {
+    fn prev(&self) -> Option<&'a Node<'a>>;
+    fn set_prev(&self, Option<&'a Node<'a>>);
+    fn next(&self) -> Option<&'a Node<'a>>;
+    fn set_next(&self, Option<&'a Node<'a>>);
+    fn location(&self) -> NodeLocation;
 }
 
-impl Node {
-    fn location(&self) -> NodeLocation {
-        match (self.prev(), self.next()) {
-            (None, None) => NotInList,
-            (None, Some(..)) => Back,
-            (Some(..), None) => Front,
-            (Some(..), Some(..)) => Middle,
-        }
-    }
-}
+//impl<'a> Node<'a> for List<'a, N> {
+//    fn location(&self) -> NodeLocation {
+//        match (self.prev(), self.next()) {
+//            (None, None) => NodeLocation::NotInList,
+//            (None, Some(..)) => NodeLocation::Back,
+//            (Some(..), None) => NodeLocation::Front,
+//            (Some(..), Some(..)) => NodeLocation::Middle,
+//        }
+//    }
+//}
 
-impl<T: Node> List<T> {
-    fn new() -> &Self {
-        &List {
+impl<'a> List<'a> {
+    fn new<'a>() -> List<'a> {
+        List {
             front: None,
             back: None,
             n: 0,
@@ -40,35 +43,50 @@ impl<T: Node> List<T> {
         self.n
     }
 
-    fn remove(&mut self, node: &T) {
+    fn remove(&mut self, node: &'a Node<'a>) {
         match node.location() {
-            NotInList => {},
-            Back => {
-                node.next.prev = None;
-                self.back = node.next;
-                node.next = None;
+            NodeLocation::NotInList => {},
+            NodeLocation::Back => {
+                match node.next() {
+                    Some(n) => n.set_prev(None),
+                    None => {},
+                };
+                self.back = node.next();
+                node.set_next(None);
                 self.n -= 1;
             },
-            Front => {
-                node.prev.next = None;
-                self.front = node.prev;
-                node.prev = None;
+            NodeLocation::Front => {
+                match node.prev() {
+                    Some(n) => n.set_next(None),
+                    None => {},
+                };
+                self.front = node.prev();
+                node.set_prev(None);
                 self.n -= 1;
             },
-            Middle => {
-                node.prev.next = node.next;
-                node.next.prev = node.prev;
-                node.prev = None;
-                node.next = None;
+            NodeLocation::Middle => {
+                match node.prev() {
+                    Some(n) => n.set_next(node.next()),
+                    None => {},
+                };
+                match node.next() {
+                    Some(n) => n.set_prev(node.prev()),
+                    None => {},
+                };
+                node.set_prev(None);
+                node.set_next(None);
                 self.n -= 1;
             },
         }
     }
 
-    fn push_front(&mut self, node: &Node<T>) {
-        self.front.prev = node;
-        node.next = self.front;
-        self.front = node;
+    fn push_front(&mut self, node: &'a Node<'a>) {
+        match self.front {
+            Some(n) => n.set_prev(Some(node)),
+            None => {},
+        };
+        node.set_next(self.front);
+        self.front = Some(node);
         self.n += 1;
     }
 }
