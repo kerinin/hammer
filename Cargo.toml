@@ -1,15 +1,5 @@
 [dependencies]
-iron = "*"
 num = "*"
-
-[dependencies.router]
-git = "https://github.com/iron/router.git"
-
-[dependencies.persistent]
-git = "https://github.com/iron/persistent.git"
-
-[dependencies.bodyparser]
-git = "https://github.com/iron/body-parser.git"
 
 [dependencies.docopt_macros]
 git = "git://github.com/docopt/docopt.rs"

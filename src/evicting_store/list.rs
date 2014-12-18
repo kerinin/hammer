@@ -1,6 +1,6 @@
 struct List<'a> {
-    front: Option<&'a Node<'a> + 'a>,
-    back: Option<&'a Node<'a> + 'a>,
+    front: Option<&'a (Node<'a> + 'a)>,
+    back: Option<&'a (Node<'a> + 'a)>,
     n: uint,
 }
 
@@ -12,26 +12,15 @@ enum NodeLocation {
 }
 
 trait Node<'a> {
-    fn prev(&self) -> Option<&'a Node<'a>>;
-    fn set_prev(&self, Option<&'a Node<'a>>);
-    fn next(&self) -> Option<&'a Node<'a>>;
-    fn set_next(&self, Option<&'a Node<'a>>);
+    fn prev(&self) -> Option<&'a Self>;
+    fn set_prev(&self, Option<&'a Self>);
+    fn next(&self) -> Option<&'a Self>;
+    fn set_next(&self, Option<&'a Self>);
     fn location(&self) -> NodeLocation;
 }
 
-//impl<'a> Node<'a> for List<'a, N> {
-//    fn location(&self) -> NodeLocation {
-//        match (self.prev(), self.next()) {
-//            (None, None) => NodeLocation::NotInList,
-//            (None, Some(..)) => NodeLocation::Back,
-//            (Some(..), None) => NodeLocation::Front,
-//            (Some(..), Some(..)) => NodeLocation::Middle,
-//        }
-//    }
-//}
-
 impl<'a> List<'a> {
-    fn new<'a>() -> List<'a> {
+    fn new() -> List<'a> {
         List {
             front: None,
             back: None,
@@ -43,7 +32,7 @@ impl<'a> List<'a> {
         self.n
     }
 
-    fn remove(&mut self, node: &'a Node<'a>) {
+    fn remove(&mut self, node: &'a (Node<'a> + 'a)) {
         match node.location() {
             NodeLocation::NotInList => {},
             NodeLocation::Back => {
@@ -80,7 +69,7 @@ impl<'a> List<'a> {
         }
     }
 
-    fn push_front(&mut self, node: &'a Node<'a>) {
+    fn push_front(&mut self, node: &'a (Node<'a> + 'a)) {
         match self.front {
             Some(n) => n.set_prev(Some(node)),
             None => {},

@@ -1,10 +1,10 @@
 #![feature(phase)]
 
-extern crate iron;
-extern crate bodyparser;
-extern crate router;
+//extern crate iron;
+//extern crate bodyparser;
+//extern crate router;
 extern crate serialize;
-extern crate persistent;
+//extern crate persistent;
 extern crate docopt;
 
 #[phase(plugin)] extern crate docopt_macros;

@@ -1,7 +1,7 @@
 //mod arc;
-//mod entry;
+mod entry;
 //mod eviction;
-//mod ghosted_list;
+mod ghosted_list;
 mod list;
 
 //trait EvictingStore<T, V> {
