@@ -1,26 +1,26 @@
-struct List<'a> {
-    front: Option<&'a (Node<'a> + 'a)>,
-    back: Option<&'a (Node<'a> + 'a)>,
+pub struct List<'a, T: 'a + Node<'a>> {
+    pub front: Option<&'a mut T>,
+    pub back: Option<&'a mut T>,
     n: uint,
 }
 
-enum NodeLocation {
+pub enum NodeLocation {
     Front,
     Back,
     Middle,
     NotInList,
 }
 
-trait Node<'a> {
-    fn prev(&self) -> Option<&'a Self>;
-    fn set_prev(&self, Option<&'a Self>);
-    fn next(&self) -> Option<&'a Self>;
-    fn set_next(&self, Option<&'a Self>);
+pub trait Node<'a> {
+    fn prev(&self) -> Option<&'a mut Self>;
+    fn set_prev(&mut self, Option<&'a mut Self>);
+    fn next(&self) -> Option<&'a mut Self>;
+    fn set_next(&mut self, Option<&'a mut Self>);
     fn location(&self) -> NodeLocation;
 }
 
-impl<'a> List<'a> {
-    fn new() -> List<'a> {
+impl<'a, T: Node<'a>> List<'a, T> {
+    fn new() -> List<'a, T> {
         List {
             front: None,
             back: None,
@@ -32,7 +32,7 @@ impl<'a> List<'a> {
         self.n
     }
 
-    fn remove(&mut self, node: &'a (Node<'a> + 'a)) {
+    pub fn remove(&mut self, node: &mut T) {
         match node.location() {
             NodeLocation::NotInList => {},
             NodeLocation::Back => {
@@ -69,7 +69,7 @@ impl<'a> List<'a> {
         }
     }
 
-    fn push_front(&mut self, node: &'a (Node<'a> + 'a)) {
+    fn push_front(&mut self, node: &'a mut T) {
         match self.front {
             Some(n) => n.set_prev(Some(node)),
             None => {},
