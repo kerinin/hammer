@@ -39,7 +39,9 @@ impl Value for Vec<u8> {
                 let mut permutation = bv.clone();
                 match permutation.get(i) {
                     Some(old_val) => permutation.set(i, !old_val),
-                    _ => ()
+                    // NOTE: If more permutations were requested than can be generated, 
+                    // we'll just pad the end with unmodified versions
+                    _ => () 
                 }
 
                 permutation.to_bytes()
@@ -69,12 +71,12 @@ impl Value for usize {
         return range(0usize, n)
             .map(|i| -> usize {
                 let delta = 1usize.p_shr(&i);
-                self.clone() ^ delta
+                self.clone() ^ delta // bitxor
             })
         .collect::<Vec<usize>>();
     }
 
     fn hamming(&self, other: &usize) -> usize {
-        (*self & *other).count_ones() as usize
+        (*self ^ *other).count_ones() as usize // bitxor
     }
 }

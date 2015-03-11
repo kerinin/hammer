@@ -71,7 +71,7 @@ impl Permutable for Vec<u8> {
                         Some(&next_byte) => {
                             let bits_from_next_byte = next_byte >> to_unshift; // shr
 
-                            out.push(out_byte ^ bits_from_next_byte);
+                            out.push(out_byte ^ bits_from_next_byte); //bitxor
                         },
 
                         // We're on the last element, so we don't need to pull

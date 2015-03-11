@@ -1,7 +1,7 @@
 pub struct List<'a, T: 'a + Node<'a>> {
     pub front: Option<&'a mut T>,
     pub back: Option<&'a mut T>,
-    n: u64,
+    n: usize,
 }
 
 pub enum NodeLocation {
@@ -28,7 +28,7 @@ impl<'a, T: Node<'a>> List<'a, T> {
         }
     }
 
-    fn len(&self) -> u64 {
+    fn len(&self) -> usize {
         self.n
     }
 

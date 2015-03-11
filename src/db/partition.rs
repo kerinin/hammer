@@ -4,9 +4,7 @@ use std::collections::HashSet;
 
 use db::value::Value;
 use db::hash_map_set::HashMapSet;
-// use db::lru_set::LruSet;
 use db::find_result::FindResult;
-use db::store::Store;
 
 pub struct Partition<V> {
     shift: usize,

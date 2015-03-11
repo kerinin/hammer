@@ -6,8 +6,6 @@ use std::collections::{HashMap, HashSet};
 use std::collections::hash_map::Entry::{Vacant, Occupied};
 //use std::sync::{RWLock};
 
-use db::store::Store;
-
 pub struct HashMapSet<K, V> {
     //lock: RWLock,
     data: HashMap<K, HashSet<V>>,
@@ -18,10 +16,8 @@ impl<K: hash::Hash + cmp::Eq + clone::Clone, V: hash::Hash + cmp::Eq + clone::Cl
         let data: HashMap<K, HashSet<V>> = HashMap::new();
         return HashMapSet {data: data};
     }
-}
 
-impl<K: hash::Hash + cmp::Eq + clone::Clone, V: hash::Hash + cmp::Eq + clone::Clone> Store<K, V> for HashMapSet<K, V> {
-    fn insert(&mut self, key: K, value: V) -> bool {
+    pub fn insert(&mut self, key: K, value: V) -> bool {
         match self.data.entry(key.clone()) {
             Vacant(entry) => {
                 let mut set: HashSet<V> = HashSet::new();
@@ -35,11 +31,11 @@ impl<K: hash::Hash + cmp::Eq + clone::Clone, V: hash::Hash + cmp::Eq + clone::Cl
         }
     }
 
-    fn get(&mut self, key: &K) -> Option<&HashSet<V>> {
+    pub fn get(&mut self, key: &K) -> Option<&HashSet<V>> {
         return self.data.get(key);
     }
 
-    fn remove(&mut self, key: K, value: V) -> bool {
+    pub fn remove(&mut self, key: K, value: V) -> bool {
         let mut delete_key = false;
 
         let removed = match self.data.entry(key.clone()) {

@@ -4,7 +4,6 @@ use std::hash;
 
 use std::collections::HashSet;
 use std::collections::LruCache;
-// use std::collections::hash_map::{Occupied, Vacant};
 
 use db::store::Store;
 
@@ -13,7 +12,7 @@ pub struct LruSet<K, V> {
 }
 
 impl<K: hash::Hash + cmp::Eq + clone::Clone, V: hash::Hash + cmp::Eq + clone::Clone> LruSet<K, V> {
-    pub fn with_capacity(i: u64) -> LruSet<K, V> {
+    pub fn with_capacity(i: usize) -> LruSet<K, V> {
         let data: LruCache<K, HashSet<V>> = LruCache::new(i);
         return LruSet {data: data};
     }

@@ -1,11 +1,11 @@
 struct ARC<T, V> {
     // Cache size
-    c:                      u64,
+    c:                      usize,
     // Frequency/Recency tradeoff parameter
-    p:                      u64,
+    p:                      usize,
     // Counters
-    used_top_nodes:         u64,
-    used_bottom_nodes:      u64,
+    used_top_nodes:         usize,
+    used_bottom_nodes:      usize,
 
     top:                    Vec<CachedNode<T, V>>,
     bottom:                 Vec<GhostNode<T, V>>,
@@ -15,7 +15,7 @@ struct ARC<T, V> {
 }
 
 impl ARC<T, V> {
-    fn with_capacity(c: u64) -> &ARC {
+    fn with_capacity(c: usize) -> &ARC {
         let top =               Vec::with_capacity(c);
         let bottom =            Vec::with_capacity(c);
         let recent =            GhostList::new();

@@ -9,7 +9,6 @@ use db::value::Value;
 use db::partition::Partition;
 //use db::result_accumulator::ResultAccumulator;
 use db::find_result::FindResult;
-use db::store::Store;
 
 pub struct Database<V> {
     bits: usize,
