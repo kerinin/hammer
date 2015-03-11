@@ -1,7 +1,7 @@
 pub struct List<'a, T: 'a + Node<'a>> {
     pub front: Option<&'a mut T>,
     pub back: Option<&'a mut T>,
-    n: uint,
+    n: u64,
 }
 
 pub enum NodeLocation {
@@ -28,7 +28,7 @@ impl<'a, T: Node<'a>> List<'a, T> {
         }
     }
 
-    fn len(&self) -> uint {
+    fn len(&self) -> u64 {
         self.n
     }
 
@@ -71,7 +71,7 @@ impl<'a, T: Node<'a>> List<'a, T> {
 
     fn push_front(&mut self, node: &'a mut T) {
         match self.front {
-            Some(n) => n.set_prev(Some(node)),
+            Some(ref mut n) => n.set_prev(Some(node)),
             None => {},
         };
         node.set_next(self.front);

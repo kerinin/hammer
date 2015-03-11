@@ -8,8 +8,8 @@ use std::vec::Vec;
 pub trait Permutable {
     fn p_bitxor(&self, &Self) -> Self;
     fn p_bitand(&self, &Self) -> Self;
-    fn p_shl(&self, &uint) -> Self;
-    fn p_shr(&self, &uint) -> Self;
+    fn p_shl(&self, &u64) -> Self;
+    fn p_shr(&self, &u64) -> Self;
 }
 
 impl Permutable for Vec<u8> {
@@ -45,7 +45,7 @@ impl Permutable for Vec<u8> {
      * Returns a new byte array with RHS bits removed from the left side, and
      * pads the left-most byte with zeros (if necessary)
      */
-    fn p_shl(&self, rhs: &uint) -> Vec<u8> {
+    fn p_shl(&self, rhs: &u64) -> Vec<u8> {
         if rhs == &0 { return self.clone(); }
 
         let to_drop = *rhs / 8;
@@ -94,7 +94,7 @@ impl Permutable for Vec<u8> {
      * Returns a new byte array with RHS bits removed from the left side, and
      * pads the right-most byte with zeros (if necessary)
      */
-    fn p_shr(&self, rhs: &uint) -> Vec<u8> {
+    fn p_shr(&self, rhs: &u64) -> Vec<u8> {
         if rhs == &0 { return self.clone(); }
 
         let to_drop = *rhs / 8;
@@ -140,20 +140,20 @@ impl Permutable for Vec<u8> {
     }
 }
 
-impl Permutable for uint {
-    fn p_bitxor(&self, other: &uint) -> uint {
+impl Permutable for u64 {
+    fn p_bitxor(&self, other: &u64) -> u64 {
         self.bitxor(other)
     }
 
-    fn p_bitand(&self, other: &uint) -> uint {
+    fn p_bitand(&self, other: &u64) -> u64 {
         self.bitand(other)
     }
 
-    fn p_shl(&self, rhs: &uint) -> uint {
+    fn p_shl(&self, rhs: &u64) -> u64 {
         self.shl(rhs)
     }
 
-    fn p_shr(&self, rhs: &uint) -> uint {
+    fn p_shr(&self, rhs: &u64) -> u64 {
         self.shr(rhs)
     }
 }

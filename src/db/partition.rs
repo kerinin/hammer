@@ -4,19 +4,19 @@ use std::collections::{HashMap, HashSet};
 
 use db::value::Value;
 use db::hash_map_set::HashMapSet;
-use db::lru_set::LruSet;
+// use db::lru_set::LruSet;
 use db::find_result::FindResult;
 use db::store::Store;
 
 pub struct Partition<S> {
-    shift: uint,
-    mask: uint,
+    shift: u64,
+    mask: u64,
 
     zero_kv: S,
     one_kv: S,
 }
 
-impl<S> fmt::Show for Partition<S> {
+impl<S> fmt::Debug for Partition<S> {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         write!(f, "({},{})", self.shift, self.mask)
     }
@@ -39,20 +39,20 @@ impl<V: PartialEq, S: Store<V, V>> PartialEq for Partition<S> {
 }
 
 impl<V: Value> Partition<HashMapSet<V, V>> {
-    pub fn new(shift: uint, mask: uint) -> Partition<HashMapSet<V, V>> {
+    pub fn new(shift: u64, mask: u64) -> Partition<HashMapSet<V, V>> {
         let zero_kv: HashMapSet<V, V> = HashMapSet::new();
         let one_kv: HashMapSet<V, V> = HashMapSet::new();
         return Partition {shift: shift, mask: mask, zero_kv: zero_kv, one_kv: one_kv};
     }
 }
 
-impl<V: Value> Partition<LruSet<V, V>> {
-    pub fn with_capacity(shift: uint, mask: uint, capacity: uint) -> Partition<LruSet<V, V>> {
-        let zero_kv: LruSet<V, V> = LruSet::with_capacity(capacity);
-        let one_kv: LruSet<V, V> = LruSet::with_capacity(capacity);
-        return Partition {shift: shift, mask: mask, zero_kv: zero_kv, one_kv: one_kv};
-    }
-}
+// impl<V: Value> Partition<LruSet<V, V>> {
+//     pub fn with_capacity(shift: u64, mask: u64, capacity: u64) -> Partition<LruSet<V, V>> {
+//         let zero_kv: LruSet<V, V> = LruSet::with_capacity(capacity);
+//         let one_kv: LruSet<V, V> = LruSet::with_capacity(capacity);
+//         return Partition {shift: shift, mask: mask, zero_kv: zero_kv, one_kv: one_kv};
+//     }
+// }
 
 impl<V: Value, S: Store<V, V>> Partition<S> {
     pub fn get(&mut self, key: V) -> HashSet<FindResult<V>> {

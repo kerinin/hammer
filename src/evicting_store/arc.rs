@@ -1,23 +1,23 @@
 struct ARC<T, V> {
     // Cache size
-    c:                      uint,
+    c:                      u64,
     // Frequency/Recency tradeoff parameter
-    p:                      uint,
+    p:                      u64,
     // Counters
-    used_top_nodes:         uint,
-    used_bottom_nodes:      uint,
+    used_top_nodes:         u64,
+    used_bottom_nodes:      u64,
 
-    top:                    Array<CachedNode<T, V>>,
-    bottom:                 Array<GhostNode<T, V>>,
+    top:                    Vec<CachedNode<T, V>>,
+    bottom:                 Vec<GhostNode<T, V>>,
 
     recent:                 GhostList<T, V>,
     frequent:               GhostList<T, V>,
 }
 
 impl ARC<T, V> {
-    fn with_capacity(c: uint) -> &ARC {
-        let top =               Array::with_capacity(c);
-        let bottom =            Array::with_capacity(c);
+    fn with_capacity(c: u64) -> &ARC {
+        let top =               Vec::with_capacity(c);
+        let bottom =            Vec::with_capacity(c);
         let recent =            GhostList::new();
         let frequent =          GhostList::new();
 
@@ -66,7 +66,7 @@ impl<T, V> EvictingStore<T, V> for ARC<T, V> {
                     1
                 } else {
                     self.frequent.bottom.len() / self.recent.bottom.len()
-                }
+                };
                 self.p = min(self.p + delta, c);
 
                 // OK now...
@@ -94,7 +94,7 @@ impl<T, V> EvictingStore<T, V> for ARC<T, V> {
                     1
                 } else {
                     self.recent.bottom.len() / self.frequent.bottom.len()
-                }
+                };
                 self.p = max(self.p - delta, 0);
 
                 // OK now...
@@ -150,7 +150,7 @@ impl<T, V> EvictingStore<T, V> for ARC<T, V> {
 
             } else if self.t1.len() + self.t2.len() + self.b1.len() + self.b2.len() >= self.c {
                 let &mut bottom_node = self.bottom[self.used_bottom_nodes];
-                self.used_bottom_nodes++;
+                self.used_bottom_nodes += 1;
                 let &mut top_node = self.replace(false, bottom_node);
 
                 let eviction = Eviction::new(top_node.token(), top_node.value());
@@ -162,7 +162,7 @@ impl<T, V> EvictingStore<T, V> for ARC<T, V> {
         }
 
         let &mut top_node = self.top[self.used_top_nodes];
-        self.used_top_nodes++;
+        self.used_top_nodes += 1;
 
         self.recent.push_front(top_node);
         top_node.fetch(token);

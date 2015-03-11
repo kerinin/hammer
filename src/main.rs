@@ -1,22 +1,21 @@
-#![feature(phase)]
+#![feature(plugin)]
+#![plugin(docopt_macros)]
+
+extern crate "rustc-serialize" as rustc_serialize;
+
+extern crate docopt;
 
 //extern crate iron;
 //extern crate bodyparser;
 //extern crate router;
-extern crate serialize;
 //extern crate persistent;
-extern crate docopt;
 
-#[phase(plugin)] extern crate docopt_macros;
-
-use docopt::Docopt;
-
-//pub mod db;
+pub mod db;
 //pub mod http;
-pub mod evicting_store;
+// pub mod evicting_store;
 
 
-docopt!(Args deriving Show, "
+docopt!(Args derive Debug, "
 Usage:  hammer [--bind=<address>] [--bits=<value-bitsize>] [--tolerance=<hamming-distance>] [--lru=<max-values>]
         hammer --help
 
@@ -26,7 +25,7 @@ Options:
         -b, --bits=<value-bitsize>          The bit size of values [default: 64]
         -t, --tolerance=<hamming-distance>  The max hamming distance between query values and returned values [default: 3]
         --lru=<max-values>                  If set, begin dropping oldest values after <max-values> has been written to DB
-", flag_bits: uint, flag_tolerance: uint, flag_lru: Option<uint>)
+", flag_bits: u32, flag_tolerance: u32, flag_lru: Option<u32>);
 
 #[cfg(not(test))]
 fn main() {
