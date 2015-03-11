@@ -8,8 +8,8 @@ use std::vec::Vec;
 pub trait Permutable {
     fn p_bitxor(&self, &Self) -> Self;
     fn p_bitand(&self, &Self) -> Self;
-    fn p_shl(&self, &u64) -> Self;
-    fn p_shr(&self, &u64) -> Self;
+    fn p_shl(&self, &usize) -> Self;
+    fn p_shr(&self, &usize) -> Self;
 }
 
 impl Permutable for Vec<u8> {
@@ -24,7 +24,7 @@ impl Permutable for Vec<u8> {
 
         return self.iter()
             .zip(other_then_zero)
-            .map(|(self_byte, other_byte)| self_byte.clone().bitxor(other_byte) )
+            .map(|(self_byte, other_byte)| self_byte.clone() ^ *other_byte ) // bitxor
             .collect::<Vec<u8>>();
     }
 
@@ -37,7 +37,7 @@ impl Permutable for Vec<u8> {
 
         return self.iter()
             .zip(other.iter())
-            .map(|(self_byte, other_byte)| self_byte.clone().bitand(other_byte) )
+            .map(|(self_byte, other_byte)| self_byte.clone() & *other_byte ) // bitand
             .collect::<Vec<u8>>();
     }
 
@@ -45,7 +45,7 @@ impl Permutable for Vec<u8> {
      * Returns a new byte array with RHS bits removed from the left side, and
      * pads the left-most byte with zeros (if necessary)
      */
-    fn p_shl(&self, rhs: &u64) -> Vec<u8> {
+    fn p_shl(&self, rhs: &usize) -> Vec<u8> {
         if rhs == &0 { return self.clone(); }
 
         let to_drop = *rhs / 8;
@@ -62,16 +62,16 @@ impl Permutable for Vec<u8> {
 
                 Some(&this_byte) => {
                     // Shift some bits 
-                    let out_byte = this_byte.shl(&to_shift);
+                    let out_byte = this_byte << to_shift; // shl
 
                     match iter.peek() {
 
                         // There's another byte - shift some of its bits 
                         // into this byte
                         Some(&next_byte) => {
-                            let bits_from_next_byte = &next_byte.shr(&to_unshift);
+                            let bits_from_next_byte = next_byte >> to_unshift; // shr
 
-                            out.push(out_byte.bitxor(bits_from_next_byte));
+                            out.push(out_byte ^ bits_from_next_byte);
                         },
 
                         // We're on the last element, so we don't need to pull
@@ -94,7 +94,7 @@ impl Permutable for Vec<u8> {
      * Returns a new byte array with RHS bits removed from the left side, and
      * pads the right-most byte with zeros (if necessary)
      */
-    fn p_shr(&self, rhs: &u64) -> Vec<u8> {
+    fn p_shr(&self, rhs: &usize) -> Vec<u8> {
         if rhs == &0 { return self.clone(); }
 
         let to_drop = *rhs / 8;
@@ -111,16 +111,16 @@ impl Permutable for Vec<u8> {
 
                 Some(&this_byte) => {
                     // Shift some bits 
-                    let out_byte = this_byte.shr(&to_shift);
+                    let out_byte = this_byte >> to_shift; // shr
 
                     match iter.peek() {
 
                         // There's another byte - shift some of its bits 
                         // into this byte
                         Some(&next_byte) => {
-                            let bits_from_next_byte = &next_byte.shl(&to_unshift);
+                            let bits_from_next_byte = next_byte << to_unshift; // shl
 
-                            out.insert(0, out_byte.bitxor(bits_from_next_byte));
+                            out.insert(0, out_byte ^ bits_from_next_byte);
                         },
 
                         // We're on the last element, so we don't need to pull
@@ -140,21 +140,21 @@ impl Permutable for Vec<u8> {
     }
 }
 
-impl Permutable for u64 {
-    fn p_bitxor(&self, other: &u64) -> u64 {
-        self.bitxor(other)
+impl Permutable for usize {
+    fn p_bitxor(&self, other: &usize) -> usize {
+        self ^ other
     }
 
-    fn p_bitand(&self, other: &u64) -> u64 {
-        self.bitand(other)
+    fn p_bitand(&self, other: &usize) -> usize {
+        self & other
     }
 
-    fn p_shl(&self, rhs: &u64) -> u64 {
-        self.shl(rhs)
+    fn p_shl(&self, rhs: &usize) -> usize {
+        self << rhs
     }
 
-    fn p_shr(&self, rhs: &u64) -> u64 {
-        self.shr(rhs)
+    fn p_shr(&self, rhs: &usize) -> usize {
+        self >> rhs
     }
 }
 

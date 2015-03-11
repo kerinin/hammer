@@ -1,5 +1,3 @@
-use std::cmp;
-
 use std::collections::HashSet;
 
 pub trait Store<K, V> {

@@ -2,28 +2,7 @@
 name = "hammer"
 version = "0.0.1"
 dependencies = [
- "docopt 0.6.45 (registry+https://github.com/rust-lang/crates.io-index)",
- "docopt_macros 0.6.45 (registry+https://github.com/rust-lang/crates.io-index)",
  "num 0.1.15 (registry+https://github.com/rust-lang/crates.io-index)",
- "rustc-serialize 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
-]
-
-[[package]]
-name = "docopt"
-version = "0.6.45"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-dependencies = [
- "libc 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "regex 0.1.18 (registry+https://github.com/rust-lang/crates.io-index)",
- "rustc-serialize 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
-]
-
-[[package]]
-name = "docopt_macros"
-version = "0.6.45"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-dependencies = [
- "docopt 0.6.45 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -55,17 +34,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "regex"
-version = "0.1.18"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-
-[[package]]
 name = "rustc-serialize"
 version = "0.2.15"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-
-[[package]]
-name = "rustc-serialize"
-version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 

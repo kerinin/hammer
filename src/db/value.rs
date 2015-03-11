@@ -12,18 +12,18 @@ use db::permutable::Permutable;
 
 //pub trait Value: Permutable + cmp::Eq + hash::Hash + clone::Clone + fmt::Show + iter::FromIterator<u8> {
 pub trait Value: Permutable + cmp::Eq + hash::Hash + clone::Clone + fmt::Debug {
-    fn transform(&self, shift: u64, mask: u64) -> Self;
-    fn permutations(&self, n: u64) -> Vec<Self>;
-    fn hamming(&self, rhs: &Self) -> u64;
+    fn transform(&self, shift: usize, mask: usize) -> Self;
+    fn permutations(&self, n: usize) -> Vec<Self>;
+    fn hamming(&self, rhs: &Self) -> usize;
 }
 
 impl Value for Vec<u8> {
-    fn transform(&self, shift: u64, mask: u64) -> Vec<u8> {
+    fn transform(&self, shift: usize, mask: usize) -> Vec<u8> {
         let shifted = self.p_shl(&shift);
 
         let full_byte_count = mask / 8;
         let tail_bits = mask % 8;
-        let partial_mask = 0b11111111u8.shl(&(8-tail_bits));
+        let partial_mask = 0b11111111u8 << (8-tail_bits);
 
         let mut mask = iter::repeat(0b11111111u8).take(full_byte_count).collect::<Vec<u8>>();
         mask.push(partial_mask);
@@ -31,21 +31,23 @@ impl Value for Vec<u8> {
         shifted.p_bitand(&mask)
     }
 
-    fn permutations(&self, n: u64) -> Vec<Vec<u8>> {
+    fn permutations(&self, n: usize) -> Vec<Vec<u8>> {
         let bv = BitVec::from_bytes(self.as_slice());
 
-        return range(0u64, n)
+        return range(0usize, n)
             .map(|i| -> Vec<u8> {
                 let mut permutation = bv.clone();
-                let old_val = permutation.get(i);
-                permutation.set(i, !old_val);
+                match permutation.get(i) {
+                    Some(old_val) => permutation.set(i, !old_val),
+                    _ => ()
+                }
 
                 permutation.to_bytes()
             })
         .collect::<Vec<Vec<u8>>>();
     }
 
-    fn hamming(&self, other: &Vec<u8>) -> u64 {
+    fn hamming(&self, other: &Vec<u8>) -> usize {
         let shared_bits = self.p_bitxor(other);
         let shared_bitv = BitVec::from_bytes(shared_bits.as_slice());
 
@@ -53,26 +55,26 @@ impl Value for Vec<u8> {
     }
 }
 
-impl Value for u64 {
-    fn transform(&self, shift: u64, mask: u64) -> u64 {
+impl Value for usize {
+    fn transform(&self, shift: usize, mask: usize) -> usize {
         let shifted = self.p_shl(&shift);
 
-        let ones = std::u64::MAX;
-        let mask = ones.p_shl(&(std::u64::BITS - mask));
+        let ones = std::usize::MAX;
+        let mask = ones.p_shl(&(std::usize::BITS as usize - mask));
 
         shifted.p_bitand(&mask)
     }
 
-    fn permutations(&self, n: u64) -> Vec<u64> {
-        return range(0u64, n)
-            .map(|i| -> u64 {
-                let delta = 1u64.p_shr(&i);
-                self.clone().bitxor(&delta)
+    fn permutations(&self, n: usize) -> Vec<usize> {
+        return range(0usize, n)
+            .map(|i| -> usize {
+                let delta = 1usize.p_shr(&i);
+                self.clone() ^ delta
             })
-        .collect::<Vec<u64>>();
+        .collect::<Vec<usize>>();
     }
 
-    fn hamming(&self, other: &u64) -> u64 {
-        self.bitxor(other).count_ones()
+    fn hamming(&self, other: &usize) -> usize {
+        (*self & *other).count_ones() as usize
     }
 }

@@ -26,7 +26,7 @@ impl<K: hash::Hash + cmp::Eq + clone::Clone, V: hash::Hash + cmp::Eq + clone::Cl
             Vacant(entry) => {
                 let mut set: HashSet<V> = HashSet::new();
                 set.insert(value);
-                entry.set(set);
+                entry.insert(set);
                 true
             },
             Occupied(mut entry) => {

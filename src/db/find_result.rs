@@ -1,6 +1,6 @@
 use std::fmt;
 use std::hash;
-use std::hash::SipHasher;
+use std::hash::Hasher;
 
 pub enum FindResult<T> {
     ZeroVariant(T),
@@ -8,7 +8,7 @@ pub enum FindResult<T> {
 }
 
 impl<T: hash::Hash> hash::Hash for FindResult<T> {
-    fn hash(&self, state: &mut SipHasher) {
+    fn hash<H: Hasher>(&self, state: &mut H) {
         match *self {
             FindResult::ZeroVariant(ref self_value) => self_value.hash(state),
             FindResult::OneVariant(ref self_value) => self_value.hash(state),
@@ -47,7 +47,7 @@ impl<T: PartialEq> PartialEq for FindResult<T> {
     }
 }
 
-impl<T: fmt::Debug> fmt::Debug for FindResult<T> {
+impl<T: fmt::Display> fmt::Debug for FindResult<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         match *self {
             FindResult::ZeroVariant(ref self_value) => write!(f, "0:{}", self_value),
