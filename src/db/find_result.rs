@@ -47,6 +47,38 @@ impl<T: PartialEq> PartialEq for FindResult<T> {
     }
 }
 
+impl<V: fmt::Display> fmt::Debug for FindResult<Vec<V>> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        match *self {
+            FindResult::ZeroVariant(ref self_value) => {
+                let first = match self_value.get(0) {
+                    Some(value) => value.to_string(),
+                    None => "-".to_string(),
+                };
+                let last = match self_value.get(0) {
+                    Some(value) => value.to_string(),
+                    None => "-".to_string(),
+                };
+                let length = self_value.len();
+
+                write!(f, "0:[{}-{}:{}]", first, last, length)
+            },
+            FindResult::OneVariant(ref self_value) => {
+                let first = match self_value.get(0) {
+                    Some(value) => value.to_string(),
+                    None => "-".to_string(),
+                };
+                let last = match self_value.get(0) {
+                    Some(value) => value.to_string(),
+                    None => "-".to_string(),
+                };
+                let length = self_value.len();
+
+                write!(f, "1:[{}-{}:{}]", first, last, length)
+            },
+        }
+    }
+}
 impl<T: fmt::Display> fmt::Debug for FindResult<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         match *self {
@@ -55,4 +87,3 @@ impl<T: fmt::Display> fmt::Debug for FindResult<T> {
         }
     }
 }
-
