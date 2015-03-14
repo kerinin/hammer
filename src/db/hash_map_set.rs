@@ -5,7 +5,8 @@ use std::hash;
 use std::collections::{HashMap, HashSet};
 use std::collections::hash_map::Entry::{Vacant, Occupied};
 
-pub struct HashMapSet<K, V> {
+#[derive(Debug)]
+pub struct HashMapSet<K: cmp::Eq + hash::Hash, V: cmp::Eq + hash::Hash> {
     data: HashMap<K, HashSet<V>>,
 }
 

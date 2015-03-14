@@ -2,16 +2,16 @@ use std::fmt;
 use std::hash;
 use std::hash::Hasher;
 
-use db::bit_matrix::BitMatrix;
+use db::value::Value;
 
 #[derive(Debug)]
-pub enum FindResult {
-    ZeroVariant(BitMatrix),
-    OneVariant(BitMatrix),
+pub enum FindResult<V> {
+    ZeroVariant(V),
+    OneVariant(V),
 }
 
-impl hash::Hash for FindResult {
-    fn hash<H: Hasher>(&self, state: &mut H) {
+impl<V: Value> hash::Hash for FindResult<V> {
+    fn hash<H>(&self, state: &mut H) where H: Hasher {
         match *self {
             FindResult::ZeroVariant(ref self_value) => self_value.hash(state),
             FindResult::OneVariant(ref self_value) => self_value.hash(state),
@@ -19,11 +19,11 @@ impl hash::Hash for FindResult {
     }
 }
 
-impl Eq for FindResult {
+impl<V: Value> Eq for FindResult<V> {
 }
 
-impl PartialEq for FindResult {
-    fn eq(&self, other: &FindResult) -> bool {
+impl<V: Value> PartialEq for FindResult<V> {
+    fn eq(&self, other: &FindResult<V>) -> bool {
         match *self {
             FindResult::ZeroVariant(ref self_value) => match *other {
                 FindResult::ZeroVariant(ref other_value) => self_value.eq(other_value),
@@ -36,7 +36,7 @@ impl PartialEq for FindResult {
         }
     }
 
-    fn ne(&self, other: &FindResult) -> bool {
+    fn ne(&self, other: &FindResult<V>) -> bool {
         match *self {
             FindResult::ZeroVariant(ref self_value) => match *other {
                 FindResult::ZeroVariant(ref other_value) => self_value.ne(other_value),

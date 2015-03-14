@@ -5,9 +5,18 @@ use std::mem;
 use std::vec;
 use std::u8;
 
+use std::collections::BitVec;
+
+use db::value::Value;
+
 #[derive(Clone,PartialEq,Eq,Hash,Debug)]
 pub struct BitMatrix {
     data: Vec<Vec<u8>>,
+}
+
+// bitmatrix![[1,2,3], [4,5,6]]
+macro_rules! bitmatrix {
+    [ $( [ $( $x:expr ),* ] ),* ] => { BitMatrix {data: vec![ $( vec![ $( $x ),* ] )* ] } };
 }
 
 pub trait AsBitMatrix {
@@ -15,24 +24,8 @@ pub trait AsBitMatrix {
     fn from_bitmatrix(BitMatrix) -> Self;
 }
 
-impl AsBitMatrix for usize {
-    fn as_bitmatrix(self) -> BitMatrix {
-        let bytes: [u8; usize::BYTES as usize] = unsafe { mem::transmute(self) };
-        let vector = unsafe { vec::Vec::from_raw_buf(&bytes[0], bytes.len()) };
-
-        BitMatrix {data: vec![vector]}
-    }
-
-    fn from_bitmatrix(bm: BitMatrix) -> usize {
-        return bm.data[0].iter().fold(0, |memo, i| {
-            // Possibly should be SHL, or other variations...
-            memo << 8;
-            memo & (*i as usize)
-        })
-    }
-}
-
 impl BitMatrix {
+    // SUPER inefficient, intended as a placeholder
     pub fn transpose(&self) -> Self {
         let source_x = self.data.len();
         let source_y = self.data[0].len();
@@ -47,62 +40,55 @@ impl BitMatrix {
         return BitMatrix {data: out};
     }
 
-    pub fn transform(&self, shift: usize, mask: usize) -> BitMatrix {
-        let shifted: BitMatrix = self.clone() << shift;
-
-        let full_byte_count = mask / 8;
-        let tail_dimensions = mask % 8;
-        let partial_mask = 0b11111111u8 << (8-tail_dimensions);
-
-        let mut mask = iter::repeat(0b11111111u8).take(full_byte_count).collect::<Vec<u8>>();
-        mask.push(partial_mask);
-
-        let transformed = shifted.data.iter().map(|outer| {
-            range(0, mask.len()).map(|i| outer[i] & mask[i]).collect::<Vec<u8>>()
+    fn mask(&self, length: usize) -> BitMatrix {
+        let data = self.data.iter().map(|_| {
+            BitVec::from_elem(length, true).to_bytes() 
         }).collect::<Vec<Vec<u8>>>();
 
-        return BitMatrix {data: transformed};
+        return BitMatrix {data: data};
     }
 
-    pub fn permutations(&self, n: usize) -> Vec<BitMatrix> {
-        return vec![self.clone()];
-        /*
-        // NOTE: Probably needs a full rewrite...
-        let bv = BitVec::from_bytes(self.data.as_slice());
+    fn permute(&self, dimension: usize) -> Vec<BitMatrix> {
+        let byte_offset = dimension / 8;
+        let bit_offset = dimension % 8;
+        let toggle = 1u8 << bit_offset;
 
-        return range(0usize, n)
-            .map(|i| -> Vec<u8> {
-                let mut permutation = bv.clone();
-                match permutation.get(i) {
-                    Some(old_val) => permutation.set(i, !old_val),
-                    // NOTE: If more permutations were requested than can be generated, 
-                    // we'll just pad the end with unmodified versions
-                    _ => () 
-                }
+        range(0, self.data.len()).map(|i| {
+            let mut permuted = self.clone();
+            permuted.data[i][byte_offset] = permuted.data[i][byte_offset] & toggle;
+            permuted
+        }).collect::<Vec<BitMatrix>>()
+    }
+}
 
-                permutation.to_bytes()
-            })
-        .collect::<Vec<Vec<u8>>>();
-        */
+impl Value for BitMatrix {
+    fn transform(&self, shift: usize, mask: usize) -> BitMatrix {
+        (self.clone() << shift) & self.mask(mask)
     }
 
-    pub fn hamming(&self, other: &BitMatrix) -> usize {
-        // Might want to just use bit vectors here...
-        let all = vec![u8::MAX; self.data[0].len()];
-
-        let distance = range(0, self.data.len()).fold(all, |mut shared, i| {
-            for (self_i, other_i) in self.data[i].iter().zip(other.data[i].iter()) {
-                shared[i] = shared[i] & (self_i ^ other_i);
-            };
-            shared
-        });
-
-        return 0;
+    fn permutations(&self, n: usize) -> Vec<BitMatrix> {
+        range(0, self.data[0].len())
+            .flat_map(|i| self.permute(i).into_iter() )
+            .take(n)
+            .collect::<Vec<BitMatrix>>()
     }
 
-    pub fn within_hamming(&self, bound: usize, other: &BitMatrix) -> bool {
-        // NOTE: same as hamming, except exit early if possible
-        false
+    fn hamming(&self, other: &BitMatrix) -> usize {
+        let bit_size = self.data[0].len() * 8;
+        let mut all = BitVec::from_elem(bit_size, true);
+
+        let shared_dimensions = self.data.iter()
+            .zip(other.data.iter())
+            .fold(all, |mut memo, (self_i, other_i)| {
+                let xor_bytes_i = self_i.iter().zip(other_i.iter()).map(|(self_byte, other_byte)| {
+                    self_byte ^ other_byte
+                }).collect::<Vec<u8>>();
+
+                memo.intersect(&BitVec::from_bytes(xor_bytes_i.as_slice()));
+                memo
+            });
+
+        shared_dimensions.iter().filter(|x| *x).count()
     }
 }
 
@@ -269,122 +255,122 @@ impl ops::Shr<usize> for BitMatrix {
 
 #[cfg(test)]
 mod test {
-    use db::permutable::Permutable;
+    use db::bit_matrix::BitMatrix;
 
     #[test]
     fn bitxor_equally_sized_vectors() {
-        let a = [[0b11111111u8, 0b00000000u8, 0b11111111u8, 0b00000000u8]];
-        let b = [[0b11111111u8, 0b11111111u8, 0b00000000u8, 0b00000000u8]];
-        let c = [[0b00000000u8, 0b11111111u8, 0b11111111u8, 0b00000000u8]];
+        let a = bitmatrix![[0b11111111u8, 0b00000000u8, 0b11111111u8, 0b00000000u8]];
+        let b = bitmatrix![[0b11111111u8, 0b11111111u8, 0b00000000u8, 0b00000000u8]];
+        let c = bitmatrix![[0b00000000u8, 0b11111111u8, 0b11111111u8, 0b00000000u8]];
 
         assert_eq!(a ^ b, c);
     }
 
     #[test]
     fn bitxor_left_vector_longer() {
-        let a = [[0b11111111u8, 0b00000000u8, 0b11111111u8, 0b00000000u8, 0b11111111u8, 0b00000000u8]];
-        let b = [[0b11111111u8, 0b11111111u8, 0b00000000u8, 0b00000000u8]];
-        let c = [[0b00000000u8, 0b11111111u8, 0b11111111u8, 0b00000000u8, 0b11111111u8, 0b00000000u8]];
+        let a = bitmatrix![[0b11111111u8, 0b00000000u8, 0b11111111u8, 0b00000000u8, 0b11111111u8, 0b00000000u8]];
+        let b = bitmatrix![[0b11111111u8, 0b11111111u8, 0b00000000u8, 0b00000000u8]];
+        let c = bitmatrix![[0b00000000u8, 0b11111111u8, 0b11111111u8, 0b00000000u8, 0b11111111u8, 0b00000000u8]];
 
         assert_eq!(a ^ b, c);
     }
 
     #[test]
     fn bitxor_right_vector_longer() {
-        let a = [[0b11111111u8, 0b00000000u8, 0b11111111u8, 0b00000000u8]];
-        let b = [[0b11111111u8, 0b11111111u8, 0b00000000u8, 0b00000000u8, 0b11111111u8, 0b00000000u8]];
-        let c = [[0b00000000u8, 0b11111111u8, 0b11111111u8, 0b00000000u8]];
+        let a = bitmatrix![[0b11111111u8, 0b00000000u8, 0b11111111u8, 0b00000000u8]];
+        let b = bitmatrix![[0b11111111u8, 0b11111111u8, 0b00000000u8, 0b00000000u8, 0b11111111u8, 0b00000000u8]];
+        let c = bitmatrix![[0b00000000u8, 0b11111111u8, 0b11111111u8, 0b00000000u8]];
 
         assert_eq!(a ^ b, c);
     }
 
     #[test]
     fn bitand_equally_sized_vectors() {
-        let a = [[0b11111111u8, 0b00000000u8, 0b11111111u8, 0b00000000u8]];
-        let b = [[0b11111111u8, 0b11111111u8, 0b00000000u8, 0b00000000u8]];
-        let c = [[0b11111111u8, 0b00000000u8, 0b00000000u8, 0b00000000u8]];
+        let a = bitmatrix![[0b11111111u8, 0b00000000u8, 0b11111111u8, 0b00000000u8]];
+        let b = bitmatrix![[0b11111111u8, 0b11111111u8, 0b00000000u8, 0b00000000u8]];
+        let c = bitmatrix![[0b11111111u8, 0b00000000u8, 0b00000000u8, 0b00000000u8]];
 
         assert_eq!(a & b, c);
     }
 
     #[test]
     fn bitand_left_vector_longer() {
-        let a = [[0b11111111u8, 0b00000000u8, 0b11111111u8, 0b00000000u8, 0b11111111u8, 0b00000000u8]];
-        let b = [[0b11111111u8, 0b11111111u8, 0b00000000u8, 0b00000000u8]];
-        let c = [[0b11111111u8, 0b00000000u8, 0b00000000u8, 0b00000000u8]];
+        let a = bitmatrix![[0b11111111u8, 0b00000000u8, 0b11111111u8, 0b00000000u8, 0b11111111u8, 0b00000000u8]];
+        let b = bitmatrix![[0b11111111u8, 0b11111111u8, 0b00000000u8, 0b00000000u8]];
+        let c = bitmatrix![[0b11111111u8, 0b00000000u8, 0b00000000u8, 0b00000000u8]];
 
         assert_eq!(a & b, c);
     }
 
     #[test]
     fn bitand_right_vector_longer() {
-        let a = [[0b11111111u8, 0b00000000u8, 0b11111111u8, 0b00000000u8]];
-        let b = [[0b11111111u8, 0b11111111u8, 0b00000000u8, 0b00000000u8, 0b11111111u8, 0b00000000u8]];
-        let c = [[0b11111111u8, 0b00000000u8, 0b00000000u8, 0b00000000u8]];
+        let a = bitmatrix![[0b11111111u8, 0b00000000u8, 0b11111111u8, 0b00000000u8]];
+        let b = bitmatrix![[0b11111111u8, 0b11111111u8, 0b00000000u8, 0b00000000u8, 0b11111111u8, 0b00000000u8]];
+        let c = bitmatrix![[0b11111111u8, 0b00000000u8, 0b00000000u8, 0b00000000u8]];
 
         assert_eq!(a & b, c);
     }
 
     #[test]
     fn shl_zero() {
-        let a = [[0b00000000u8, 0b11111111u8]];
-        let b = [[0b00000000u8, 0b11111111u8]];
+        let a = bitmatrix![[0b00000000u8, 0b11111111u8]];
+        let b = bitmatrix![[0b00000000u8, 0b11111111u8]];
 
         assert_eq!(a << 0, b);
     }
 
     #[test]
     fn shl_less_than_vector_length() {
-        let a = [[0b00000000u8, 0b00000000u8, 0b11111111u8, 0b00000000u8]];
-        let b = [[0b00001111u8, 0b11110000u8, 0b00000000u8]];
+        let a = bitmatrix![[0b00000000u8, 0b00000000u8, 0b11111111u8, 0b00000000u8]];
+        let b = bitmatrix![[0b00001111u8, 0b11110000u8, 0b00000000u8]];
 
         assert_eq!(a << 12, b);
     }
 
     #[test]
     fn shl_vector_length() {
-        let a = [[0b00000000u8]];
-        let b = [[]];
+        let a = bitmatrix![[0b00000000u8]];
+        let b = bitmatrix![[]];
 
         assert_eq!(a << 8, b);
     }
 
     #[test]
     fn shl_more_than_vector_length() {
-        let a = [[0b00000000u8]];
-        let b = [[]];
+        let a = bitmatrix![[0b00000000u8]];
+        let b = bitmatrix![[]];
 
         assert_eq!(a << 12, b);
     }
 
     #[test]
     fn shr_zero() {
-        let a = [[0b00000000u8, 0b11111111u8]];
-        let b = [[0b00000000u8, 0b11111111u8]];
+        let a = bitmatrix![[0b00000000u8, 0b11111111u8]];
+        let b = bitmatrix![[0b00000000u8, 0b11111111u8]];
 
         assert_eq!(a >> 0, b);
     }
 
     #[test]
     fn shr_less_than_vector_length() {
-        let a = [[0b00000000u8, 0b11111111u8, 0b00000000u8, 0b00000000u8]];
-        let b = [[0b00000000u8, 0b00001111u8, 0b11110000u8]];
+        let a = bitmatrix![[0b00000000u8, 0b11111111u8, 0b00000000u8, 0b00000000u8]];
+        let b = bitmatrix![[0b00000000u8, 0b00001111u8, 0b11110000u8]];
 
         assert_eq!(a >> 12, b);
     }
 
     #[test]
     fn shr_vector_length() {
-        let a = [[0b00000000u8]];
-        let b = [[]];
+        let a = bitmatrix![[0b00000000u8]];
+        let b = bitmatrix![[]];
 
         assert_eq!(a >> 8, b);
     }
 
     #[test]
     fn shr_more_than_vector_length() {
-        let a = [[0b00000000u8]];
-        let b = [[]];
+        let a = bitmatrix![[0b00000000u8]];
+        let b = bitmatrix![[]];
 
         assert_eq!(a >> 12, b);
     }

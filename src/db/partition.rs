@@ -5,30 +5,26 @@ use std::collections::HashSet;
 use db::hash_map_set::HashMapSet;
 use db::find_result::FindResult;
 use db::bit_matrix::BitMatrix;
+use db::value::Value;
 
-pub struct Partition {
+#[derive(Debug)]
+pub struct Partition<V: Value> {
     shift: usize,
     mask: usize,
 
-    zero_kv: HashMapSet<BitMatrix, BitMatrix>,
-    one_kv: HashMapSet<BitMatrix, BitMatrix>,
+    zero_kv: HashMapSet<V, V>,
+    one_kv: HashMapSet<V, V>,
 }
 
-impl fmt::Debug for Partition {
-    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        write!(f, "({},{})", self.shift, self.mask)
-    }
-}
-
-impl PartialEq for Partition {
-    fn eq(&self, other: &Partition) -> bool {
+impl<V: Value> PartialEq for Partition<V> {
+    fn eq(&self, other: &Partition<V>) -> bool {
         return self.shift.eq(&other.shift) &&
             self.mask.eq(&other.mask); // &&
             //self.zero_kv.eq(&other.zero_kv) &&
             //self.one_kv.eq(&other.one_kv);
     }
 
-    fn ne(&self, other: &Partition) -> bool {
+    fn ne(&self, other: &Partition<V>) -> bool {
         return self.shift.ne(&other.shift) ||
             self.mask.ne(&other.mask); // ||
             //self.zero_kv.ne(&other.zero_kv) ||
@@ -36,17 +32,15 @@ impl PartialEq for Partition {
     }
 }
 
-impl Partition {
-    pub fn new(shift: usize, mask: usize) -> Partition {
-        let zero_kv: HashMapSet<BitMatrix, BitMatrix> = HashMapSet::new();
-        let one_kv: HashMapSet<BitMatrix, BitMatrix> = HashMapSet::new();
+impl<V: Value> Partition<V> {
+    pub fn new(shift: usize, mask: usize) -> Partition<V> {
+        let zero_kv: HashMapSet<V, V> = HashMapSet::new();
+        let one_kv: HashMapSet<V, V> = HashMapSet::new();
         return Partition {shift: shift, mask: mask, zero_kv: zero_kv, one_kv: one_kv};
     }
-}
 
-impl Partition {
-    pub fn get(&self, key: &BitMatrix) -> HashSet<FindResult> {
-        let mut found_keys: HashSet<FindResult> = HashSet::new();
+    pub fn get(&self, key: &V) -> HashSet<FindResult<V>> {
+        let mut found_keys: HashSet<FindResult<V>> = HashSet::new();
 
         let transformed_key = key.clone().transform(self.shift, self.mask);
         match self.zero_kv.get(&transformed_key) {
@@ -70,7 +64,7 @@ impl Partition {
         found_keys
     }
 
-    pub fn insert(&mut self, key: BitMatrix) -> bool {
+    pub fn insert(&mut self, key: V) -> bool {
         let transformed_key = key.clone().transform(self.shift, self.mask);
 
         if self.zero_kv.insert(transformed_key.clone(), key.clone()) {
@@ -83,7 +77,7 @@ impl Partition {
         return false;
     }
 
-    pub fn remove(&mut self, key: BitMatrix) -> bool {
+    pub fn remove(&mut self, key: V) -> bool {
         let transformed_key = key.clone().transform(self.shift, self.mask);
 
         if self.zero_kv.remove(transformed_key.clone(), key.clone()) {
