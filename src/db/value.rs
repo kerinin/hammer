@@ -12,6 +12,30 @@ pub trait Value: hash::Hash + cmp::Eq + clone::Clone + ops::BitXor + ops::BitAnd
     fn hamming(&self, rhs: &Self) -> usize;
 }
 
+impl Value for u8 {
+    fn transform(&self, shift: usize, mask: usize) -> u8 {
+        let shifted = self << shift;
+
+        let ones = std::u8::MAX;
+        let mask = ones << (std::u8::BITS as usize - mask);
+
+        shifted & mask
+    }
+
+    fn permutations(&self, n: usize) -> Vec<u8> {
+        return range(0, n)
+            .map(|i| -> u8 {
+                let delta = 1u8 >> i;
+                self.clone() ^ delta // bitxor
+            })
+        .collect::<Vec<u8>>();
+    }
+
+    fn hamming(&self, other: &u8) -> usize {
+        (*self ^ *other).count_ones() as usize // bitxor
+    }
+}
+
 impl Value for usize {
     fn transform(&self, shift: usize, mask: usize) -> usize {
         let shifted = self << shift;

@@ -8,23 +8,23 @@ use std::collections::HashSet;
 use self::num::rational::Ratio;
 
 use db::partition::Partition;
-use db::bit_matrix::{BitMatrix, AsBitMatrix};
 //use db::result_accumulator::ResultAccumulator;
 use db::find_result::FindResult;
+use db::value::Value;
 
-pub struct Database {
+pub struct Database<V: Value> {
     dimensions: usize,
     tolerance: usize,
     partition_count: usize,
-    partitions: Vec<Partition>,
+    partitions: Vec<Partition<V>>,
 }
 
 
-impl Database {
+impl<V: Value> Database<V> {
     /*
      * Partition the keyspace as evenly as possible
      */
-    pub fn new(dimensions: usize, tolerance: usize) -> Database {
+    pub fn new(dimensions: usize, tolerance: usize) -> Database<V> {
 
         // Determine number of partitions
         let partition_count = if tolerance == 0 {
@@ -42,11 +42,11 @@ impl Database {
         let tail_count = partition_count - head_count;
 
         // Build the partitions
-        let mut partitions: Vec<Partition> = Vec::with_capacity(head_count + tail_count);
+        let mut partitions: Vec<Partition<V>> = Vec::with_capacity(head_count + tail_count);
         for i in 0..head_count {
             let shift = i * head_width;
             let mask = head_width;
-            let p: Partition = Partition::new(shift, mask);
+            let p: Partition<V> = Partition::new(shift, mask);
 
             partitions.push(p);
         }
@@ -66,7 +66,7 @@ impl Database {
         };
     }
 
-    pub fn get<V>(&self, raw_key: V) -> Option<HashSet<V>> where V: AsBitMatrix + cmp::Eq + hash::Hash {
+    pub fn get(&self, key: V) -> Option<HashSet<V>> {
         /*
          * This is the method described in the HmSearch paper.  It's slower than
          * just checking the hamming distance, but I'm going to leave it commented
@@ -85,8 +85,6 @@ impl Database {
 
         //return results.found_values()
 
-        let key = raw_key.as_bitmatrix().transpose();
-
         let mut results: HashSet<V> = HashSet::new();
 
         // Split across tasks?
@@ -95,12 +93,12 @@ impl Database {
                 match result {
                     FindResult::ZeroVariant(value) => {
                         if value.hamming(&key) <= self.tolerance { 
-                            results.insert(AsBitMatrix::from_bitmatrix(value.transpose()));
+                            results.insert(value.clone());
                         };
                     },
                     FindResult::OneVariant(value) => {
                         if value.hamming(&key) <= self.tolerance {
-                            results.insert(AsBitMatrix::from_bitmatrix(value.transpose()));
+                            results.insert(value.clone());
                         };
                     }
                 }
@@ -118,9 +116,7 @@ impl Database {
      * Insert `key` into indices
      * Returns true if key was added to ANY index
      */
-    pub fn insert<V>(&mut self, raw_key: V) -> bool where V: AsBitMatrix {
-        let key = raw_key.as_bitmatrix().transpose();
-
+    pub fn insert(&mut self, key: V) -> bool {
         let mut inserted = false;
 
         // Split across tasks?
@@ -135,9 +131,7 @@ impl Database {
      * Remove `key` from indices
      * Returns true if key was removed from ANY index
      */
-    pub fn remove<V>(&mut self, raw_key: V) -> bool where V: AsBitMatrix {
-        let key = raw_key.as_bitmatrix().transpose();
-
+    pub fn remove(&mut self, key: V) -> bool {
         let mut removed = false;
 
         // Split across tasks?
@@ -158,7 +152,6 @@ mod test {
 
     use db::database::Database;
     use db::partition::Partition;
-    use db::permutable::Permutable;
 
     #[test]
     fn partition_evenly() {
@@ -337,7 +330,7 @@ mod test {
 
             let mut b = a.clone();
             for shift in shifts.iter() {
-                b = b.p_bitxor(&0b10000000usize.p_shr(shift));
+                b = b ^ (0b10000000usize >> *shift);
             }
 
             let mut c: HashSet<usize> = HashSet::new();
@@ -370,7 +363,7 @@ mod test {
 
             let mut b = a.clone();
             for shift in shifts.iter() {
-                b = b.p_bitxor(&0b10000000usize.p_shr(shift));
+                b = b & (0b10000000usize >> *shift);
             }
 
             let mut c: HashSet<usize> = HashSet::new();
@@ -469,21 +462,21 @@ mod test {
     }
 }
 
-impl fmt::Debug for Database {
+impl<V: Value> fmt::Debug for Database<V> {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         write!(f, "({}:{}:{})", self.dimensions, self.tolerance, self.partition_count)
     }
 }
 
-impl PartialEq for Database {
-    fn eq(&self, other: &Database) -> bool {
+impl<V: Value> PartialEq for Database<V> {
+    fn eq(&self, other: &Database<V>) -> bool {
         return self.dimensions == other.dimensions &&
             self.tolerance == other.tolerance &&
             self.partition_count == other.partition_count;// &&
             //self.partitions.eq(&other.partitions);
     }
 
-    fn ne(&self, other: &Database) -> bool {
+    fn ne(&self, other: &Database<V>) -> bool {
         return self.dimensions != other.dimensions ||
             self.tolerance != other.tolerance ||
             self.partition_count != other.partition_count; // ||

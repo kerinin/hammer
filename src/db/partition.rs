@@ -100,8 +100,8 @@ mod test {
     #[test]
     fn find_missing_key() {
         let mut partition = Partition::new(4, 4);
-        let a = vec![0b00001111u8];
-        let keys = partition.get(a);
+        let a = 0b00001111u8;
+        let keys = partition.get(&a);
 
         assert!(keys.is_empty());
     }
@@ -109,15 +109,15 @@ mod test {
     #[test]
     fn first_inserted_key() {
         let mut partition = Partition::new(4, 4);
-        let a = vec![0b00001111u8];
-        let b = vec![0b00000011u8];
+        let a = 0b00001111u8;
+        let b = 0b00000011u8;
         let mut expected = HashSet::new();
         expected.insert(FindResult::ZeroVariant(a.clone()));
 
         assert!(partition.insert(a.clone()));
 
         partition.insert(b.clone());
-        let keys = partition.get(a.clone());
+        let keys = partition.get(&a);
 
         assert_eq!(expected, keys);
     }
@@ -125,14 +125,14 @@ mod test {
     #[test]
     fn second_inserted_key() {
         let mut partition = Partition::new(4, 4);
-        let a = vec![0b00001111u8];
+        let a = 0b00001111u8;
         let mut expected = HashSet::new();
         expected.insert(FindResult::ZeroVariant(a.clone()));
         partition.insert(a.clone());
 
         assert!(!partition.insert(a.clone()));
 
-        let keys = partition.get(a.clone());
+        let keys = partition.get(&a);
 
         assert_eq!(expected, keys);
     }
@@ -140,10 +140,10 @@ mod test {
     #[test]
     fn find_permutation_of_inserted_key() {
         let mut partition = Partition::new(4, 4);
-        let a = vec![0b00001111u8];
-        let b = vec![0b00000111u8];
-        let c = vec![0b00000011u8];
-        let d = vec![0b00000001u8];
+        let a = 0b00001111u8;
+        let b = 0b00000111u8;
+        let c = 0b00000011u8;
+        let d = 0b00000001u8;
         let mut expected = HashSet::new();
         expected.insert(FindResult::OneVariant(a.clone()));
         expected.insert(FindResult::ZeroVariant(b.clone()));
@@ -154,7 +154,7 @@ mod test {
         partition.insert(c.clone());
         partition.insert(d.clone());
 
-        let keys = partition.get(b.clone());
+        let keys = partition.get(&b);
 
         assert_eq!(expected, keys);
     }
@@ -162,13 +162,13 @@ mod test {
     #[test]
     fn remove_inserted_key() {
         let mut partition = Partition::new(4, 4);
-        let a = vec![0b00001111u8];
+        let a = 0b00001111u8;
 
         partition.insert(a.clone());
 
         assert!(partition.remove(a.clone()));
 
-        let keys = partition.get(a.clone());
+        let keys = partition.get(&a);
 
         assert!(keys.is_empty());
     }
@@ -176,7 +176,7 @@ mod test {
     #[test]
     fn remove_missing_key() {
         let mut partition = Partition::new(4, 4);
-        let a = vec![0b00001111u8];
+        let a = 0b00001111u8;
 
         assert!(!partition.remove(a));
     }
