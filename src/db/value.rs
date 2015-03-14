@@ -4,7 +4,6 @@ use std::clone;
 use std::hash;
 use std::fmt;
 use std::iter;
-use std::collections::BitVec;
 
 use std::num::Int;
 
@@ -22,8 +21,8 @@ impl Value for Vec<u8> {
         let shifted = self.p_shl(&shift);
 
         let full_byte_count = mask / 8;
-        let tail_bits = mask % 8;
-        let partial_mask = 0b11111111u8 << (8-tail_bits);
+        let tail_dimensions = mask % 8;
+        let partial_mask = 0b11111111u8 << (8-tail_dimensions);
 
         let mut mask = iter::repeat(0b11111111u8).take(full_byte_count).collect::<Vec<u8>>();
         mask.push(partial_mask);
@@ -50,8 +49,8 @@ impl Value for Vec<u8> {
     }
 
     fn hamming(&self, other: &Vec<u8>) -> usize {
-        let shared_bits = self.p_bitxor(other);
-        let shared_bitv = BitVec::from_bytes(shared_bits.as_slice());
+        let shared_dimensions = self.p_bitxor(other);
+        let shared_bitv = BitVec::from_bytes(shared_dimensions.as_slice());
 
         return shared_bitv.iter().filter(|x| *x).count();
     }

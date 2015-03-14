@@ -1,73 +1,52 @@
 extern crate num;
 
 use std::fmt;
+use std::cmp;
+use std::hash;
 
 use std::collections::HashSet;
 use self::num::rational::Ratio;
 
-use db::value::Value;
 use db::partition::Partition;
+use db::bit_matrix::{BitMatrix, AsBitMatrix};
 //use db::result_accumulator::ResultAccumulator;
 use db::find_result::FindResult;
 
-pub struct Database<V> {
-    bits: usize,
+pub struct Database {
+    dimensions: usize,
     tolerance: usize,
     partition_count: usize,
-    partitions: Vec<Partition<V>>,
+    partitions: Vec<Partition>,
 }
 
-impl<V> fmt::Debug for Database<V> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        write!(f, "({}:{}:{})", self.bits, self.tolerance, self.partition_count)
-    }
-}
 
-impl<V> PartialEq for Database<V> {
-    fn eq(&self, other: &Database<V>) -> bool {
-        return self.bits == other.bits &&
-            self.tolerance == other.tolerance &&
-            self.partition_count == other.partition_count;// &&
-            //self.partitions.eq(&other.partitions);
-    }
-
-    fn ne(&self, other: &Database<V>) -> bool {
-        return self.bits != other.bits ||
-            self.tolerance != other.tolerance ||
-            self.partition_count != other.partition_count; // ||
-            //self.partitions.eq(&other.partitions);
-    }
-}
-
-impl<V> Database<V> {
+impl Database {
     /*
      * Partition the keyspace as evenly as possible
      */
-    pub fn new(bits: usize, tolerance: usize) -> Database<V> 
-        where V: Value {
+    pub fn new(dimensions: usize, tolerance: usize) -> Database {
 
         // Determine number of partitions
         let partition_count = if tolerance == 0 {
             1
-        } else if tolerance > bits {
-            (bits + 3) / 2
+        } else if tolerance > dimensions {
+            (dimensions + 3) / 2
         } else {
             (tolerance + 3) / 2
         };
 
-        // Determine how many bits to allocate to each partition
-        let head_width = Ratio::new(bits, partition_count).ceil().to_integer() as usize;
-        let tail_width = Ratio::new(bits, partition_count).floor().to_integer() as usize;
-        let head_count = bits % partition_count;
+        // Determine how many dimensions to allocate to each partition
+        let head_width = Ratio::new(dimensions, partition_count).ceil().to_integer() as usize;
+        let tail_width = Ratio::new(dimensions, partition_count).floor().to_integer() as usize;
+        let head_count = dimensions % partition_count;
         let tail_count = partition_count - head_count;
 
         // Build the partitions
-        // let mut partitions: Vec<Partition<V>> = vec![];
-        let mut partitions: Vec<Partition<V>> = Vec::with_capacity(head_count + tail_count);
+        let mut partitions: Vec<Partition> = Vec::with_capacity(head_count + tail_count);
         for i in 0..head_count {
             let shift = i * head_width;
             let mask = head_width;
-            let p: Partition<V> = Partition::new(shift, mask);
+            let p: Partition = Partition::new(shift, mask);
 
             partitions.push(p);
         }
@@ -80,22 +59,21 @@ impl<V> Database<V> {
 
         // Done!
         return Database {
-            bits: bits,
+            dimensions: dimensions,
             tolerance: tolerance,
             partition_count: partition_count,
             partitions: partitions,
         };
     }
 
-    pub fn get(&mut self, key: V) -> Option<HashSet<V>> 
-        where V: Value {
+    pub fn get<V>(&self, raw_key: V) -> Option<HashSet<V>> where V: AsBitMatrix + cmp::Eq + hash::Hash {
         /*
          * This is the method described in the HmSearch paper.  It's slower than
          * just checking the hamming distance, but I'm going to leave it commented
          * out here becase it may be necessary for vector-hamming distances (as
          * opposed to scalar-hamming distances).
          */
-        //let mut results: ResultAccumulator<V> = ResultAccumulator::new(self.tolerance, key.clone());
+        //let mut results: ResultAccumulator = ResultAccumulator::new(self.tolerance, key.clone());
 
         //for partition in self.partitions.iter() {
         //    let found = partition.find(key.clone());
@@ -107,19 +85,22 @@ impl<V> Database<V> {
 
         //return results.found_values()
 
+        let key = raw_key.as_bitmatrix().transpose();
+
         let mut results: HashSet<V> = HashSet::new();
 
-        for partition in self.partitions.iter_mut() {
-            for result in partition.get(key.clone()).iter() {
-                match *result {
-                    FindResult::ZeroVariant(ref value) => {
+        // Split across tasks?
+        for partition in self.partitions.iter() {
+            for result in partition.get(&key).into_iter() {
+                match result {
+                    FindResult::ZeroVariant(value) => {
                         if value.hamming(&key) <= self.tolerance { 
-                            results.insert(value.clone());
+                            results.insert(AsBitMatrix::from_bitmatrix(value.transpose()));
                         };
                     },
-                    FindResult::OneVariant(ref value) => {
+                    FindResult::OneVariant(value) => {
                         if value.hamming(&key) <= self.tolerance {
-                            results.insert(value.clone());
+                            results.insert(AsBitMatrix::from_bitmatrix(value.transpose()));
                         };
                     }
                 }
@@ -137,10 +118,12 @@ impl<V> Database<V> {
      * Insert `key` into indices
      * Returns true if key was added to ANY index
      */
-    pub fn insert(&mut self, key: V) -> bool 
-        where V: Value {
+    pub fn insert<V>(&mut self, raw_key: V) -> bool where V: AsBitMatrix {
+        let key = raw_key.as_bitmatrix().transpose();
+
         let mut inserted = false;
 
+        // Split across tasks?
         for p in self.partitions.iter_mut() {
             inserted = p.insert(key.clone()) || inserted
         }
@@ -152,10 +135,12 @@ impl<V> Database<V> {
      * Remove `key` from indices
      * Returns true if key was removed from ANY index
      */
-    pub fn remove(&mut self, key: V) -> bool 
-        where V: Value {
+    pub fn remove<V>(&mut self, raw_key: V) -> bool where V: AsBitMatrix {
+        let key = raw_key.as_bitmatrix().transpose();
+
         let mut removed = false;
 
+        // Split across tasks?
         for p in self.partitions.iter_mut() {
             removed = p.remove(key.clone()) || removed
         }
@@ -179,7 +164,7 @@ mod test {
     fn partition_evenly() {
         let a: Database<usize> = Database::new(32, 5);
         let b = Database {
-            bits: 32,
+            dimensions: 32,
             tolerance: 5,
             partition_count: 4,
             partitions: vec![
@@ -196,7 +181,7 @@ mod test {
     fn partition_unevenly() {
         let a: Database<usize> = Database::new(32, 7);
         let b = Database {
-            bits: 32,
+            dimensions: 32,
             tolerance: 7,
             partition_count: 5,
             partitions: vec![
@@ -214,7 +199,7 @@ mod test {
     fn partition_too_many() {
         let a: Database<usize> = Database::new(4, 8);
         let b = Database {
-            bits: 4,
+            dimensions: 4,
             tolerance: 8,
             partition_count: 3,
             partitions: vec![
@@ -231,7 +216,7 @@ mod test {
     fn partition_zero() {
         let a: Database<usize> = Database::new(32, 0);
         let b = Database {
-            bits: 32,
+            dimensions: 32,
             tolerance: 0,
             partition_count: 1,
             partitions: vec![
@@ -246,7 +231,7 @@ mod test {
     fn partition_with_no_bytes() {
         let a: Database<usize> = Database::new(0, 0);
         let b = Database {
-            bits: 0,
+            dimensions: 0,
             tolerance: 0,
             partition_count: 1,
             partitions: vec![
@@ -341,13 +326,13 @@ mod test {
     fn find_permutation_of_inserted_key() {
         let mut rng1 = thread_rng();
         let mut rng2 = thread_rng();
-        let bits = 8usize;
+        let dimensions = 8usize;
         let max_hd = 3usize;
         let shifts_seq = rng1.gen_iter::<usize>()
-            .map(|i| sample(&mut rng2, 0..bits, i % max_hd));
+            .map(|i| sample(&mut rng2, 0..dimensions, i % max_hd));
 
         for shifts in shifts_seq.take(1000usize) {
-            let mut p: Database<usize> = Database::new(bits, max_hd);
+            let mut p: Database<usize> = Database::new(dimensions, max_hd);
             let a = 0b11111111usize;
 
             let mut b = a.clone();
@@ -370,17 +355,17 @@ mod test {
     fn dont_find_permutation_of_inserted_key() {
         let mut rng1 = thread_rng();
         let mut rng2 = thread_rng();
-        let bits = 8usize;
+        let dimensions = 8usize;
         let max_hd = 3usize;
         // Generate random usizes
         let shifts_seq = rng1.gen_iter::<usize>()
-            // Select a random number of elements in the range [0,bits]
-            .map(|i| sample(&mut rng2, 0..bits, i % bits))
+            // Select a random number of elements in the range [0,dimensions]
+            .map(|i| sample(&mut rng2, 0..dimensions, i % dimensions))
             // Filter selections with less than the max tolerance
             .filter(|shifts| shifts.len() > max_hd);
 
         for shifts in shifts_seq.take(1000usize) {
-            let mut p: Database<usize> = Database::new(bits, max_hd);
+            let mut p: Database<usize> = Database::new(dimensions, max_hd);
             let a = 0b11111111usize;
 
             let mut b = a.clone();
@@ -483,3 +468,26 @@ mod test {
         }
     }
 }
+
+impl fmt::Debug for Database {
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        write!(f, "({}:{}:{})", self.dimensions, self.tolerance, self.partition_count)
+    }
+}
+
+impl PartialEq for Database {
+    fn eq(&self, other: &Database) -> bool {
+        return self.dimensions == other.dimensions &&
+            self.tolerance == other.tolerance &&
+            self.partition_count == other.partition_count;// &&
+            //self.partitions.eq(&other.partitions);
+    }
+
+    fn ne(&self, other: &Database) -> bool {
+        return self.dimensions != other.dimensions ||
+            self.tolerance != other.tolerance ||
+            self.partition_count != other.partition_count; // ||
+            //self.partitions.eq(&other.partitions);
+    }
+}
+

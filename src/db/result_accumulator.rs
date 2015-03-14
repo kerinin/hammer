@@ -1,21 +1,20 @@
 use std::collections::{HashMap, HashSet};
 
-use db::value::Value;
 use db::find_result::{FindResult, ZeroVariant, OneVariant};
 
-pub struct ResultAccumulator<T> {
+pub struct ResultAccumulator {
     tolerance: uint,
-    query: T,
-    candidates: HashMap<T, Vec<uint>>,
+    query: BitMatrix,
+    candidates: HashMap<BitMatrix, Vec<uint>>,
 }
 
-impl<T: Value> ResultAccumulator<T> {
-    pub fn new(tolerance: uint, query: T) -> ResultAccumulator<T> {
-        let candidates: HashMap<T, Vec<uint>> = HashMap::new();
+impl ResultAccumulator {
+    pub fn new(tolerance: uint, query: BitMatrix) -> ResultAccumulator {
+        let candidates: HashMap<BitMatrix, Vec<uint>> = HashMap::new();
         return ResultAccumulator {tolerance: tolerance, query: query, candidates: candidates};
     }
 
-    pub fn merge(&mut self, other: &FindResult<T>) {
+    pub fn merge(&mut self, other: &FindResult) {
         // The intermediate assignment here is to work around Rust not letting me
         // both match on self.candidates and mutate it.  The match appears to
         // require an immutable borrow and the insert obviously requires a mutable 
@@ -35,8 +34,8 @@ impl<T: Value> ResultAccumulator<T> {
         self.candidates.insert(key, value);
     }
 
-    pub fn found_values(&self) -> Option<HashSet<T>> {
-        let mut matches: HashSet<T> = HashSet::new();
+    pub fn found_values(&self) -> Option<HashSet<BitMatrix>> {
+        let mut matches: HashSet<BitMatrix> = HashSet::new();
 
         if self.tolerance % 2 == 0 {
             for (candidate, counts) in self.candidates.iter() {

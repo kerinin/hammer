@@ -4,10 +4,8 @@ use std::hash;
 
 use std::collections::{HashMap, HashSet};
 use std::collections::hash_map::Entry::{Vacant, Occupied};
-//use std::sync::{RWLock};
 
 pub struct HashMapSet<K, V> {
-    //lock: RWLock,
     data: HashMap<K, HashSet<V>>,
 }
 
@@ -31,7 +29,7 @@ impl<K: hash::Hash + cmp::Eq + clone::Clone, V: hash::Hash + cmp::Eq + clone::Cl
         }
     }
 
-    pub fn get(&mut self, key: &K) -> Option<&HashSet<V>> {
+    pub fn get(&self, key: &K) -> Option<&HashSet<V>> {
         return self.data.get(key);
     }
 

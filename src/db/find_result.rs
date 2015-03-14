@@ -2,12 +2,15 @@ use std::fmt;
 use std::hash;
 use std::hash::Hasher;
 
-pub enum FindResult<T> {
-    ZeroVariant(T),
-    OneVariant(T),
+use db::bit_matrix::BitMatrix;
+
+#[derive(Debug)]
+pub enum FindResult {
+    ZeroVariant(BitMatrix),
+    OneVariant(BitMatrix),
 }
 
-impl<T: hash::Hash> hash::Hash for FindResult<T> {
+impl hash::Hash for FindResult {
     fn hash<H: Hasher>(&self, state: &mut H) {
         match *self {
             FindResult::ZeroVariant(ref self_value) => self_value.hash(state),
@@ -16,11 +19,11 @@ impl<T: hash::Hash> hash::Hash for FindResult<T> {
     }
 }
 
-impl<T: PartialEq> Eq for FindResult<T> {
+impl Eq for FindResult {
 }
 
-impl<T: PartialEq> PartialEq for FindResult<T> {
-    fn eq(&self, other: &FindResult<T>) -> bool {
+impl PartialEq for FindResult {
+    fn eq(&self, other: &FindResult) -> bool {
         match *self {
             FindResult::ZeroVariant(ref self_value) => match *other {
                 FindResult::ZeroVariant(ref other_value) => self_value.eq(other_value),
@@ -33,7 +36,7 @@ impl<T: PartialEq> PartialEq for FindResult<T> {
         }
     }
 
-    fn ne(&self, other: &FindResult<T>) -> bool {
+    fn ne(&self, other: &FindResult) -> bool {
         match *self {
             FindResult::ZeroVariant(ref self_value) => match *other {
                 FindResult::ZeroVariant(ref other_value) => self_value.ne(other_value),
@@ -47,7 +50,8 @@ impl<T: PartialEq> PartialEq for FindResult<T> {
     }
 }
 
-impl<V: fmt::Display> fmt::Debug for FindResult<Vec<V>> {
+/*
+impl fmt::Debug for FindResult {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         match *self {
             FindResult::ZeroVariant(ref self_value) => {
@@ -79,11 +83,12 @@ impl<V: fmt::Display> fmt::Debug for FindResult<Vec<V>> {
         }
     }
 }
-impl<T: fmt::Display> fmt::Debug for FindResult<T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        match *self {
-            FindResult::ZeroVariant(ref self_value) => write!(f, "0:{}", self_value),
-            FindResult::OneVariant(ref self_value) => write!(f, "1:{}", self_value),
-        }
-    }
-}
+// impl fmt::Debug for FindResult {
+//     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+//         match *self {
+//             FindResult::ZeroVariant(ref self_value) => write!(f, "0:{}", self_value),
+//             FindResult::OneVariant(ref self_value) => write!(f, "1:{}", self_value),
+//         }
+//     }
+// }
+*/
