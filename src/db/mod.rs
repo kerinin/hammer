@@ -2,9 +2,10 @@ pub mod database;
 mod partition;
 mod find_result;
 mod hash_map_set;
+#[macro_use]
 mod bit_matrix;
 mod value;
-mod deleted_value;
+// mod deleted_value;
 
 
 //mod result_accumulator;

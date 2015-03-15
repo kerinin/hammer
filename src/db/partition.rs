@@ -4,7 +4,7 @@ use std::collections::HashSet;
 
 use db::hash_map_set::HashMapSet;
 use db::find_result::FindResult;
-use db::value::Value;
+use db::value::{Value, Window, SubstitutionVariant, Hamming};
 
 pub struct Partition<V: Value> {
     start_dimension: usize,
@@ -36,7 +36,7 @@ impl<V: Value> PartialEq for Partition<V> {
     }
 }
 
-impl<V: Value> Partition<V> {
+impl<V: Value + Window + SubstitutionVariant + Hamming> Partition<V> {
     pub fn new(start_dimension: usize, dimensions: usize) -> Partition<V> {
         let zero_kv: HashMapSet<V, V> = HashMapSet::new();
         let one_kv: HashMapSet<V, V> = HashMapSet::new();
@@ -72,7 +72,7 @@ impl<V: Value> Partition<V> {
         let transformed_key = key.window(self.start_dimension, self.dimensions);
 
         if self.zero_kv.insert(transformed_key.clone(), key.clone()) {
-            for k in transformed_key.permutations(self.dimensions).iter() {
+            for k in transformed_key.substitution_variants(self.dimensions).iter() {
                 self.one_kv.insert(k.clone(), key.clone());
             }
             return true;
@@ -84,7 +84,7 @@ impl<V: Value> Partition<V> {
         let transformed_key = &key.window(self.start_dimension, self.dimensions);
 
         if self.zero_kv.remove(transformed_key, key) {
-            for k in transformed_key.permutations(self.dimensions).iter() {
+            for k in transformed_key.substitution_variants(self.dimensions).iter() {
                 self.one_kv.remove(k, key);
             }
             return true;

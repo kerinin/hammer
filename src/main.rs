@@ -1,6 +1,8 @@
 #![feature(core)]
 #![feature(std_misc)]
 
+#[macro_use]
+
 /*
 #![feature(plugin)]
 #![plugin(docopt_macros)]
