@@ -17,7 +17,7 @@ impl<K: hash::Hash + cmp::Eq + clone::Clone, V: hash::Hash + cmp::Eq + clone::Cl
     }
 
     pub fn insert(&mut self, key: K, value: V) -> bool {
-        match self.data.entry(key.clone()) {
+        match self.data.entry(key) {
             Vacant(entry) => {
                 let mut set: HashSet<V> = HashSet::new();
                 set.insert(value);
@@ -34,7 +34,7 @@ impl<K: hash::Hash + cmp::Eq + clone::Clone, V: hash::Hash + cmp::Eq + clone::Cl
         return self.data.get(key);
     }
 
-    pub fn remove(&mut self, key: K, value: V) -> bool {
+    pub fn remove(&mut self, key: &K, value: &V) -> bool {
         let mut delete_key = false;
 
         let removed = match self.data.entry(key.clone()) {
@@ -43,14 +43,14 @@ impl<K: hash::Hash + cmp::Eq + clone::Clone, V: hash::Hash + cmp::Eq + clone::Cl
             },
             Occupied(mut entry) => {
                 let set = entry.get_mut();
-                let removed = set.remove(&value);
+                let removed = set.remove(value);
                 if set.is_empty() { delete_key = true };
                 removed
             },
         };
 
         if delete_key {
-            self.data.remove(&key.clone());
+            self.data.remove(key);
         };
 
         removed

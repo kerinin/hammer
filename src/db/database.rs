@@ -64,7 +64,7 @@ impl<V: Value> Database<V> {
         };
     }
 
-    pub fn get(&self, key: V) -> Option<HashSet<V>> {
+    pub fn get(&self, key: &V) -> Option<HashSet<V>> {
         /*
          * This is the method described in the HmSearch paper.  It's slower than
          * just checking the hamming distance, but I'm going to leave it commented
@@ -87,16 +87,16 @@ impl<V: Value> Database<V> {
 
         // Split across tasks?
         for partition in self.partitions.iter() {
-            for result in partition.get(&key).into_iter() {
+            for result in partition.get(key).into_iter() {
                 match result {
                     FindResult::ZeroVariant(value) => {
-                        if value.hamming(&key) <= self.tolerance { 
-                            results.insert(value.clone());
+                        if value.hamming(key) <= self.tolerance { 
+                            results.insert(value);
                         };
                     },
                     FindResult::OneVariant(value) => {
-                        if value.hamming(&key) <= self.tolerance {
-                            results.insert(value.clone());
+                        if value.hamming(key) <= self.tolerance {
+                            results.insert(value);
                         };
                     }
                 }
@@ -129,12 +129,12 @@ impl<V: Value> Database<V> {
      * Remove `key` from indices
      * Returns true if key was removed from ANY index
      */
-    pub fn remove(&mut self, key: V) -> bool {
+    pub fn remove(&mut self, key: &V) -> bool {
         let mut removed = false;
 
         // Split across tasks?
         for p in self.partitions.iter_mut() {
-            removed = p.remove(key.clone()) || removed
+            removed = p.remove(key) || removed
         }
 
         removed
@@ -237,7 +237,7 @@ mod test {
     fn find_missing_key() {
         let p: Database<usize> = Database::new(8, 2);
         let a = 0b11111111usize;
-        let keys = p.get(a);
+        let keys = p.get(&a);
 
         assert_eq!(None, keys);
     }
@@ -269,7 +269,7 @@ mod test {
 
         assert!(p.insert(a.clone()));
 
-        let keys = p.get(a.clone());
+        let keys = p.get(&a);
 
         assert_eq!(Some(b), keys);
     }
@@ -284,7 +284,7 @@ mod test {
 
         p.insert(a.clone());
 
-        let keys = p.get(b.clone());
+        let keys = p.get(&b);
 
         assert_eq!(Some(c), keys);
     }
@@ -308,7 +308,7 @@ mod test {
         p.insert(d.clone());
         p.insert(e.clone());
 
-        let keys = p.get(a.clone());
+        let keys = p.get(&a);
 
         assert_eq!(Some(f), keys);
     }
@@ -336,7 +336,7 @@ mod test {
 
             assert!(p.insert(a.clone()));
 
-            let keys = p.get(b.clone());
+            let keys = p.get(&b);
 
             assert_eq!(Some(c), keys);
         }
@@ -369,7 +369,7 @@ mod test {
 
             assert!(p.insert(a.clone()));
 
-            let keys = p.get(b.clone());
+            let keys = p.get(&b);
 
             assert_eq!(None, keys);
         }
@@ -382,9 +382,9 @@ mod test {
 
         p.insert(a.clone());
 
-        assert!(p.remove(a.clone()));
+        assert!(p.remove(&a));
 
-        let keys = p.get(a.clone());
+        let keys = p.get(&a);
 
         assert_eq!(None, keys);
     }
@@ -394,7 +394,7 @@ mod test {
         let mut p: Database<usize> = Database::new(8, 2);
         let a = 0b00001111usize;
 
-        assert!(!p.remove(a));
+        assert!(!p.remove(&a));
     }
 
     /*
@@ -417,7 +417,7 @@ mod test {
 
         for i in seq.take(100000usize) {
             if expected_present[i as usize] {
-                p.remove(i as usize);
+                p.remove(&(i as usize));
                 expected_present[i as usize] = false;
                 expected_absent[i as usize] = true;
             } else {
@@ -430,7 +430,7 @@ mod test {
                 //for i in 0..expected_present.len() {
                 for i in 0usize..256usize {
                     let mut found = false;
-                    match p.get(i as usize) {
+                    match p.get(&i) {
                         Some(set) => for key in set.iter() {
                             if *key == i as usize {
                                 found = true;
@@ -444,7 +444,7 @@ mod test {
 
                 for i in 0usize..expected_absent.len() {
                     let mut found = false;
-                    match p.get(i as usize) {
+                    match p.get(&i) {
                         Some(set) => for key in set.iter() {
                             if *key == i as usize {
                                 found = true;

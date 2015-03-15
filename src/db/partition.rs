@@ -46,8 +46,8 @@ impl<V: Value> Partition<V> {
     pub fn get(&self, key: &V) -> HashSet<FindResult<V>> {
         let mut found_keys: HashSet<FindResult<V>> = HashSet::new();
 
-        let transformed_key = key.clone().transform(self.shift, self.mask);
-        match self.zero_kv.get(&transformed_key) {
+        let transformed_key = &key.transform(self.shift, self.mask);
+        match self.zero_kv.get(transformed_key) {
             Some(keys) => {
                 for k in keys.iter() {
                     found_keys.insert(FindResult::ZeroVariant(k.clone()));
@@ -56,7 +56,7 @@ impl<V: Value> Partition<V> {
             None => {},
         }
 
-        match self.one_kv.get(&transformed_key) {
+        match self.one_kv.get(transformed_key) {
             Some(keys) => {
                 for k in keys.iter() {
                     found_keys.insert(FindResult::OneVariant(k.clone()));
@@ -69,7 +69,7 @@ impl<V: Value> Partition<V> {
     }
 
     pub fn insert(&mut self, key: V) -> bool {
-        let transformed_key = key.clone().transform(self.shift, self.mask);
+        let transformed_key = key.transform(self.shift, self.mask);
 
         if self.zero_kv.insert(transformed_key.clone(), key.clone()) {
             for k in transformed_key.permutations(self.mask).iter() {
@@ -80,12 +80,12 @@ impl<V: Value> Partition<V> {
         return false;
     }
 
-    pub fn remove(&mut self, key: V) -> bool {
-        let transformed_key = key.clone().transform(self.shift, self.mask);
+    pub fn remove(&mut self, key: &V) -> bool {
+        let transformed_key = &key.transform(self.shift, self.mask);
 
-        if self.zero_kv.remove(transformed_key.clone(), key.clone()) {
+        if self.zero_kv.remove(transformed_key, key) {
             for k in transformed_key.permutations(self.mask).iter() {
-                self.one_kv.remove(k.clone(), key.clone());
+                self.one_kv.remove(k, key);
             }
             return true;
         }
@@ -169,7 +169,7 @@ mod test {
 
         partition.insert(a.clone());
 
-        assert!(partition.remove(a.clone()));
+        assert!(partition.remove(&a));
 
         let keys = partition.get(&a);
 
@@ -181,6 +181,6 @@ mod test {
         let mut partition = Partition::new(4, 4);
         let a = 0b00001111u8;
 
-        assert!(!partition.remove(a));
+        assert!(!partition.remove(&a));
     }
 }
