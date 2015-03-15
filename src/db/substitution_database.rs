@@ -10,13 +10,6 @@ use db::partition::Partition;
 use db::find_result::FindResult;
 use db::value::{Value, Window, SubstitutionVariant, Hamming};
 
-pub trait Database<V> where V: Value {
-    fn new(dimensions: usize, tolerance: usize) -> Self;
-    fn get(&self, key: &V) -> Option<HashSet<V>>;
-    fn insert(&mut self, key: V) -> bool;
-    fn remove(&mut self, key: &V) -> bool;
-}
-
 pub struct SubstitutionDatabase<V> where V: Value + Window + SubstitutionVariant + Hamming {
     dimensions: usize,
     tolerance: usize,
@@ -25,11 +18,11 @@ pub struct SubstitutionDatabase<V> where V: Value + Window + SubstitutionVariant
 }
 
 
-impl<V: Value + Window + SubstitutionVariant + Hamming> Database<V> for SubstitutionDatabase<V> {
+impl<V: Value + Window + SubstitutionVariant + Hamming> SubstitutionDatabase<V> {
     /*
      * Partition the keyspace as evenly as possible
      */
-    fn new(dimensions: usize, tolerance: usize) -> SubstitutionDatabase<V> {
+    pub fn new(dimensions: usize, tolerance: usize) -> SubstitutionDatabase<V> {
 
         // Determine number of partitions
         let partition_count = if tolerance == 0 {
@@ -71,7 +64,7 @@ impl<V: Value + Window + SubstitutionVariant + Hamming> Database<V> for Substitu
         };
     }
 
-    fn get(&self, key: &V) -> Option<HashSet<V>> {
+    pub fn get(&self, key: &V) -> Option<HashSet<V>> {
         /*
          * This is the method described in the HmSearch paper.  It's slower than
          * just checking the hamming distance, but I'm going to leave it commented
@@ -121,7 +114,7 @@ impl<V: Value + Window + SubstitutionVariant + Hamming> Database<V> for Substitu
      * Insert `key` into indices
      * Returns true if key was added to ANY index
      */
-    fn insert(&mut self, key: V) -> bool {
+    pub fn insert(&mut self, key: V) -> bool {
         let mut inserted = false;
 
         // Split across tasks?
@@ -136,7 +129,7 @@ impl<V: Value + Window + SubstitutionVariant + Hamming> Database<V> for Substitu
      * Remove `key` from indices
      * Returns true if key was removed from ANY index
      */
-    fn remove(&mut self, key: &V) -> bool {
+    pub fn remove(&mut self, key: &V) -> bool {
         let mut removed = false;
 
         // Split across tasks?
@@ -178,7 +171,7 @@ mod test {
     use std::collections::{HashSet};
     use self::rand::{thread_rng, sample, Rng};
 
-    use db::database::{Database, SubstitutionDatabase};
+    use db::substitution_database::{SubstitutionDatabase};
     use db::partition::Partition;
 
     #[test]

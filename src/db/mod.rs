@@ -1,4 +1,4 @@
-pub mod database;
+pub mod substitution_database;
 mod partition;
 mod find_result;
 mod hash_map_set;
