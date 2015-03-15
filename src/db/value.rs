@@ -32,7 +32,6 @@ impl Value for u8 {
     }
 
     fn permutations(&self, dimensions: usize) -> Vec<u8> {
-        let bits = std::u8::BITS as usize;
         return range(0, dimensions)
             .map(|i| {
                 let delta = 1u8 << i;
