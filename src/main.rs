@@ -1,5 +1,5 @@
-#![feature(collections)]
 #![feature(core)]
+#![feature(std_misc)]
 
 /*
 #![feature(plugin)]

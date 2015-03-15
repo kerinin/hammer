@@ -1,8 +1,6 @@
 extern crate num;
 
 use std::fmt;
-use std::cmp;
-use std::hash;
 
 use std::collections::HashSet;
 use self::num::rational::Ratio;
@@ -237,7 +235,7 @@ mod test {
 
     #[test]
     fn find_missing_key() {
-        let mut p: Database<usize> = Database::new(8, 2);
+        let p: Database<usize> = Database::new(8, 2);
         let a = 0b11111111usize;
         let keys = p.get(a);
 

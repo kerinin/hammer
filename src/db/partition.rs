@@ -4,16 +4,20 @@ use std::collections::HashSet;
 
 use db::hash_map_set::HashMapSet;
 use db::find_result::FindResult;
-use db::bit_matrix::BitMatrix;
 use db::value::Value;
 
-#[derive(Debug)]
 pub struct Partition<V: Value> {
     shift: usize,
     mask: usize,
 
     zero_kv: HashMapSet<V, V>,
     one_kv: HashMapSet<V, V>,
+}
+
+impl<V: Value> fmt::Debug for Partition<V> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        write!(f, "<Partition s{} m{}>", self.shift, self.mask)
+    }
 }
 
 impl<V: Value> PartialEq for Partition<V> {
@@ -68,7 +72,6 @@ impl<V: Value> Partition<V> {
         let transformed_key = key.clone().transform(self.shift, self.mask);
 
         if self.zero_kv.insert(transformed_key.clone(), key.clone()) {
-
             for k in transformed_key.permutations(self.mask).iter() {
                 self.one_kv.insert(k.clone(), key.clone());
             }
@@ -99,7 +102,7 @@ mod test {
 
     #[test]
     fn find_missing_key() {
-        let mut partition = Partition::new(4, 4);
+        let partition = Partition::new(4, 4);
         let a = 0b00001111u8;
         let keys = partition.get(&a);
 
