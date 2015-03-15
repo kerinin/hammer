@@ -42,17 +42,17 @@ impl<V: Value> Database<V> {
         // Build the partitions
         let mut partitions: Vec<Partition<V>> = Vec::with_capacity(head_count + tail_count);
         for i in 0..head_count {
-            let shift = i * head_width;
-            let mask = head_width;
-            let p: Partition<V> = Partition::new(shift, mask);
+            let start_dimension = i * head_width;
+            let dimensions = head_width;
+            let p: Partition<V> = Partition::new(start_dimension, dimensions);
 
             partitions.push(p);
         }
         for i in 0..tail_count {
-            let shift = (head_count * head_width) + (i * tail_width);
-            let mask = tail_width;
+            let start_dimension = (head_count * head_width) + (i * tail_width);
+            let dimensions = tail_width;
 
-            partitions.push(Partition::new(shift, mask));
+            partitions.push(Partition::new(start_dimension, dimensions));
         }
 
         // Done!
@@ -319,16 +319,16 @@ mod test {
         let mut rng2 = thread_rng();
         let dimensions = 8usize;
         let max_hd = 3usize;
-        let shifts_seq = rng1.gen_iter::<usize>()
+        let start_dimensions_seq = rng1.gen_iter::<usize>()
             .map(|i| sample(&mut rng2, 0..dimensions, i % max_hd));
 
-        for shifts in shifts_seq.take(1000usize) {
+        for start_dimensions in start_dimensions_seq.take(1000usize) {
             let mut p: Database<usize> = Database::new(dimensions, max_hd);
             let a = 0b11111111usize;
 
             let mut b = a.clone();
-            for shift in shifts.iter() {
-                b = b ^ (0b10000000usize >> *shift);
+            for start_dimension in start_dimensions.iter() {
+                b = b ^ (0b10000000usize >> *start_dimension);
             }
 
             let mut c: HashSet<usize> = HashSet::new();
@@ -349,19 +349,19 @@ mod test {
         let dimensions = 8usize;
         let max_hd = 3usize;
         // Generate random usizes
-        let shifts_seq = rng1.gen_iter::<usize>()
+        let start_dimensions_seq = rng1.gen_iter::<usize>()
             // Select a random number of elements in the range [0,dimensions]
             .map(|i| sample(&mut rng2, 0..dimensions, i % dimensions))
             // Filter selections with less than the max tolerance
-            .filter(|shifts| shifts.len() > max_hd);
+            .filter(|start_dimensions| start_dimensions.len() > max_hd);
 
-        for shifts in shifts_seq.take(1000usize) {
+        for start_dimensions in start_dimensions_seq.take(1000usize) {
             let mut p: Database<usize> = Database::new(dimensions, max_hd);
             let a = 0b11111111usize;
 
             let mut b = a.clone();
-            for shift in shifts.iter() {
-                b = b & (0b10000000usize >> *shift);
+            for start_dimension in start_dimensions.iter() {
+                b = b & (0b10000000usize >> *start_dimension);
             }
 
             let mut c: HashSet<usize> = HashSet::new();

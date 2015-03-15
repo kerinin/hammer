@@ -7,8 +7,8 @@ use db::find_result::FindResult;
 use db::value::Value;
 
 pub struct Partition<V: Value> {
-    shift: usize,
-    mask: usize,
+    start_dimension: usize,
+    dimensions: usize,
 
     zero_kv: HashMapSet<V, V>,
     one_kv: HashMapSet<V, V>,
@@ -16,37 +16,37 @@ pub struct Partition<V: Value> {
 
 impl<V: Value> fmt::Debug for Partition<V> {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        write!(f, "<Partition s{} m{}>", self.shift, self.mask)
+        write!(f, "<Partition s{} m{}>", self.start_dimension, self.dimensions)
     }
 }
 
 impl<V: Value> PartialEq for Partition<V> {
     fn eq(&self, other: &Partition<V>) -> bool {
-        return self.shift.eq(&other.shift) &&
-            self.mask.eq(&other.mask); // &&
+        return self.start_dimension.eq(&other.start_dimension) &&
+            self.dimensions.eq(&other.dimensions); // &&
             //self.zero_kv.eq(&other.zero_kv) &&
             //self.one_kv.eq(&other.one_kv);
     }
 
     fn ne(&self, other: &Partition<V>) -> bool {
-        return self.shift.ne(&other.shift) ||
-            self.mask.ne(&other.mask); // ||
+        return self.start_dimension.ne(&other.start_dimension) ||
+            self.dimensions.ne(&other.dimensions); // ||
             //self.zero_kv.ne(&other.zero_kv) ||
             //self.one_kv.ne(&other.one_kv);
     }
 }
 
 impl<V: Value> Partition<V> {
-    pub fn new(shift: usize, mask: usize) -> Partition<V> {
+    pub fn new(start_dimension: usize, dimensions: usize) -> Partition<V> {
         let zero_kv: HashMapSet<V, V> = HashMapSet::new();
         let one_kv: HashMapSet<V, V> = HashMapSet::new();
-        return Partition {shift: shift, mask: mask, zero_kv: zero_kv, one_kv: one_kv};
+        return Partition {start_dimension: start_dimension, dimensions: dimensions, zero_kv: zero_kv, one_kv: one_kv};
     }
 
     pub fn get(&self, key: &V) -> HashSet<FindResult<V>> {
         let mut found_keys: HashSet<FindResult<V>> = HashSet::new();
 
-        let transformed_key = &key.transform(self.shift, self.mask);
+        let transformed_key = &key.window(self.start_dimension, self.dimensions);
         match self.zero_kv.get(transformed_key) {
             Some(keys) => {
                 for k in keys.iter() {
@@ -69,10 +69,10 @@ impl<V: Value> Partition<V> {
     }
 
     pub fn insert(&mut self, key: V) -> bool {
-        let transformed_key = key.transform(self.shift, self.mask);
+        let transformed_key = key.window(self.start_dimension, self.dimensions);
 
         if self.zero_kv.insert(transformed_key.clone(), key.clone()) {
-            for k in transformed_key.permutations(self.mask).iter() {
+            for k in transformed_key.permutations(self.dimensions).iter() {
                 self.one_kv.insert(k.clone(), key.clone());
             }
             return true;
@@ -81,10 +81,10 @@ impl<V: Value> Partition<V> {
     }
 
     pub fn remove(&mut self, key: &V) -> bool {
-        let transformed_key = &key.transform(self.shift, self.mask);
+        let transformed_key = &key.window(self.start_dimension, self.dimensions);
 
         if self.zero_kv.remove(transformed_key, key) {
-            for k in transformed_key.permutations(self.mask).iter() {
+            for k in transformed_key.permutations(self.dimensions).iter() {
                 self.one_kv.remove(k, key);
             }
             return true;
@@ -112,8 +112,8 @@ mod test {
     #[test]
     fn first_inserted_key() {
         let mut partition = Partition::new(4, 4);
-        let a = 0b00001111u8;
-        let b = 0b00000011u8;
+        let a = 0b11110000u8;
+        let b = 0b00110000u8;
         let mut expected = HashSet::new();
         expected.insert(FindResult::ZeroVariant(a.clone()));
 
@@ -128,7 +128,7 @@ mod test {
     #[test]
     fn second_inserted_key() {
         let mut partition = Partition::new(4, 4);
-        let a = 0b00001111u8;
+        let a = 0b11110000u8;
         let mut expected = HashSet::new();
         expected.insert(FindResult::ZeroVariant(a.clone()));
         partition.insert(a.clone());
@@ -143,10 +143,10 @@ mod test {
     #[test]
     fn find_permutation_of_inserted_key() {
         let mut partition = Partition::new(4, 4);
-        let a = 0b00001111u8;
-        let b = 0b00000111u8;
-        let c = 0b00000011u8;
-        let d = 0b00000001u8;
+        let a = 0b11110000u8;
+        let b = 0b01110000u8;
+        let c = 0b00110000u8;
+        let d = 0b00010000u8;
         let mut expected = HashSet::new();
         expected.insert(FindResult::OneVariant(a.clone()));
         expected.insert(FindResult::ZeroVariant(b.clone()));
@@ -165,7 +165,7 @@ mod test {
     #[test]
     fn remove_inserted_key() {
         let mut partition = Partition::new(4, 4);
-        let a = 0b00001111u8;
+        let a = 0b11110000u8;
 
         partition.insert(a.clone());
 
@@ -179,7 +179,7 @@ mod test {
     #[test]
     fn remove_missing_key() {
         let mut partition = Partition::new(4, 4);
-        let a = 0b00001111u8;
+        let a = 0b11110000u8;
 
         assert!(!partition.remove(&a));
     }

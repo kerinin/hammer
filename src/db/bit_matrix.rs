@@ -1,9 +1,11 @@
+use std;
 use std::iter;
 use std::ops;
 use std::usize;
 use std::mem;
 use std::vec;
 use std::u8;
+use std::fmt;
 
 use std::collections::BitVec;
 
@@ -55,22 +57,26 @@ impl BitMatrix {
 
         range(0, self.data.len()).map(|i| {
             let mut permuted = self.clone();
-            permuted.data[i][byte_offset] = permuted.data[i][byte_offset] & toggle;
+            permuted.data[i][byte_offset] = permuted.data[i][byte_offset] ^ toggle;
             permuted
         }).collect::<Vec<BitMatrix>>()
     }
 }
 
 impl Value for BitMatrix {
-    fn transform(&self, shift: usize, mask: usize) -> BitMatrix {
-        (self.clone() << shift) & self.mask(mask)
+    fn window(&self, start_dimension: usize, dimensions: usize) -> BitMatrix {
+        let bits = self.data[0].len() * std::u8::BITS as usize;
+        let trim_high = bits - (start_dimension + dimensions);
+
+        (self.clone() << trim_high) >> (trim_high + start_dimension)
     }
 
-    fn permutations(&self, n: usize) -> Vec<BitMatrix> {
-        range(0, self.data[0].len())
+    fn permutations(&self, dimensions: usize) -> Vec<BitMatrix> {
+        let bits = self.data[0].len() * std::u8::BITS as usize;
+
+        return range(0, dimensions)
             .flat_map(|i| self.permute(i).into_iter() )
-            .take(n)
-            .collect::<Vec<BitMatrix>>()
+            .collect::<Vec<BitMatrix>>();
     }
 
     fn hamming(&self, other: &BitMatrix) -> usize {
@@ -253,9 +259,35 @@ impl ops::Shr<usize> for BitMatrix {
     }
 }
 
+impl fmt::Binary for BitMatrix {
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        write!(f, "[");
+        for outer in self.data.iter() {
+            write!(f, "[");
+            for inner in outer.iter() {
+                write!(f, "{:08b}", inner);
+            }
+            write!(f, "]");
+        }
+        write!(f, "]")
+    }
+}
+
 #[cfg(test)]
 mod test {
     use db::bit_matrix::BitMatrix;
+    use db::value::Value;
+
+
+    /*
+     * Need to test:
+     * =============
+     * AsBitMatrix impls (none actually exist atm)
+     * Macro
+     * transposition
+     * Benchmark
+     *
+     */
 
     #[test]
     fn bitxor_equally_sized_vectors() {
@@ -374,4 +406,96 @@ mod test {
 
         assert_eq!(a >> 12, b);
     }
+
+
+
+    #[test]
+    fn test_window_min_start_and_finish_bitmatrix() {
+        let a = bitmatrix![[0b10000001u8]];
+        let b = bitmatrix![[0b00000001u8]];
+
+        assert_eq!(a.window(0,1), b);
+    }
+
+    #[test]
+    fn test_window_max_start_bitmatrix() {
+        let a = bitmatrix![[0b10000001u8]];
+        let b = bitmatrix![[0b00000001u8]];
+
+        assert_eq!(a.window(7,1), b);
+    }
+
+    #[test]
+    fn test_window_min_start_and_max_finish_bitmatrix() {
+        let a = bitmatrix![[0b10000001u8]];
+        let b = bitmatrix![[0b10000001u8]];
+
+        assert_eq!(a.window(0,8), b);
+    }
+
+    #[test]
+    fn test_window_n_start_and_max_finish_bitmatrix() {
+        let a = bitmatrix![[0b11000011u8]];
+        let b = bitmatrix![[0b01100001u8]];
+
+        assert_eq!(a.window(1,7), b);
+    }
+
+    #[test]
+    fn test_window_min_start_and_n_finish_bitmatrix() {
+        let a = bitmatrix![[0b11000011u8]];
+        let b = bitmatrix![[0b01000011u8]];
+
+        assert_eq!(a.window(0,7), b);
+    }
+
+    #[test]
+    fn test_window_n_start_and_n_finish_bitmatrix() {
+        let a = bitmatrix![[0b11111000u8]];
+        let b = bitmatrix![[0b00000011u8]];
+
+        assert_eq!(a.window(3,2), b);
+    }
+
+    #[test]
+    fn test_permutation_bitmatrix() {
+        let a = bitmatrix![[0b00000000u8]];
+        let expected = vec![
+            bitmatrix![[0b00000001u8]],
+            bitmatrix![[0b00000010u8]],
+            bitmatrix![[0b00000100u8]],
+            bitmatrix![[0b00001000u8]],
+        ];
+
+        assert_eq!(a.permutations(4), expected);
+    }
+
+    #[test]
+    fn test_hamming_zero_bitmatrix() {
+        let a = bitmatrix![[0b00000000u8]];
+        let b = bitmatrix![[0b00000000u8]];
+
+        assert_eq!(a.hamming(&b), 0);
+    }
+
+    #[test]
+    fn test_hamming_one_bitmatrix() {
+        let a = bitmatrix![[0b00000000u8]];
+        let b = bitmatrix![[0b10000000u8]];
+        let c = bitmatrix![[0b00000001u8]];
+        let d = bitmatrix![[0b00010000u8]];
+
+        assert_eq!(a.hamming(&b), 1);
+        assert_eq!(a.hamming(&c), 1);
+        assert_eq!(a.hamming(&d), 1);
+    }
+
+    #[test]
+    fn test_hamming_max_bitmatrix() {
+        let a = bitmatrix![[0b00000000u8]];
+        let b = bitmatrix![[0b11111111u8]];
+
+        assert_eq!(a.hamming(&b), 8);
+    }
 }
+
