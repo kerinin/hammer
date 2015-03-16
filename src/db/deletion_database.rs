@@ -7,7 +7,6 @@ use self::num::rational::Ratio;
 
 use db::partition::Partition;
 //use db::result_accumulator::ResultAccumulator;
-use db::find_result::FindResult;
 use db::value::{Value, Window, DeletionVariant, Hamming};
 
 pub struct DeletionDatabase<V> where V: Value + Window + DeletionVariant + Hamming {

@@ -1,10 +1,5 @@
-use std;
 use std::iter;
 use std::ops;
-use std::usize;
-use std::mem;
-use std::vec;
-use std::u8;
 use std::fmt;
 
 use std::collections::BitVec;
@@ -54,14 +49,6 @@ impl BitMatrix {
         return BitMatrix {data: out};
     }
 
-    fn mask(&self, length: usize) -> BitMatrix {
-        let data = self.data.iter().map(|_| {
-            BitVec::from_elem(length, true).to_bytes() 
-        }).collect::<Vec<Vec<u8>>>();
-
-        return BitMatrix {data: data};
-    }
-
     fn permute(&self, dimension: usize) -> Vec<BitMatrix> {
         let byte_offset = dimension / 8;
         let bit_offset = dimension % 8;
@@ -92,7 +79,7 @@ impl SubstitutionVariant for BitMatrix {
 }
 impl Hamming for BitMatrix {
     fn hamming(&self, other: &BitMatrix) -> usize {
-        let mut all = BitVec::from_elem(self.columns(), true);
+        let all = BitVec::from_elem(self.columns(), true);
 
         let shared_dimensions = self.data.iter()
             .zip(other.data.iter())
@@ -287,7 +274,6 @@ impl fmt::Binary for BitMatrix {
 #[cfg(test)]
 mod test {
     use db::bit_matrix::BitMatrix;
-    use db::value::Value;
 
 
     /*

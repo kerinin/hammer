@@ -4,11 +4,7 @@ use std;
 use std::hash;
 use std::cmp;
 use std::clone;
-use std::ops;
-use std::fmt;
 use std::num::Int;
-
-use std::collections::BitVec;
 
 // pub trait Value: hash::Hash + cmp::Eq + clone::Clone + ops::BitXor + ops::BitAnd + ops::Shl<usize> + fmt::Debug + fmt::Binary {
 pub trait Value: hash::Hash + cmp::Eq + clone::Clone {}

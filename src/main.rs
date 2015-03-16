@@ -1,5 +1,6 @@
 #![feature(core)]
 #![feature(std_misc)]
+#![feature(collections)]
 
 #[macro_use]
 
