@@ -2,63 +2,63 @@ use std::collections::{HashMap, HashSet};
 
 use db::find_result::{FindResult, ZeroVariant, OneVariant};
 
-pub struct ResultAccumulator {
+pub struct ResultAccumulator<V: Value> {
     tolerance: uint,
-    query: BitMatrix,
-    candidates: HashMap<BitMatrix, Vec<uint>>,
+    query: V,
+    candidates: HashMap<V, (usize, usize)>,
 }
 
-impl ResultAccumulator {
-    pub fn new(tolerance: uint, query: BitMatrix) -> ResultAccumulator {
-        let candidates: HashMap<BitMatrix, Vec<uint>> = HashMap::new();
+impl<V: Value> ResultAccumulator<V> {
+    pub fn new(tolerance: usize, query: V) -> ResultAccumulator<V> {
+        let candidates = HashMap::new();
         return ResultAccumulator {tolerance: tolerance, query: query, candidates: candidates};
     }
 
-    pub fn merge(&mut self, other: &FindResult) {
-        // The intermediate assignment here is to work around Rust not letting me
-        // both match on self.candidates and mutate it.  The match appears to
-        // require an immutable borrow and the insert obviously requires a mutable 
-        // one.  This may be by design, as it enforces the consistency of the
-        // value of `counts`
-        let (key, value) = match *other {
-            ZeroVariant(ref value) => match self.candidates.find(value) {
-                Some(counts) => (value.clone(), vec![counts[0] + 1, counts[1]]),
-                None => (value.clone(), vec![1u, 0u]),
+    pub fn insert_zero_variant(&mut self, value: &Value) {
+        match self.candidates.find(value) {
+            Some((exact_matches, one_matches)) => {
+                self.candidates.insert(value.clone(), (exact_matches + 1, one_matches))
             },
-            OneVariant(ref value) => match self.candidates.find(value) {
-                Some(counts) => (value.clone(), vec![counts[0], counts[1] + 1]),
-                None => (value.clone(), vec![0u, 1u]),
-            },
-        };
-
-        self.candidates.insert(key, value);
+            None => self.candidates.insert(value.clone(), (1, 0)),
+        }
     }
 
-    pub fn found_values(&self) -> Option<HashSet<BitMatrix>> {
-        let mut matches: HashSet<BitMatrix> = HashSet::new();
+    pub fn insert_zero_variant(&mut self, value: &Value) {
+        match self.candidates.find(value) {
+            Some((exact_matches, one_matches)) => {
+                self.candidates.insert(value.clone(), (exact_matches, one_matches + 1))
+            },
+            None => self.candidates.insert(value.clone(), (0, 1)),
+        }
+    }
+
+    pub fn found_values(&self) -> Option<HashSet<V>> {
+        let mut matches: HashSet<V> = HashSet::new();
 
         if self.tolerance % 2 == 0 {
-            for (candidate, counts) in self.candidates.iter() {
+            for (candidate, (exact_matches, one_matches)) in self.candidates.iter() {
                 // "If k is an even number, S must have at least one exact-matching
                 // partition, or two 1-matching partitions"
-                if counts[0] >= 1 || counts[1] >= 2 {
+                if exact_matches >= 1 || one_matches >= 2 {
                     if self.query.hamming(candidate) <= self.tolerance {
                         matches.insert(candidate.clone());
                     }
                 }
             }
         } else {
-            for (candidate, counts) in self.candidates.iter() {
+            for (candidate, (exact_matches, one_matches)) in self.candidates.iter() {
                 // "If k is an odd number, S must have at least two matching partitions
                 // where at least one of the matches should be an exact match, or S
                 // must have at least three 1-matching partitions"
-                if (counts[0] >= 1 && (counts[0] + counts[1]) >= 2) || counts[1] >= 3 {
+                if (exact_matches >= 1 && (exact_matches + one_matches) >= 2) || one_matches >= 3 {
                     if self.query.hamming(candidate) <= self.tolerance {
                         matches.insert(candidate.clone());
                     }
                 }
             }
         }
+
+        // Still need to verify, right?
 
         match matches.len() {
             0 => return None,

@@ -64,6 +64,37 @@ impl<V: Value + Window + DeletionVariant + Hamming> DeletionDatabase<V> {
     }
 
     pub fn get(&self, key: &V) -> Option<HashSet<V>> {
+
+        let mut results = ResultAccumulator::new(self.tolerance, key);
+
+        // Split across tasks?
+        for partition in self.partitions.iter() {
+
+            let transformed_key = &key.window(partition.start_dimension, partition.dimensions);
+            match partition.zero_kv.get(transformed_key) {
+                Some(keys) => {
+                    for k in keys.iter() {
+                        if k.hamming(key) <= self.tolerance {
+                            results.insert_zero_variant(k.clone());
+                        }
+                    }
+                },
+                None => {},
+            }
+
+            match partition.one_kv.get(transformed_key) {
+                Some(keys) => {
+                    for k in keys.iter() {
+                        if k.hamming(key) <= self.tolerance {
+                            results.insert_one_variant(k.clone());
+                        }
+                    }
+                },
+                None => {},
+            }
+        }
+
+        results.found_values()
     }
 
     /*
@@ -71,14 +102,21 @@ impl<V: Value + Window + DeletionVariant + Hamming> DeletionDatabase<V> {
      * Returns true if key was added to ANY index
      */
     pub fn insert(&mut self, key: V) -> bool {
-        let mut inserted = false;
-
         // Split across tasks?
-        for p in self.partitions.iter_mut() {
-            inserted = p.insert(key.clone()) || inserted
-        }
+        self.partitions.iter_mut().map(|ref mut partition| {
+            let transformed_key = key.window(partition.start_dimension, partition.dimensions);
 
-        inserted
+            if partition.zero_kv.insert(transformed_key.clone(), key.clone()) {
+                for k in transformed_key.substitution_variants(partition.dimensions).iter() {
+                    partition.one_kv.insert(k.clone(), key.clone());
+                }
+                true
+            } else {
+                false
+            }
+
+            // Collecting first to force evaluation
+        }).collect::<Vec<bool>>().iter().any(|i| *i)
     }
 
     /*
@@ -86,14 +124,21 @@ impl<V: Value + Window + DeletionVariant + Hamming> DeletionDatabase<V> {
      * Returns true if key was removed from ANY index
      */
     pub fn remove(&mut self, key: &V) -> bool {
-        let mut removed = false;
-
         // Split across tasks?
-        for p in self.partitions.iter_mut() {
-            removed = p.remove(key) || removed
-        }
+        self.partitions.iter_mut().map(|ref mut partition| {
+            let transformed_key = &key.window(partition.start_dimension, partition.dimensions);
 
-        removed
+            if partition.zero_kv.remove(transformed_key, key) {
+                for k in transformed_key.substitution_variants(partition.dimensions).iter() {
+                    partition.one_kv.remove(k, key);
+                }
+                true
+            } else {
+                false
+            }
+
+            // Collecting first to force evaluation
+        }).collect::<Vec<bool>>().iter().any(|i| *i)
     }
 }
 
