@@ -5,17 +5,32 @@ use std::fmt;
 use std::collections::HashSet;
 use self::num::rational::Ratio;
 
-use db::partition::Partition;
-//use db::result_accumulator::ResultAccumulator;
+use db::hash_map_set::HashMapSet;
+use db::result_accumulator::ResultAccumulator;
 use db::value::{Value, Window, SubstitutionVariant, Hamming};
+
+pub struct SubstitutionPartition<V: Value> {
+    pub start_dimension: usize,
+    pub dimensions: usize,
+
+    pub zero_kv: HashMapSet<V, V>,
+    pub one_kv: HashMapSet<V, V>,
+}
 
 pub struct SubstitutionDatabase<V> where V: Value + Window + SubstitutionVariant + Hamming {
     dimensions: usize,
     tolerance: usize,
     partition_count: usize,
-    partitions: Vec<Partition<V>>,
+    partitions: Vec<SubstitutionPartition<V>>,
 }
 
+impl<V: Value> SubstitutionPartition<V> {
+    pub fn new(start_dimension: usize, dimensions: usize) -> SubstitutionPartition<V> {
+        let zero_kv: HashMapSet<V, V> = HashMapSet::new();
+        let one_kv: HashMapSet<V, V> = HashMapSet::new();
+        return SubstitutionPartition {start_dimension: start_dimension, dimensions: dimensions, zero_kv: zero_kv, one_kv: one_kv};
+    }
+}
 
 impl<V: Value + Window + SubstitutionVariant + Hamming> SubstitutionDatabase<V> {
     /*
@@ -39,11 +54,11 @@ impl<V: Value + Window + SubstitutionVariant + Hamming> SubstitutionDatabase<V> 
         let tail_count = partition_count - head_count;
 
         // Build the partitions
-        let mut partitions: Vec<Partition<V>> = Vec::with_capacity(head_count + tail_count);
+        let mut partitions: Vec<SubstitutionPartition<V>> = Vec::with_capacity(head_count + tail_count);
         for i in 0..head_count {
             let start_dimension = i * head_width;
             let dimensions = head_width;
-            let p: Partition<V> = Partition::new(start_dimension, dimensions);
+            let p: SubstitutionPartition<V> = SubstitutionPartition::new(start_dimension, dimensions);
 
             partitions.push(p);
         }
@@ -51,7 +66,7 @@ impl<V: Value + Window + SubstitutionVariant + Hamming> SubstitutionDatabase<V> 
             let start_dimension = (head_count * head_width) + (i * tail_width);
             let dimensions = tail_width;
 
-            partitions.push(Partition::new(start_dimension, dimensions));
+            partitions.push(SubstitutionPartition::new(start_dimension, dimensions));
         }
 
         // Done!
@@ -64,25 +79,7 @@ impl<V: Value + Window + SubstitutionVariant + Hamming> SubstitutionDatabase<V> 
     }
 
     pub fn get(&self, key: &V) -> Option<HashSet<V>> {
-        /*
-         * This is the method described in the HmSearch paper.  It's slower than
-         * just checking the hamming distance, but I'm going to leave it commented
-         * out here becase it may be necessary for vector-hamming distances (as
-         * opposed to scalar-hamming distances).
-         */
-        //let mut results: ResultAccumulator = ResultAccumulator::new(self.tolerance, key.clone());
-
-        //for partition in self.partitions.iter() {
-        //    let found = partition.find(key.clone());
-
-        //    for k in found.iter() {
-        //        results.merge(k);
-        //    }
-        //}
-
-        //return results.found_values()
-
-        let mut results: HashSet<V> = HashSet::new();
+        let mut results = ResultAccumulator::new(self.tolerance, key.clone());
 
         // Split across tasks?
         for partition in self.partitions.iter() {
@@ -91,9 +88,7 @@ impl<V: Value + Window + SubstitutionVariant + Hamming> SubstitutionDatabase<V> 
             match partition.zero_kv.get(transformed_key) {
                 Some(keys) => {
                     for k in keys.iter() {
-                        if k.hamming(key) <= self.tolerance {
-                            results.insert(k.clone());
-                        }
+                        results.insert_zero_variant(k)
                     }
                 },
                 None => {},
@@ -102,20 +97,14 @@ impl<V: Value + Window + SubstitutionVariant + Hamming> SubstitutionDatabase<V> 
             match partition.one_kv.get(transformed_key) {
                 Some(keys) => {
                     for k in keys.iter() {
-                        if k.hamming(key) <= self.tolerance {
-                            results.insert(k.clone());
-                        }
+                        results.insert_zero_variant(k)
                     }
                 },
                 None => {},
             }
         }
 
-        if results.is_empty() {
-            None
-        } else {
-            Some(results)
-        }
+        results.found_values()
     }
 
     /*
@@ -193,8 +182,7 @@ mod test {
     use std::collections::{HashSet};
     use self::rand::{thread_rng, sample, Rng};
 
-    use db::substitution_database::{SubstitutionDatabase};
-    use db::partition::Partition;
+    use db::substitution_database::{SubstitutionDatabase, SubstitutionPartition};
 
     #[test]
     fn partition_evenly() {
@@ -204,10 +192,10 @@ mod test {
             tolerance: 5,
             partition_count: 4,
             partitions: vec![
-                Partition::new(0, 8),
-                Partition::new(8, 8),
-                Partition::new(16, 8),
-                Partition::new(24, 8)
+                SubstitutionPartition::new(0, 8),
+                SubstitutionPartition::new(8, 8),
+                SubstitutionPartition::new(16, 8),
+                SubstitutionPartition::new(24, 8)
                     ]};
 
         assert_eq!(a, b);
@@ -221,11 +209,11 @@ mod test {
             tolerance: 7,
             partition_count: 5,
             partitions: vec![
-                Partition::new(0, 7),
-                Partition::new(7, 7),
-                Partition::new(14, 6),
-                Partition::new(20, 6),
-                Partition::new(26, 6)
+                SubstitutionPartition::new(0, 7),
+                SubstitutionPartition::new(7, 7),
+                SubstitutionPartition::new(14, 6),
+                SubstitutionPartition::new(20, 6),
+                SubstitutionPartition::new(26, 6)
                     ]};
 
         assert_eq!(a, b);
@@ -239,9 +227,9 @@ mod test {
             tolerance: 8,
             partition_count: 3,
             partitions: vec![
-                Partition::new(0, 2),
-                Partition::new(2, 1),
-                Partition::new(3, 1),
+                SubstitutionPartition::new(0, 2),
+                SubstitutionPartition::new(2, 1),
+                SubstitutionPartition::new(3, 1),
             ]
         };
 
@@ -256,7 +244,7 @@ mod test {
             tolerance: 0,
             partition_count: 1,
             partitions: vec![
-                Partition::new(0, 32),
+                SubstitutionPartition::new(0, 32),
             ]
         };
 
@@ -271,7 +259,7 @@ mod test {
             tolerance: 0,
             partition_count: 1,
             partitions: vec![
-                Partition::new(0, 0),
+                SubstitutionPartition::new(0, 0),
             ]
         };
 
