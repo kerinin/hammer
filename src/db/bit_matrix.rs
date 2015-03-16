@@ -94,6 +94,11 @@ impl Hamming for BitMatrix {
 
         shared_dimensions.iter().filter(|x| *x).count()
     }
+    
+    // NOTE: This can be expedited by bailing early...
+    fn hamming_lte(&self, other: &BitMatrix, bound: usize) -> bool {
+        self.hamming(other) <= bound
+    }
 }
 
 impl ops::BitXor for BitMatrix {

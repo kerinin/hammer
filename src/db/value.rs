@@ -22,18 +22,20 @@ pub trait SubstitutionVariant where Self: Hamming {
     fn substitution_variants(&self, dimensions: usize) -> Vec<Self>;
 }
 
-pub trait DeletionVariant where <Self as DeletionVariant>::Output: Hamming {
+pub trait DeletionVariant where <Self as DeletionVariant>::Output: Value + Hamming {
     type Output;
     fn deletion_variants(&self, dimensions: usize) -> Vec<<Self as DeletionVariant>::Output>;
 }
 
 pub trait Hamming {
     fn hamming(&self, rhs: &Self) -> usize;
+    fn hamming_lte(&self, rhs: &Self, bound: usize) -> bool;
 }
 
 
 impl Value for u8 {}
 impl Value for usize {}
+impl Value for (usize, u8) {}
 
 impl Window for u8 {
     fn window(&self, start_dimension: usize, dimensions: usize) -> u8 {
@@ -77,14 +79,54 @@ impl SubstitutionVariant for usize {
 }
 
 
+impl DeletionVariant for usize {
+    type Output = (usize, u8);
+
+    fn deletion_variants(&self, dimensions: usize) -> Vec<(usize, u8)> {
+        return range(0, dimensions)
+            .map(|i| {
+                (self.clone(), i as u8)
+            })
+            .collect::<Vec<(usize, u8)>>();
+    }
+}
+
+
 impl Hamming for u8 {
     fn hamming(&self, other: &u8) -> usize {
         (*self ^ *other).count_ones() as usize // bitxor
+    }
+    fn hamming_lte(&self, other: &u8, bound: usize) -> bool {
+        self.hamming(other) <= bound
     }
 }
 impl Hamming for usize {
     fn hamming(&self, other: &usize) -> usize {
         (*self ^ *other).count_ones() as usize // bitxor
+    }
+    fn hamming_lte(&self, other: &usize, bound: usize) -> bool {
+        self.hamming(other) <= bound
+    }
+}
+impl Hamming for (usize, u8) {
+    fn hamming(&self, other: &(usize, u8)) -> usize {
+        let &(self_value, self_deleted_index) = self;
+        let &(other_value, other_deleted_index) = other;
+        
+        let self_value_and_deleted = (self_value | (1usize << self_deleted_index));
+        let other_value_and_deleted = (other_value | (1usize << other_deleted_index));
+
+        let shared_binary_values = self_value_and_deleted ^ other_value_and_deleted;
+
+        if self_deleted_index == other_deleted_index {
+            return shared_binary_values.count_ones() as usize
+        } else {
+            return 2 + shared_binary_values.count_ones() as usize
+        }
+    }
+
+    fn hamming_lte(&self, other: &(usize, u8), bound: usize) -> bool {
+        self.hamming(other) <= bound
     }
 }
 

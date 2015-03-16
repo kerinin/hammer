@@ -37,15 +37,6 @@ impl<V: Value + Hamming> ResultAccumulator<V> {
                 entry.insert((0, 1));
             }
         }
-
-        match self.candidates.get(value) {
-            Some(&(exact_matches, one_matches)) => {
-                self.candidates.insert(value.clone(), (exact_matches, one_matches + 1));
-            },
-            None => {
-                self.candidates.insert(value.clone(), (0, 1));
-            },
-        }
     }
 
     pub fn found_values(&self) -> Option<HashSet<V>> {
@@ -56,7 +47,7 @@ impl<V: Value + Hamming> ResultAccumulator<V> {
                 // "If k is an even number, S must have at least one exact-matching
                 // partition, or two 1-matching partitions"
                 if exact_matches >= 1 || one_matches >= 2 {
-                    if self.query.hamming(candidate) <= self.tolerance {
+                    if self.query.hamming_lte(candidate, self.tolerance) {
                         matches.insert(candidate.clone());
                     }
                 }
@@ -67,14 +58,12 @@ impl<V: Value + Hamming> ResultAccumulator<V> {
                 // where at least one of the matches should be an exact match, or S
                 // must have at least three 1-matching partitions"
                 if (exact_matches >= 1 && (exact_matches + one_matches) >= 2) || one_matches >= 3 {
-                    if self.query.hamming(candidate) <= self.tolerance {
+                    if self.query.hamming_lte(candidate, self.tolerance) {
                         matches.insert(candidate.clone());
                     }
                 }
             }
         }
-
-        // Still need to verify, right?
 
         match matches.len() {
             0 => return None,

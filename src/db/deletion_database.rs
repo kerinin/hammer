@@ -2,18 +2,34 @@ extern crate num;
 
 use std::fmt;
 
-use std::collections::HashSet;
+use std::collections::{HashSet, HashMap};
+use std::collections::hash_map::Entry::{Occupied, Vacant};
+
 use self::num::rational::Ratio;
 
-use db::partition::Partition;
-//use db::result_accumulator::ResultAccumulator;
+use db::result_accumulator::ResultAccumulator;
+use db::hash_map_set::HashMapSet;
 use db::value::{Value, Window, DeletionVariant, Hamming};
+
+pub struct DeletionPartition<V: Value + DeletionVariant> {
+    pub start_dimension: usize,
+    pub dimensions: usize,
+
+    pub kv: HashMapSet<<V as DeletionVariant>::Output, V>,
+}
+
+impl<V: Value + DeletionVariant> DeletionPartition<V> {
+    pub fn new(start_dimension: usize, dimensions: usize) -> DeletionPartition<V> {
+        let kv: HashMapSet<<V as DeletionVariant>::Output, V> = HashMapSet::new();
+        return DeletionPartition {start_dimension: start_dimension, dimensions: dimensions, kv: kv};
+    }
+}
 
 pub struct DeletionDatabase<V> where V: Value + Window + DeletionVariant + Hamming {
     dimensions: usize,
     tolerance: usize,
     partition_count: usize,
-    partitions: Vec<Partition<V>>,
+    partitions: Vec<DeletionPartition<V>>,
 }
 
 
@@ -39,19 +55,19 @@ impl<V: Value + Window + DeletionVariant + Hamming> DeletionDatabase<V> {
         let tail_count = partition_count - head_count;
 
         // Build the partitions
-        let mut partitions: Vec<Partition<V>> = Vec::with_capacity(head_count + tail_count);
+        let mut partitions: Vec<DeletionPartition<V>> = Vec::with_capacity(head_count + tail_count);
         for i in 0..head_count {
             let start_dimension = i * head_width;
             let dimensions = head_width;
-            let p: Partition<V> = Partition::new(start_dimension, dimensions);
+            let p = DeletionPartition::new(start_dimension, dimensions);
 
             partitions.push(p);
         }
         for i in 0..tail_count {
             let start_dimension = (head_count * head_width) + (i * tail_width);
             let dimensions = tail_width;
-
-            partitions.push(Partition::new(start_dimension, dimensions));
+            let p = DeletionPartition::new(start_dimension, dimensions);
+            partitions.push(p);
         }
 
         // Done!
@@ -65,32 +81,33 @@ impl<V: Value + Window + DeletionVariant + Hamming> DeletionDatabase<V> {
 
     pub fn get(&self, key: &V) -> Option<HashSet<V>> {
 
-        let mut results = ResultAccumulator::new(self.tolerance, key);
+        let mut results = ResultAccumulator::new(self.tolerance, key.clone());
 
         // Split across tasks?
         for partition in self.partitions.iter() {
-
+            let mut counts = HashMap::new();
             let transformed_key = &key.window(partition.start_dimension, partition.dimensions);
-            match partition.zero_kv.get(transformed_key) {
-                Some(keys) => {
-                    for k in keys.iter() {
-                        if k.hamming(key) <= self.tolerance {
-                            results.insert_zero_variant(k.clone());
+
+            for deletion_variant in transformed_key.deletion_variants(partition.dimensions).iter() {
+                match partition.kv.get(deletion_variant) {
+                    Some(found_keys) => {
+                        for found_key in found_keys.iter() {
+                            match counts.entry(found_key) {
+                                Occupied(mut entry) => { *entry.get_mut() += 1; },
+                                Vacant(entry) => { entry.insert(1); },
+                            }
                         }
-                    }
-                },
-                None => {},
+                    },
+                    None => (),
+                }
             }
 
-            match partition.one_kv.get(transformed_key) {
-                Some(keys) => {
-                    for k in keys.iter() {
-                        if k.hamming(key) <= self.tolerance {
-                            results.insert_one_variant(k.clone());
-                        }
-                    }
-                },
-                None => {},
+            for (found_key, count) in counts {
+                if count > 2 {
+                    results.insert_zero_variant(found_key)
+                } else {
+                    results.insert_one_variant(found_key)
+                }
             }
         }
 
@@ -106,14 +123,11 @@ impl<V: Value + Window + DeletionVariant + Hamming> DeletionDatabase<V> {
         self.partitions.iter_mut().map(|ref mut partition| {
             let transformed_key = key.window(partition.start_dimension, partition.dimensions);
 
-            if partition.zero_kv.insert(transformed_key.clone(), key.clone()) {
-                for k in transformed_key.substitution_variants(partition.dimensions).iter() {
-                    partition.one_kv.insert(k.clone(), key.clone());
-                }
-                true
-            } else {
-                false
-            }
+            // NOTE: think about how to detect 'new' values
+            transformed_key.deletion_variants(partition.dimensions).iter().map(|deletion_variant| {
+                partition.kv.insert(deletion_variant.clone(), key.clone())
+
+            }).collect::<Vec<bool>>().iter().any(|i| *i)
 
             // Collecting first to force evaluation
         }).collect::<Vec<bool>>().iter().any(|i| *i)
@@ -128,14 +142,10 @@ impl<V: Value + Window + DeletionVariant + Hamming> DeletionDatabase<V> {
         self.partitions.iter_mut().map(|ref mut partition| {
             let transformed_key = &key.window(partition.start_dimension, partition.dimensions);
 
-            if partition.zero_kv.remove(transformed_key, key) {
-                for k in transformed_key.substitution_variants(partition.dimensions).iter() {
-                    partition.one_kv.remove(k, key);
-                }
-                true
-            } else {
-                false
-            }
+            transformed_key.deletion_variants(partition.dimensions).iter().map(|deletion_variant| {
+                partition.kv.remove(deletion_variant, key)
+
+            }).collect::<Vec<bool>>().iter().any(|i| *i)
 
             // Collecting first to force evaluation
         }).collect::<Vec<bool>>().iter().any(|i| *i)
@@ -169,11 +179,10 @@ impl<V: Value + Window + DeletionVariant + Hamming> PartialEq for DeletionDataba
 mod test {
     extern crate rand;
 
-    use std::collections::{HashSet};
+    use std::collections::HashSet;
     use self::rand::{thread_rng, sample, Rng};
 
-    use db::substitution_database::{DeletionDatabase};
-    use db::partition::Partition;
+    use db::deletion_database::{DeletionDatabase, DeletionPartition};
 
     #[test]
     fn partition_evenly() {
@@ -183,10 +192,10 @@ mod test {
             tolerance: 5,
             partition_count: 4,
             partitions: vec![
-                Partition::new(0, 8),
-                Partition::new(8, 8),
-                Partition::new(16, 8),
-                Partition::new(24, 8)
+                DeletionPartition::new(0, 8),
+                DeletionPartition::new(8, 8),
+                DeletionPartition::new(16, 8),
+                DeletionPartition::new(24, 8)
                     ]};
 
         assert_eq!(a, b);
@@ -200,11 +209,11 @@ mod test {
             tolerance: 7,
             partition_count: 5,
             partitions: vec![
-                Partition::new(0, 7),
-                Partition::new(7, 7),
-                Partition::new(14, 6),
-                Partition::new(20, 6),
-                Partition::new(26, 6)
+                DeletionPartition::new(0, 7),
+                DeletionPartition::new(7, 7),
+                DeletionPartition::new(14, 6),
+                DeletionPartition::new(20, 6),
+                DeletionPartition::new(26, 6)
                     ]};
 
         assert_eq!(a, b);
@@ -218,9 +227,9 @@ mod test {
             tolerance: 8,
             partition_count: 3,
             partitions: vec![
-                Partition::new(0, 2),
-                Partition::new(2, 1),
-                Partition::new(3, 1),
+                DeletionPartition::new(0, 2),
+                DeletionPartition::new(2, 1),
+                DeletionPartition::new(3, 1),
             ]
         };
 
@@ -235,7 +244,7 @@ mod test {
             tolerance: 0,
             partition_count: 1,
             partitions: vec![
-                Partition::new(0, 32),
+                DeletionPartition::new(0, 32),
             ]
         };
 
@@ -250,7 +259,7 @@ mod test {
             tolerance: 0,
             partition_count: 1,
             partitions: vec![
-                Partition::new(0, 0),
+                DeletionPartition::new(0, 0),
             ]
         };
 
