@@ -80,7 +80,6 @@ impl<V: Value + Window + DeletionVariant + Hamming> DeletionDatabase<V> {
     }
 
     pub fn get(&self, key: &V) -> Option<HashSet<V>> {
-
         let mut results = ResultAccumulator::new(self.tolerance, key.clone());
 
         // Split across tasks?

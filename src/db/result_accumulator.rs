@@ -18,8 +18,8 @@ impl<V: Value + Hamming> ResultAccumulator<V> {
     pub fn insert_zero_variant(&mut self, value: &V) {
         match self.candidates.entry(value.clone()) {
             Occupied(mut entry) => {
-                let &mut (mut exact_matches, _) = entry.get_mut();
-                exact_matches += 1;
+                let &(exact_matches, one_matches) = entry.get();
+                entry.insert((exact_matches + 1, one_matches));
             },
             Vacant(entry) => {
                 entry.insert((1, 0));
@@ -30,8 +30,8 @@ impl<V: Value + Hamming> ResultAccumulator<V> {
     pub fn insert_one_variant(&mut self, value: &V) {
         match self.candidates.entry(value.clone()) {
             Occupied(mut entry) => {
-                let &mut (_, mut one_matches) = entry.get_mut();
-                one_matches += 1;
+                let &(exact_matches, one_matches) = entry.get();
+                entry.insert((exact_matches, one_matches + 1));
             },
             Vacant(entry) => {
                 entry.insert((0, 1));
