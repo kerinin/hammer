@@ -10,6 +10,7 @@ use self::num::rational::Ratio;
 use db::result_accumulator::ResultAccumulator;
 use db::hash_map_set::HashMapSet;
 use db::value::{Value, Window, DeletionVariant, Hamming};
+use db::DeletionDB;
 
 pub struct DeletionPartition<V: Value + DeletionVariant> {
     pub start_dimension: usize,
@@ -25,19 +26,11 @@ impl<V: Value + DeletionVariant> DeletionPartition<V> {
     }
 }
 
-pub struct DeletionDatabase<V> where V: Value + Window + DeletionVariant + Hamming {
-    dimensions: usize,
-    tolerance: usize,
-    partition_count: usize,
-    partitions: Vec<DeletionPartition<V>>,
-}
-
-
-impl<V: Value + Window + DeletionVariant + Hamming> DeletionDatabase<V> {
+impl<V: Value + Window + DeletionVariant + Hamming> DeletionDB<V> {
     /*
      * Partition the keyspace as evenly as possible
      */
-    pub fn new(dimensions: usize, tolerance: usize) -> DeletionDatabase<V> {
+    pub fn new(dimensions: usize, tolerance: usize) -> DeletionDB<V> {
 
         // Determine number of partitions
         let partition_count = if tolerance == 0 {
@@ -71,7 +64,7 @@ impl<V: Value + Window + DeletionVariant + Hamming> DeletionDatabase<V> {
         }
 
         // Done!
-        return DeletionDatabase {
+        return DeletionDB {
             dimensions: dimensions,
             tolerance: tolerance,
             partition_count: partition_count,
@@ -151,21 +144,21 @@ impl<V: Value + Window + DeletionVariant + Hamming> DeletionDatabase<V> {
     }
 }
 
-impl<V: Value + Window + DeletionVariant + Hamming> fmt::Debug for DeletionDatabase<V> {
+impl<V: Value + Window + DeletionVariant + Hamming> fmt::Debug for DeletionDB<V> {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         write!(f, "({}:{}:{})", self.dimensions, self.tolerance, self.partition_count)
     }
 }
 
-impl<V: Value + Window + DeletionVariant + Hamming> PartialEq for DeletionDatabase<V> {
-    fn eq(&self, other: &DeletionDatabase<V>) -> bool {
+impl<V: Value + Window + DeletionVariant + Hamming> PartialEq for DeletionDB<V> {
+    fn eq(&self, other: &DeletionDB<V>) -> bool {
         return self.dimensions == other.dimensions &&
             self.tolerance == other.tolerance &&
             self.partition_count == other.partition_count;// &&
             //self.partitions.eq(&other.partitions);
     }
 
-    fn ne(&self, other: &DeletionDatabase<V>) -> bool {
+    fn ne(&self, other: &DeletionDB<V>) -> bool {
         return self.dimensions != other.dimensions ||
             self.tolerance != other.tolerance ||
             self.partition_count != other.partition_count; // ||
@@ -185,12 +178,13 @@ mod test {
     use std::collections::HashSet;
     use self::rand::{thread_rng, sample, Rng};
 
-    use db::deletion_database::{DeletionDatabase, DeletionPartition};
+    use db::DeletionDB;
+    use db::deletion_db::DeletionPartition;
 
     #[test]
     fn partition_evenly() {
-        let a: DeletionDatabase<usize> = DeletionDatabase::new(32, 5);
-        let b = DeletionDatabase {
+        let a: DeletionDB<usize> = DeletionDB::new(32, 5);
+        let b = DeletionDB {
             dimensions: 32,
             tolerance: 5,
             partition_count: 4,
@@ -206,8 +200,8 @@ mod test {
 
     #[test]
     fn partition_unevenly() {
-        let a: DeletionDatabase<usize> = DeletionDatabase::new(32, 7);
-        let b = DeletionDatabase {
+        let a: DeletionDB<usize> = DeletionDB::new(32, 7);
+        let b = DeletionDB {
             dimensions: 32,
             tolerance: 7,
             partition_count: 5,
@@ -224,8 +218,8 @@ mod test {
 
     #[test]
     fn partition_too_many() {
-        let a: DeletionDatabase<usize> = DeletionDatabase::new(4, 8);
-        let b = DeletionDatabase {
+        let a: DeletionDB<usize> = DeletionDB::new(4, 8);
+        let b = DeletionDB {
             dimensions: 4,
             tolerance: 8,
             partition_count: 3,
@@ -241,8 +235,8 @@ mod test {
 
     #[test]
     fn partition_zero() {
-        let a: DeletionDatabase<usize> = DeletionDatabase::new(32, 0);
-        let b = DeletionDatabase {
+        let a: DeletionDB<usize> = DeletionDB::new(32, 0);
+        let b = DeletionDB {
             dimensions: 32,
             tolerance: 0,
             partition_count: 1,
@@ -256,8 +250,8 @@ mod test {
 
     #[test]
     fn partition_with_no_bytes() {
-        let a: DeletionDatabase<usize> = DeletionDatabase::new(0, 0);
-        let b = DeletionDatabase {
+        let a: DeletionDB<usize> = DeletionDB::new(0, 0);
+        let b = DeletionDB {
             dimensions: 0,
             tolerance: 0,
             partition_count: 1,
@@ -271,7 +265,7 @@ mod test {
 
     #[test]
     fn find_missing_key() {
-        let p: DeletionDatabase<usize> = DeletionDatabase::new(8, 2);
+        let p: DeletionDB<usize> = DeletionDB::new(8, 2);
         let a = 0b11111111usize;
         let keys = p.get(&a);
 
@@ -280,7 +274,7 @@ mod test {
 
     #[test]
     fn insert_first_key() {
-        let mut p: DeletionDatabase<usize> = DeletionDatabase::new(8, 2);
+        let mut p: DeletionDB<usize> = DeletionDB::new(8, 2);
         let a = 0b11111111usize;
 
         assert!(p.insert(a.clone()));
@@ -288,7 +282,7 @@ mod test {
 
     #[test]
     fn insert_second_key() {
-        let mut p: DeletionDatabase<usize> = DeletionDatabase::new(8, 2);
+        let mut p: DeletionDB<usize> = DeletionDB::new(8, 2);
         let a = 0b11111111usize;
 
         p.insert(a.clone());
@@ -298,7 +292,7 @@ mod test {
 
     #[test]
     fn find_inserted_key() {
-        let mut p: DeletionDatabase<usize> = DeletionDatabase::new(8, 2);
+        let mut p: DeletionDB<usize> = DeletionDB::new(8, 2);
         let a = 0b11111111usize;
         let mut b: HashSet<usize> = HashSet::new();
         b.insert(a.clone());
@@ -312,7 +306,7 @@ mod test {
 
     #[test]
     fn find_permutations_of_inserted_key() {
-        let mut p: DeletionDatabase<usize> = DeletionDatabase::new(8, 2);
+        let mut p: DeletionDB<usize> = DeletionDB::new(8, 2);
         let a = 0b00001111usize;
         let b = 0b00000111usize;
         let mut c = HashSet::new();
@@ -327,7 +321,7 @@ mod test {
 
     #[test]
     fn find_permutations_of_multiple_similar_keys() {
-        let mut p: DeletionDatabase<usize> = DeletionDatabase::new(8, 4);
+        let mut p: DeletionDB<usize> = DeletionDB::new(8, 4);
         let a = 0b00000000usize;
         let b = 0b10000000usize;
         let c = 0b10000001usize;
@@ -359,7 +353,7 @@ mod test {
             .map(|i| sample(&mut rng2, 0..dimensions, i % max_hd));
 
         for start_dimensions in start_dimensions_seq.take(1000usize) {
-            let mut p: DeletionDatabase<usize> = DeletionDatabase::new(dimensions, max_hd);
+            let mut p: DeletionDB<usize> = DeletionDB::new(dimensions, max_hd);
             let a = 0b11111111usize;
 
             let mut b = a.clone();
@@ -392,7 +386,7 @@ mod test {
             .filter(|start_dimensions| start_dimensions.len() > max_hd);
 
         for start_dimensions in start_dimensions_seq.take(1000usize) {
-            let mut p: DeletionDatabase<usize> = DeletionDatabase::new(dimensions, max_hd);
+            let mut p: DeletionDB<usize> = DeletionDB::new(dimensions, max_hd);
             let a = 0b11111111usize;
 
             let mut b = a.clone();
@@ -413,7 +407,7 @@ mod test {
 
     #[test]
     fn remove_inserted_key() {
-        let mut p: DeletionDatabase<usize> = DeletionDatabase::new(8, 2);
+        let mut p: DeletionDB<usize> = DeletionDB::new(8, 2);
         let a = 0b00001111usize;
 
         p.insert(a.clone());
@@ -427,7 +421,7 @@ mod test {
 
     #[test]
     fn remove_missing_key() {
-        let mut p: DeletionDatabase<usize> = DeletionDatabase::new(8, 2);
+        let mut p: DeletionDB<usize> = DeletionDB::new(8, 2);
         let a = 0b00001111usize;
 
         assert!(!p.remove(&a));
@@ -443,7 +437,7 @@ mod test {
         // NOTE: we need a better way of coercing values - right now we only support
         // Vec<u8> - would be much better to implement a generic so we could set 
         // values directly.  IE, we need to convert u16 to [u8] here, and that's annoying
-        let mut p: DeletionDatabase<usize> = DeletionDatabase::new(16, 4);
+        let mut p: DeletionDB<usize> = DeletionDB::new(16, 4);
 
         let mut expected_present = [false; 65536];
         let mut expected_absent = [false; 65536];
@@ -503,7 +497,7 @@ mod test {
                 return quickcheck::TestResult::discard()
             }
 
-            let mut p = DeletionDatabase::new(std::usize::BITS as usize, 4);
+            let mut p = DeletionDB::new(std::usize::BITS as usize, 4);
             p.insert(a.clone());
             p.insert(b.clone());
             p.insert(c.clone());
@@ -525,7 +519,7 @@ mod test {
                 return quickcheck::TestResult::discard()
             }
 
-            let mut p = DeletionDatabase::new(std::usize::BITS as usize, 4);
+            let mut p = DeletionDB::new(std::usize::BITS as usize, 4);
             p.insert(a.clone());
             p.insert(b.clone());
             p.insert(c.clone());
