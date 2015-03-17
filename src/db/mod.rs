@@ -10,6 +10,16 @@ use db::value::{Value, Window, SubstitutionVariant, DeletionVariant, Hamming};
 use db::substitution_db::SubstitutionPartition;
 use db::deletion_db::DeletionPartition;
 
+/*
+ * Maybe?  Not sure how to capture S := DB<V>
+pub trait DB<S, V> {
+    pub fn new(dimensions: usize, tolerance: usize) -> Self {
+    pub fn get(&self, key: &V) -> Option<HashSet<V>> {
+    pub fn insert(&mut self, key: V) -> bool {
+    pub fn remove(&mut self, key: &V) -> bool {
+}
+*/
+
 pub struct SubstitutionDB<V> where V: Value + Window + SubstitutionVariant + Hamming {
     dimensions: usize,
     tolerance: usize,

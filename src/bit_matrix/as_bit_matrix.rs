@@ -12,9 +12,18 @@ impl AsBitMatrix for u64 {
         BitMatrix::new(vec![buf])
     }
 
-    fn from_bit_matrix(bm: BitMatrix) -> Self {
+    fn from_bit_matrix(m: BitMatrix) -> Self {
         // NOTE: Should probably sanity-check the bitmatrix dimensions
-        <LittleEndian as ByteOrder>::read_u64(bm.data[0].as_slice())
+        <LittleEndian as ByteOrder>::read_u64(m.data[0].as_slice())
+    }
+}
+impl AsBitMatrix for Vec<Vec<u8>> {
+    fn as_bit_matrix(self) -> BitMatrix {
+        BitMatrix::new(self)
+    }
+
+    fn from_bit_matrix(m: BitMatrix) -> Self {
+        m.data
     }
 }
 
