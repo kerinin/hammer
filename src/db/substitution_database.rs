@@ -180,12 +180,12 @@ mod test {
     extern crate rand;
     extern crate quickcheck;
 
+    use std;
     use self::quickcheck::quickcheck;
 
-    use std::collections::{HashSet};
+    use std::collections::HashSet;
     use self::rand::{thread_rng, sample, Rng};
 
-    use db::bit_matrix::{BitMatrix, AsBitMatrix};
     use db::substitution_database::{SubstitutionDatabase, SubstitutionPartition};
 
     #[test]
@@ -498,19 +498,42 @@ mod test {
 
     #[test]
     fn idempotent_read() {
-        fn prop(a: u64, b: u64) -> quickcheck::TestResult {
-            let a_bm = a.as_bitmatrix();
-            let b_bm = b.as_bitmatrix();
+        fn prop(a: usize, b: usize, c: usize) -> quickcheck::TestResult {
+            if a == c {
+                // Removing C should also remove A, if they are the same
+                return quickcheck::TestResult::discard()
+            }
 
-            let mut p = SubstitutionDatabase::new(64, 4);
-            p.insert(a_bm.clone());
-            p.insert(b_bm.clone());
+            let mut p = SubstitutionDatabase::new(std::usize::BITS as usize, 4);
+            p.insert(a.clone());
+            p.insert(b.clone());
+            p.insert(c.clone());
+            p.remove(&c);
 
-            match p.get(&a_bm) {
-                Some(results) => quickcheck::TestResult::from_bool(results.contains(&a_bm)),
+            match p.get(&a) {
+                Some(results) => quickcheck::TestResult::from_bool(results.contains(&a)),
                 None => quickcheck::TestResult::failed(),
             }
         }
-        quickcheck(prop as fn(u64, u64) -> quickcheck::TestResult);
+        quickcheck(prop as fn(usize, usize, usize) -> quickcheck::TestResult);
+    }
+
+    #[test]
+    fn idempotent_delete() {
+        fn prop(a: usize, b: usize, c: usize) -> quickcheck::TestResult {
+            if a == c {
+                // Removing C should also remove A, if they are the same
+                return quickcheck::TestResult::discard()
+            }
+
+            let mut p = SubstitutionDatabase::new(std::usize::BITS as usize, 4);
+            p.insert(a.clone());
+            p.insert(b.clone());
+            p.insert(c.clone());
+            p.remove(&c);
+
+            quickcheck::TestResult::from_bool(p.remove(&a))
+        }
+        quickcheck(prop as fn(usize, usize, usize) -> quickcheck::TestResult);
     }
 }

@@ -56,13 +56,3 @@ impl<K: hash::Hash + cmp::Eq + clone::Clone, V: hash::Hash + cmp::Eq + clone::Cl
         removed
     }
 }
-
-//impl<K: hash::Hash + cmp::Eq, V: hash::Hash + cmp::Eq> PartialEq for HashMapSet<K, V> {
-//    fn eq(&self, other: &HashMapSet<K, V>) -> bool {
-//        return self.data.eq(&other.data);
-//    }
-//
-//    fn ne(&self, other: &HashMapSet<K, V>) -> bool {
-//        return self.data.ne(&other.data);
-//    }
-//}

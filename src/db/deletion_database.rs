@@ -177,6 +177,10 @@ impl<V: Value + Window + DeletionVariant + Hamming> PartialEq for DeletionDataba
 #[cfg(test)]
 mod test {
     extern crate rand;
+    extern crate quickcheck;
+
+    use std;
+    use self::quickcheck::quickcheck;
 
     use std::collections::HashSet;
     use self::rand::{thread_rng, sample, Rng};
@@ -489,5 +493,46 @@ mod test {
                 }
             }
         }
+    }
+
+    #[test]
+    fn idempotent_read() {
+        fn prop(a: usize, b: usize, c: usize) -> quickcheck::TestResult {
+            if a == c {
+                // Removing C should also remove A, if they are the same
+                return quickcheck::TestResult::discard()
+            }
+
+            let mut p = DeletionDatabase::new(std::usize::BITS as usize, 4);
+            p.insert(a.clone());
+            p.insert(b.clone());
+            p.insert(c.clone());
+            p.remove(&c);
+
+            match p.get(&a) {
+                Some(results) => quickcheck::TestResult::from_bool(results.contains(&a)),
+                None => quickcheck::TestResult::failed(),
+            }
+        }
+        quickcheck(prop as fn(usize, usize, usize) -> quickcheck::TestResult);
+    }
+
+    #[test]
+    fn idempotent_delete() {
+        fn prop(a: usize, b: usize, c: usize) -> quickcheck::TestResult {
+            if a == c {
+                // Removing C should also remove A, if they are the same
+                return quickcheck::TestResult::discard()
+            }
+
+            let mut p = DeletionDatabase::new(std::usize::BITS as usize, 4);
+            p.insert(a.clone());
+            p.insert(b.clone());
+            p.insert(c.clone());
+            p.remove(&c);
+
+            quickcheck::TestResult::from_bool(p.remove(&a))
+        }
+        quickcheck(prop as fn(usize, usize, usize) -> quickcheck::TestResult);
     }
 }
