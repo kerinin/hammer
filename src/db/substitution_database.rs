@@ -178,10 +178,14 @@ impl<V: Value + Window + SubstitutionVariant + Hamming> PartialEq for Substituti
 #[cfg(test)]
 mod test {
     extern crate rand;
+    extern crate quickcheck;
+
+    use self::quickcheck::quickcheck;
 
     use std::collections::{HashSet};
     use self::rand::{thread_rng, sample, Rng};
 
+    use db::bit_matrix::{BitMatrix, AsBitMatrix};
     use db::substitution_database::{SubstitutionDatabase, SubstitutionPartition};
 
     #[test]
@@ -490,5 +494,23 @@ mod test {
                 }
             }
         }
+    }
+
+    #[test]
+    fn idempotent_read() {
+        fn prop(a: u64, b: u64) -> quickcheck::TestResult {
+            let a_bm = a.as_bitmatrix();
+            let b_bm = b.as_bitmatrix();
+
+            let mut p = SubstitutionDatabase::new(64, 4);
+            p.insert(a_bm.clone());
+            p.insert(b_bm.clone());
+
+            match p.get(&a_bm) {
+                Some(results) => quickcheck::TestResult::from_bool(results.contains(&a_bm)),
+                None => quickcheck::TestResult::failed(),
+            }
+        }
+        quickcheck(prop as fn(u64, u64) -> quickcheck::TestResult);
     }
 }

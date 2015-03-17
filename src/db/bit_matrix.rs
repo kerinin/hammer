@@ -1,7 +1,11 @@
+extern crate byteorder;
+
 use std::iter;
 use std::ops;
 use std::fmt;
+use std::mem;
 
+use self::byteorder::{ByteOrder, LittleEndian};
 use std::collections::BitVec;
 
 use db::value::{Value, Window, SubstitutionVariant, DeletionVariant, Hamming};
@@ -20,6 +24,20 @@ macro_rules! bitmatrix {
 pub trait AsBitMatrix {
     fn as_bitmatrix(self) -> BitMatrix;
     fn from_bitmatrix(BitMatrix) -> Self;
+}
+
+impl AsBitMatrix for u64 {
+    fn as_bitmatrix(self) -> BitMatrix {
+        let mut buf = vec![0; 8];
+        <LittleEndian as ByteOrder>::write_u64(&mut buf, self);
+
+        BitMatrix::new(vec![buf])
+    }
+
+    fn from_bitmatrix(bm: BitMatrix) -> Self {
+        // NOTE: Should probably sanity-check the bitmatrix dimensions
+        <LittleEndian as ByteOrder>::read_u64(bm.data[0].as_slice())
+    }
 }
 
 impl BitMatrix {
@@ -225,6 +243,26 @@ impl ops::BitAnd for BitMatrix {
     }
 }
 
+impl ops::BitOr for BitMatrix {
+    type Output = BitMatrix;
+
+    /*
+     * Returns the result of bitand-ing each byte of self and other.
+     * If other is shorter than self, self will be truncated to the same length.
+     * If self is shorter than other, the trailing bytes of other will be ignored.
+     */
+    fn bitor(self, other: Self) -> Self {
+        let data = (0..self.data.len()).map(|i| {
+            self.data[i].iter()
+                .zip(other.data[i].iter())
+                .map(|(self_byte, other_byte)| self_byte.clone() | *other_byte ) // bitand
+                .collect::<Vec<u8>>()
+        }).collect::<Vec<Vec<u8>>>();
+
+        return BitMatrix {data: data};
+    }
+}
+
 impl ops::Shl<usize> for BitMatrix {
     type Output = BitMatrix;
 
@@ -343,6 +381,20 @@ impl ops::Shr<usize> for BitMatrix {
     }
 }
 
+impl ops::Not for BitMatrix {
+    type Output = BitMatrix;
+
+    fn not(self) -> BitMatrix {
+        let data = (0..self.data.len()).map(|i| {
+            self.data[i].iter()
+            .map(|byte| !byte)
+            .collect::<Vec<u8>>()
+        }).collect::<Vec<Vec<u8>>>();
+
+        return BitMatrix {data: data};
+    }
+}
+
 impl fmt::Binary for BitMatrix {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         write!(f, "[");
@@ -362,7 +414,7 @@ mod test {
     extern crate quickcheck;
     use self::quickcheck::quickcheck;
 
-    use db::bit_matrix::BitMatrix;
+    use db::bit_matrix::{BitMatrix, AsBitMatrix};
     use db::value::{SubstitutionVariant, DeletionVariant, Hamming};
 
     /*
@@ -578,6 +630,98 @@ mod test {
 
         assert_eq!(a.hamming(&b), 3);
         assert_eq!(c.hamming(&d), 3);
+    }
+
+    #[test]
+    fn as_bitmatrix_identity_u64() {
+        fn prop(a: u64, b: u64) -> quickcheck::TestResult {
+            let a_as_bm = a.as_bitmatrix();
+            let b_as_bm = b.as_bitmatrix();
+
+            if a == b {
+                quickcheck::TestResult::from_bool(a_as_bm == b_as_bm)
+            } else {
+                quickcheck::TestResult::from_bool(a_as_bm != b_as_bm)
+            }
+        }
+        quickcheck(prop as fn(u64, u64) -> quickcheck::TestResult);
+    }
+
+    #[test]
+    fn as_bitmatrix_translation_u64() {
+        fn prop(a: u64) -> quickcheck::TestResult {
+            let as_bm = a.as_bitmatrix();
+            let back: u64 = AsBitMatrix::from_bitmatrix(as_bm);
+
+            quickcheck::TestResult::from_bool(a == back)
+        }
+        quickcheck(prop as fn(u64) -> quickcheck::TestResult);
+    }
+
+    #[test]
+    fn as_bitmatrix_boolean_algebra_and_u64() {
+        fn prop(a: u64, b: u64) -> quickcheck::TestResult {
+            let a_as_bm = a.as_bitmatrix();
+            let b_as_bm = b.as_bitmatrix();
+
+            let left = a_as_bm.clone() & b_as_bm.clone();
+            let right = !((!a_as_bm.clone()) | (!b_as_bm.clone()));
+                
+            quickcheck::TestResult::from_bool(left == right)
+        }
+        quickcheck(prop as fn(u64, u64) -> quickcheck::TestResult);
+    }
+
+    #[test]
+    fn as_bitmatrix_boolean_algebra_or_u64() {
+        fn prop(a: u64, b: u64) -> quickcheck::TestResult {
+            let a_as_bm = a.as_bitmatrix();
+            let b_as_bm = b.as_bitmatrix();
+
+            let left = a_as_bm.clone() | b_as_bm.clone();
+            let right = !((!a_as_bm.clone()) & (!b_as_bm.clone()));
+                
+            quickcheck::TestResult::from_bool(left == right)
+        }
+        quickcheck(prop as fn(u64, u64) -> quickcheck::TestResult);
+    }
+
+    #[test]
+    fn as_bitmatrix_shl_associative_u64() {
+        fn prop(a: u64, b: u8) -> quickcheck::TestResult {
+            let shift = (b >> 2) as usize; // limit to range 0-64
+                
+            quickcheck::TestResult::from_bool(
+                (a.as_bitmatrix() << shift) == (a << shift).as_bitmatrix()
+                )
+        }
+        quickcheck(prop as fn(u64, u8) -> quickcheck::TestResult);
+    }
+
+    #[test]
+    fn as_bitmatrix_shr_associative_u64() {
+        fn prop(a: u64, b: u8) -> quickcheck::TestResult {
+            let shift = (b >> 2) as usize; // limit to range 0-64
+                
+            quickcheck::TestResult::from_bool(
+                (a.as_bitmatrix() >> shift) == (a >> shift).as_bitmatrix()
+                )
+        }
+        quickcheck(prop as fn(u64, u8) -> quickcheck::TestResult);
+    }
+
+    #[test]
+    fn hamming_triangle_inequality() {
+        fn prop(a: u64, b: u64, c:u64) -> quickcheck::TestResult {
+            let a_bm = a.as_bitmatrix();
+            let b_bm = b.as_bitmatrix();
+            let c_bm = c.as_bitmatrix();
+                
+            quickcheck::TestResult::from_bool(
+                a_bm.clone().hamming(&c_bm) <= (a_bm.clone().hamming(&b_bm) + b_bm.clone().hamming(&c_bm))
+                )
+        }
+        quickcheck(prop as fn(u64, u64, u64) -> quickcheck::TestResult);
     }
 }
 

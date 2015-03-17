@@ -6,5 +6,4 @@ mod bit_matrix;
 mod value;
 mod result_accumulator;
 
-
-//mod bench; // Uncomment to get benchmarks to run
+mod bench; // Uncomment to get benchmarks to run

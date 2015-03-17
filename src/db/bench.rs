@@ -1,14 +1,15 @@
 extern crate test;
+extern crate rand;
 
-use std::rand::{task_rng, Rng};
+use self::rand::{thread_rng, Rng};
 
-use db::database::Database;
+use db::substitution_database::SubstitutionDatabase;
 
 #[bench]
 fn insert_new_value(b: &mut test::Bencher) {
-    let mut p: Database<uint> = Database::new(64, 4);
+    let mut p: SubstitutionDatabase<usize> = SubstitutionDatabase::new(64, 4);
 
-    let mut rng = task_rng();
+    let mut rng = thread_rng();
     let value = rng.gen();
 
     b.iter(|| {
@@ -18,9 +19,9 @@ fn insert_new_value(b: &mut test::Bencher) {
 
 #[bench]
 fn insert_existing_value(b: &mut test::Bencher) {
-    let mut p: Database<uint> = Database::new(64, 4);
+    let mut p: SubstitutionDatabase<usize> = SubstitutionDatabase::new(64, 4);
 
-    let mut rng = task_rng();
+    let mut rng = thread_rng();
     let value = rng.gen();
     p.insert(value);
 
@@ -31,51 +32,51 @@ fn insert_existing_value(b: &mut test::Bencher) {
 
 #[bench]
 fn find_existing_value(b: &mut test::Bencher) {
-    let mut p: Database<uint> = Database::new(64, 4);
+    let mut p: SubstitutionDatabase<usize> = SubstitutionDatabase::new(64, 4);
 
-    let mut rng = task_rng();
+    let mut rng = thread_rng();
     let value = rng.gen();
     p.insert(value);
 
     b.iter(|| {
-        p.get(value);
+        p.get(&value);
     })
 }
 
 #[bench]
 fn find_missing_value(b: &mut test::Bencher) {
-    let p: Database<uint> = Database::new(64, 4);
+    let p: SubstitutionDatabase<usize> = SubstitutionDatabase::new(64, 4);
 
-    let mut rng = task_rng();
+    let mut rng = thread_rng();
     let value = rng.gen();
 
     b.iter(|| {
-        p.get(value);
+        p.get(&value);
     })
 }
 
 #[bench]
 fn remove_missing_value(b: &mut test::Bencher) {
-    let mut p: Database<uint> = Database::new(64, 4);
+    let mut p: SubstitutionDatabase<usize> = SubstitutionDatabase::new(64, 4);
 
-    let mut rng = task_rng();
+    let mut rng = thread_rng();
     let value = rng.gen();
 
     b.iter(|| {
-        p.remove(value);
+        p.remove(&value);
     })
 }
 
 #[bench]
 fn remove_existing_value(b: &mut test::Bencher) {
-    let mut p: Database<uint> = Database::new(64, 4);
+    let mut p: SubstitutionDatabase<usize> = SubstitutionDatabase::new(64, 4);
 
-    let mut rng = task_rng();
+    let mut rng = thread_rng();
     let value = rng.gen();
     p.insert(value);
 
     b.iter(|| {
-        p.remove(value);
+        p.remove(&value);
     })
 }
 

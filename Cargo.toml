@@ -9,6 +9,7 @@ name = "hammer"
 [dependencies]
 num = "*"
 rand = "*"
+byteorder = "*"
 # docopt = "*"
 # docopt_macros = "*"
 # rustc-serialize = "*"
