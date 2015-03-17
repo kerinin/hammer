@@ -6,15 +6,12 @@ use self::byteorder::{ByteOrder, LittleEndian};
 
 impl AsBitMatrix for u64 {
     fn as_bit_matrix(self) -> BitMatrix {
-        let mut buf = vec![0; 8];
-        <LittleEndian as ByteOrder>::write_u64(&mut buf, self);
-
-        BitMatrix::new(vec![buf])
+        vec![self].as_bit_matrix()
     }
 
     fn from_bit_matrix(m: BitMatrix) -> Self {
-        // NOTE: Should probably sanity-check the bitmatrix dimensions
-        <LittleEndian as ByteOrder>::read_u64(m.data[0].as_slice())
+        let v: Vec<u64> = AsBitMatrix::from_bit_matrix(m);
+        v[0]
     }
 }
 impl AsBitMatrix for Vec<Vec<u8>> {
@@ -24,6 +21,23 @@ impl AsBitMatrix for Vec<Vec<u8>> {
 
     fn from_bit_matrix(m: BitMatrix) -> Self {
         m.data
+    }
+}
+impl AsBitMatrix for Vec<u64> {
+    fn as_bit_matrix(self) -> BitMatrix {
+        let data = self.iter().map(|i| {
+            let mut buf = vec![0; 8];
+            <LittleEndian as ByteOrder>::write_u64(&mut buf, *i);
+            buf
+        }).collect::<Vec<Vec<u8>>>();
+
+        BitMatrix::new(data)
+    }
+
+    fn from_bit_matrix(m: BitMatrix) -> Self {
+        m.data.iter().map(|i| {
+            <LittleEndian as ByteOrder>::read_u64(i.as_slice())
+        }).collect::<Vec<u64>>()
     }
 }
 
