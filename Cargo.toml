@@ -13,3 +13,6 @@ rand = "*"
 # docopt_macros = "*"
 # rustc-serialize = "*"
 
+[dev-dependencies]
+quickcheck = "*"
+quickcheck_macros = "*"

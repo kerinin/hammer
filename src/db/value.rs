@@ -124,15 +124,11 @@ impl Hamming for (u8, u8) {
     fn hamming(&self, other: &(u8, u8)) -> usize {
         let &(self_value, self_deleted_index) = self;
         let &(other_value, other_deleted_index) = other;
-        let mask = (1u8 << self_deleted_index) | (1u8 << other_deleted_index);
 
-        let naive_hamming = (self_value | mask) ^ (other_value | mask);
+        let deletion_shared = !((1u8 << self_deleted_index) ^ (1u8 << other_deleted_index));
+        let binary_shared = !(self_value ^ other_value);
 
-        if self_deleted_index == other_deleted_index {
-            return naive_hamming.count_ones() as usize;
-        } else {
-            return 2 + naive_hamming.count_ones() as usize;
-        }
+        return (deletion_shared & binary_shared).count_zeros() as usize;
     }
 
     fn hamming_lte(&self, other: &(u8, u8), bound: usize) -> bool {
@@ -143,15 +139,11 @@ impl Hamming for (usize, u8) {
     fn hamming(&self, other: &(usize, u8)) -> usize {
         let &(self_value, self_deleted_index) = self;
         let &(other_value, other_deleted_index) = other;
-        let mask = (1usize << self_deleted_index) | (1usize << other_deleted_index);
 
-        let naive_hamming = (self_value | mask) ^ (other_value | mask);
+        let deletion_shared = !((1usize << self_deleted_index) ^ (1usize << other_deleted_index));
+        let binary_shared = !(self_value ^ other_value);
 
-        if self_deleted_index == other_deleted_index {
-            return naive_hamming.count_ones() as usize;
-        } else {
-            return 2 + naive_hamming.count_ones() as usize;
-        }
+        return (deletion_shared & binary_shared).count_zeros() as usize;
     }
 
     fn hamming_lte(&self, other: &(usize, u8), bound: usize) -> bool {
