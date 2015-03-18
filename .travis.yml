@@ -6,7 +6,6 @@ language: rust
 
 rust:
   - nightly
-  - 1.0.0.alpha2
 
 after_script:
   - curl http://www.rust-ci.org/artifacts/put?t=$RUSTCI_TOKEN | sh
