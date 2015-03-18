@@ -14,6 +14,12 @@ byteorder = "*"
 # docopt_macros = "*"
 # rustc-serialize = "*"
 
+[dependencies.iron]
+version = "*"
+
+[dependencies.bodyparser]
+git = "https://github.com/iron/body-parser.git"
+
 [dev-dependencies]
 quickcheck = "*"
 quickcheck_macros = "*"

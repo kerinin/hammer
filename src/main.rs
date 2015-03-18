@@ -13,14 +13,11 @@ extern crate "rustc-serialize" as rustc_serialize;
 extern crate docopt;
 */
 
-//extern crate iron;
-//extern crate bodyparser;
-//extern crate router;
-//extern crate persistent;
+extern crate iron;
 
 pub mod bit_matrix;
 pub mod db;
-//pub mod http;
+pub mod http;
 // pub mod evicting_store;
 
 

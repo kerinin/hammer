@@ -1,9 +1,9 @@
 use std::clone;
 use std::fmt;
 
-#[deriving(Decodable)]
+#[derive(RustcDecodable)]
 pub struct Request {
-    pub scalars: Vec<uint>,
+    pub scalars: Vec<usize>,
 }
 
 impl clone::Clone for Request {
@@ -22,13 +22,13 @@ impl fmt::Show for Request {
     }
 }
 
-#[deriving(Encodable)]
+#[derive(RustcEncodable)]
 pub struct Response {
     pub scalars: Vec<ScalarResult>,
 }
 
-#[deriving(Encodable)]
+#[derive(RustcEncodable)]
 pub struct ScalarResult {
-    pub scalar: uint,
+    pub scalar: usize,
     pub added: bool,
 }
