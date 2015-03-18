@@ -3,6 +3,11 @@
 
 Hamming distance search platform
 
+NOTE: Web UI currently not working - this is really just a Rust lib at the
+moment.  
+
+
+
 ## Use
 
 ```sh
