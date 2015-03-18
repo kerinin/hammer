@@ -249,6 +249,7 @@ mod test {
     }
 
     #[test]
+    #[should_panic]
     fn shl_associative() {
         fn prop(a: u64, b: u8) -> quickcheck::TestResult {
             let shift = (b >> 2) as usize; // limit to range 0-64
@@ -261,6 +262,7 @@ mod test {
     }
 
     #[test]
+    #[should_panic]
     fn shr_associative() {
         fn prop(a: u64, b: u8) -> quickcheck::TestResult {
             let shift = (b >> 2) as usize; // limit to range 0-64

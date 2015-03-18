@@ -1,5 +1,12 @@
+env:
+  global:
+    - secure: UN/qp/B7T6O22n6fvp2fYrjLnrr5GkUJEUbuEb/S5FLiieCl66xNIhHWsZJNRPEpuJxGhu1XMlvj3eWT9ItGL7pY71XljGAq83FsqySFfeedW3b62bZFSiE62v5k/VkEHkcwFAoly+Aot5j7pzFcSsgCOu0SydcI5bpD6cuWqXA=
+
 language: rust
 
 rust:
   - nightly
   - 1.0.0.alpha2
+
+after_script:
+  - curl http://www.rust-ci.org/artifacts/put?t=$RUSTCI_TOKEN | sh
