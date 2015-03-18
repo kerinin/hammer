@@ -1,5 +1,6 @@
 # Hammer
 
+[![Build Status](https://travis-ci.org/kerinin/hammer.svg?branch=master)](https://travis-ci.org/kerinin/hammer)
 
 Hamming distance search platform
 
