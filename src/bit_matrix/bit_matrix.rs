@@ -12,8 +12,13 @@ impl BitMatrix {
         self.data[0].len() * 8
     }
 
-    // SUPER inefficient, intended as a placeholder
+    /// Convert matrix from row- to column- major order in memory.
+    ///
+    /// Given an MxN matrix `A`, creates an NxM matrix `B` for which 
+    /// `A[m][n] = B[n][m]`
+    ///
     pub fn transpose(&self) -> Self {
+        // SUPER inefficient, intended as a placeholder
         let source_x = self.data.len();
         let source_y = self.data[0].len();
         let mut out = vec![vec![0; source_x]; source_y];

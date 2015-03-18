@@ -1,7 +1,6 @@
 extern crate num;
 
 use std::fmt;
-
 use std::collections::{HashSet, HashMap};
 use std::collections::hash_map::Entry::{Occupied, Vacant};
 
@@ -9,8 +8,7 @@ use self::num::rational::Ratio;
 
 use db::result_accumulator::ResultAccumulator;
 use db::hash_map_set::HashMapSet;
-use db::value::{Value, Window, DeletionVariant, Hamming};
-use db::DeletionDB;
+use db::{Value, Window, DeletionDB, DeletionVariant};
 
 pub struct DeletionPartition<V: Value + DeletionVariant> {
     pub start_dimension: usize,
@@ -26,10 +24,12 @@ impl<V: Value + DeletionVariant> DeletionPartition<V> {
     }
 }
 
-impl<V: Value + Window + DeletionVariant + Hamming> DeletionDB<V> {
-    /*
-     * Partition the keyspace as evenly as possible
-     */
+impl<V: Value + Window + DeletionVariant> DeletionDB<V> {
+    /// Create a new DB
+    ///
+    /// Partitions the keyspace as evenly as possible - all partitions
+    /// will have either N or N-1 dimensions
+    ///
     pub fn new(dimensions: usize, tolerance: usize) -> DeletionDB<V> {
 
         // Determine number of partitions
@@ -72,6 +72,8 @@ impl<V: Value + Window + DeletionVariant + Hamming> DeletionDB<V> {
         };
     }
 
+    /// Get all indexed values within `self.tolerance` hammind distance of `key`
+    ///
     pub fn get(&self, key: &V) -> Option<HashSet<V>> {
         let mut results = ResultAccumulator::new(self.tolerance, key.clone());
 
@@ -106,10 +108,10 @@ impl<V: Value + Window + DeletionVariant + Hamming> DeletionDB<V> {
         results.found_values()
     }
 
-    /*
-     * Insert `key` into indices
-     * Returns true if key was added to ANY index
-     */
+    /// Insert `key` into indices
+    ///
+    /// Returns true if key was added to ANY index
+    ///
     pub fn insert(&mut self, key: V) -> bool {
         // Split across tasks?
         self.partitions.iter_mut().map(|ref mut partition| {
@@ -125,10 +127,10 @@ impl<V: Value + Window + DeletionVariant + Hamming> DeletionDB<V> {
         }).collect::<Vec<bool>>().iter().any(|i| *i)
     }
 
-    /*
-     * Remove `key` from indices
-     * Returns true if key was removed from ANY index
-     */
+    /// Remove `key` from indices
+    ///
+    /// Returns true if key was removed from ANY index
+    ///
     pub fn remove(&mut self, key: &V) -> bool {
         // Split across tasks?
         self.partitions.iter_mut().map(|ref mut partition| {
@@ -144,13 +146,13 @@ impl<V: Value + Window + DeletionVariant + Hamming> DeletionDB<V> {
     }
 }
 
-impl<V: Value + Window + DeletionVariant + Hamming> fmt::Debug for DeletionDB<V> {
+impl<V: Value + Window + DeletionVariant> fmt::Debug for DeletionDB<V> {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         write!(f, "({}:{}:{})", self.dimensions, self.tolerance, self.partition_count)
     }
 }
 
-impl<V: Value + Window + DeletionVariant + Hamming> PartialEq for DeletionDB<V> {
+impl<V: Value + Window + DeletionVariant> PartialEq for DeletionDB<V> {
     fn eq(&self, other: &DeletionDB<V>) -> bool {
         return self.dimensions == other.dimensions &&
             self.tolerance == other.tolerance &&

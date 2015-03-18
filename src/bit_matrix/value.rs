@@ -2,38 +2,18 @@ use bit_matrix::BitMatrix;
 
 use std::collections::BitVec;
 
-use db::value::{Value, Window, SubstitutionVariant, DeletionVariant, Hamming};
+use db::{Value, Window, SubstitutionVariant, DeletionVariant};
 
-impl Value for BitMatrix {}
-impl Value for (BitMatrix, usize) {}
-
-impl Window for BitMatrix {
-    fn window(&self, start_dimension: usize, dimensions: usize) -> BitMatrix {
-        let trim_high = self.columns() - (start_dimension + dimensions);
-
-        (self.clone() << trim_high) >> (trim_high + start_dimension)
-    }
-}
-impl SubstitutionVariant for BitMatrix {
-    fn substitution_variants(&self, dimensions: usize) -> Vec<BitMatrix> {
-        return (0..dimensions)
-            .flat_map(|i| self.permute(i).into_iter() )
-            .collect::<Vec<BitMatrix>>();
-    }
-}
-impl DeletionVariant for BitMatrix {
-    type Output = (BitMatrix, usize);
-
-    fn deletion_variants(&self, dimensions: usize) -> Vec<(BitMatrix, usize)> {
-        return (0..dimensions)
-            .map(|i| (self.mask(i), i))
-            .collect::<Vec<(BitMatrix, usize)>>();
-    }
-}
-impl Hamming for BitMatrix {
-    /*
-     * Column-major hamming distance operates like an AND of the column-wise XOR's
-     */
+impl Value for BitMatrix {
+    /// Column-wise hamming distance 
+    ///
+    /// Describes the number of columns whose value differs between `self` and
+    /// `other`.
+    ///
+    /// In other words, the hamming distance describes the number of column 
+    /// indexes `C` for which `self.data[R][C] != other.data[R][C]` for ANY row
+    /// index `R`.
+    ///
     fn hamming(&self, other: &BitMatrix) -> usize {
         let all = BitVec::from_elem(self.columns(), false);
 
@@ -52,12 +32,23 @@ impl Hamming for BitMatrix {
         shared_dimensions.iter().filter(|x| *x).count()
     }
     
-    // NOTE: This can be expedited by bailing early...
+    /// Hamming bound check.
+    ///
+    /// Processes a row at a time, terminates early if the hamming bound has been
+    /// exceeded.
     fn hamming_lte(&self, other: &BitMatrix, bound: usize) -> bool {
+        // NOTE: Implement the early bailing...
         self.hamming(other) <= bound
     }
 }
-impl Hamming for (BitMatrix, usize) {
+
+impl Value for (BitMatrix, usize) {
+    /// Column-wise hamming distance for Deletion Variants
+    ///
+    /// Describes the number of columns whose value differs between `self` and
+    /// `other`, given that the second tuple element describes a dimension whose 
+    /// value is `#` (as opposed to `0` or `1`).
+    ///
     fn hamming(&self, other: &(BitMatrix, usize)) -> usize {
         let (self_value, self_deleted_index) = self.clone();
         let (other_value, other_deleted_index) = other.clone();
@@ -81,6 +72,14 @@ impl Hamming for (BitMatrix, usize) {
         different_dimensions.iter().filter(|x| *x).count()
     }
     
+    /// Hamming bound check.
+    ///
+    /// True if the number of columns whose value differs between `self` and
+    /// `other` is less than or equal to `bound`, given that the second tuple 
+    /// element describes a dimension whose value is `#` (as opposed to `0` or `1`).
+    ///
+    /// Processes a row at a time, terminates early if the hamming bound has been
+    /// exceeded.
     fn hamming_lte(&self, other: &(BitMatrix, usize), bound: usize) -> bool {
         let (self_value, self_deleted_index) = self.clone();
         let (other_value, other_deleted_index) = other.clone();
@@ -108,6 +107,54 @@ impl Hamming for (BitMatrix, usize) {
     }
 }
 
+impl Window for BitMatrix {
+    fn window(&self, start_dimension: usize, dimensions: usize) -> BitMatrix {
+        let trim_high = self.columns() - (start_dimension + dimensions);
+
+        (self.clone() << trim_high) >> (trim_high + start_dimension)
+    }
+}
+impl SubstitutionVariant for BitMatrix {
+    /// Exhaustive substitution variants
+    ///
+    /// Returns an array of all possible single-column permutation of `self`.
+    /// Alternately, returns the set of values with Hamming distance `1` from 
+    /// `self`
+    ///
+    /// This is generally NOT what you want - use a `DeletionDB` instead.  Using
+    /// a `SubstitutionDB` can expedite queries at the cost of memory, but the 
+    /// memory cost is exponential with the row dimensionality, so caveat emptor.
+    ///
+    fn substitution_variants(&self, dimensions: usize) -> Vec<BitMatrix> {
+        return (0..dimensions)
+            .flat_map(|i| self.permute(i).into_iter() )
+            .collect::<Vec<BitMatrix>>();
+    }
+}
+impl DeletionVariant for BitMatrix {
+    type Output = (BitMatrix, usize);
+
+    /// 1-Deletion variants
+    ///
+    /// Returns an array of all possible deletion variants of `self`.
+    ///
+    /// A "deletion variant" as defined in
+    /// [Zhang](http://www.cse.unsw.edu.au/~weiw/files/SSDBM13-HmSearch-Final.pdf)
+    /// is a value obtained by substituting a "deletion marker" for a single 
+    /// dimension of a value.
+    ///
+    /// The general approach taken by hammer is to augment the value with an
+    /// integer denoting the deleted dimension.  In this case, a deletion variant
+    /// of a value `v` is the tuple `(v,n)` where `n` is the deleted dimension
+    /// index.
+    ///
+    fn deletion_variants(&self, dimensions: usize) -> Vec<(BitMatrix, usize)> {
+        return (0..dimensions)
+            .map(|i| (self.mask(i), i))
+            .collect::<Vec<(BitMatrix, usize)>>();
+    }
+}
+
 #[cfg(test)]
 mod test {
     extern crate quickcheck;
@@ -115,7 +162,7 @@ mod test {
 
     use bit_matrix::{BitMatrix, AsBitMatrix};
 
-    use db::value::{Value, Window, SubstitutionVariant, DeletionVariant, Hamming};
+    use db::{Value, Window, SubstitutionVariant, DeletionVariant};
 
     #[test]
     fn hamming_triangle_inequality() {

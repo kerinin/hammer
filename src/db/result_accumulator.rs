@@ -1,7 +1,7 @@
 use std::collections::{HashMap, HashSet};
 use std::collections::hash_map::Entry::{Occupied, Vacant};
 
-use db::value::{Value, Hamming};
+use db::Value;
 
 pub struct ResultAccumulator<V: Value> {
     tolerance: usize,
@@ -9,7 +9,7 @@ pub struct ResultAccumulator<V: Value> {
     candidates: HashMap<V, (usize, usize)>,
 }
 
-impl<V: Value + Hamming> ResultAccumulator<V> {
+impl<V: Value> ResultAccumulator<V> {
     pub fn new(tolerance: usize, query: V) -> ResultAccumulator<V> {
         let candidates = HashMap::new();
         return ResultAccumulator {tolerance: tolerance, query: query, candidates: candidates};

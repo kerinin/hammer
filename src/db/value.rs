@@ -1,40 +1,7 @@
 use std;
-use std::hash;
-use std::cmp;
-use std::clone;
 use std::num::Int;
 
-// pub trait Value: hash::Hash + cmp::Eq + clone::Clone + ops::BitXor + ops::BitAnd + ops::Shl<usize> + fmt::Debug + fmt::Binary {
-pub trait Value: hash::Hash + cmp::Eq + clone::Clone {}
-
-pub trait Window {
-    /* 
-     * `start_dimension` the index of the 1st dimension to include in the slice, 
-     *      0-indexed from least significant
-     * `dimensions` the total number of dimensions to include
-     */
-    fn window(&self, start_dimension: usize, dimensions: usize) -> Self;
-}
-
-pub trait SubstitutionVariant where Self: Hamming {
-    fn substitution_variants(&self, dimensions: usize) -> Vec<Self>;
-}
-
-pub trait DeletionVariant where <Self as DeletionVariant>::Output: Value + Hamming {
-    type Output;
-    fn deletion_variants(&self, dimensions: usize) -> Vec<<Self as DeletionVariant>::Output>;
-}
-
-pub trait Hamming {
-    fn hamming(&self, rhs: &Self) -> usize;
-    fn hamming_lte(&self, rhs: &Self, bound: usize) -> bool;
-}
-
-
-impl Value for u8 {}
-impl Value for usize {}
-impl Value for (u8, u8) {}
-impl Value for (usize, u8) {}
+use db::{Value, Window, SubstitutionVariant, DeletionVariant};
 
 impl Window for u8 {
     fn window(&self, start_dimension: usize, dimensions: usize) -> u8 {
@@ -47,6 +14,7 @@ impl Window for u8 {
         (self << trim_high) >> (trim_high + start_dimension)
     }
 }
+
 impl Window for usize {
     fn window(&self, start_dimension: usize, dimensions: usize) -> usize {
         let bits = std::usize::BITS as usize;
@@ -55,54 +23,7 @@ impl Window for usize {
     }
 }
 
-
-impl SubstitutionVariant for u8 {
-    fn substitution_variants(&self, dimensions: usize) -> Vec<u8> {
-        return range(0, dimensions)
-            .map(|i| {
-                let delta = 1u8 << i;
-                self.clone() ^ delta
-            })
-            .collect::<Vec<u8>>();
-    }
-}
-impl SubstitutionVariant for usize {
-    fn substitution_variants(&self, dimensions: usize) -> Vec<usize> {
-        return range(0, dimensions)
-            .map(|i| {
-                let delta = 1usize << i;
-                self.clone() ^ delta
-            })
-            .collect::<Vec<usize>>();
-    }
-}
-
-
-impl DeletionVariant for u8 {
-    type Output = (u8, u8);
-
-    fn deletion_variants(&self, dimensions: usize) -> Vec<(u8, u8)> {
-        return range(0, dimensions)
-            .map(|i| {
-                (self.clone() | (1u8 << i), i as u8)
-            })
-            .collect::<Vec<(u8, u8)>>();
-    }
-}
-impl DeletionVariant for usize {
-    type Output = (usize, u8);
-
-    fn deletion_variants(&self, dimensions: usize) -> Vec<(usize, u8)> {
-        return range(0, dimensions)
-            .map(|i| {
-                (self.clone() | (1usize << i), i as u8)
-            })
-            .collect::<Vec<(usize, u8)>>();
-    }
-}
-
-
-impl Hamming for u8 {
+impl Value for u8 {
     fn hamming(&self, other: &u8) -> usize {
         (*self ^ *other).count_ones() as usize // bitxor
     }
@@ -110,7 +31,8 @@ impl Hamming for u8 {
         self.hamming(other) <= bound
     }
 }
-impl Hamming for usize {
+
+impl Value for usize {
     fn hamming(&self, other: &usize) -> usize {
         (*self ^ *other).count_ones() as usize // bitxor
     }
@@ -118,7 +40,8 @@ impl Hamming for usize {
         self.hamming(other) <= bound
     }
 }
-impl Hamming for (u8, u8) {
+
+impl Value for (u8, u8) {
     fn hamming(&self, other: &(u8, u8)) -> usize {
         let &(self_value, self_deleted_index) = self;
         let &(other_value, other_deleted_index) = other;
@@ -133,7 +56,8 @@ impl Hamming for (u8, u8) {
         self.hamming(other) <= bound
     }
 }
-impl Hamming for (usize, u8) {
+
+impl Value for (usize, u8) {
     fn hamming(&self, other: &(usize, u8)) -> usize {
         let &(self_value, self_deleted_index) = self;
         let &(other_value, other_deleted_index) = other;
@@ -149,10 +73,56 @@ impl Hamming for (usize, u8) {
     }
 }
 
+impl SubstitutionVariant for u8 {
+    fn substitution_variants(&self, dimensions: usize) -> Vec<u8> {
+        return range(0, dimensions)
+            .map(|i| {
+                let delta = 1u8 << i;
+                self.clone() ^ delta
+            })
+            .collect::<Vec<u8>>();
+    }
+}
+
+impl SubstitutionVariant for usize {
+    fn substitution_variants(&self, dimensions: usize) -> Vec<usize> {
+        return range(0, dimensions)
+            .map(|i| {
+                let delta = 1usize << i;
+                self.clone() ^ delta
+            })
+            .collect::<Vec<usize>>();
+    }
+}
+
+impl DeletionVariant for u8 {
+    type Output = (u8, u8);
+
+    fn deletion_variants(&self, dimensions: usize) -> Vec<(u8, u8)> {
+        return range(0, dimensions)
+            .map(|i| {
+                (self.clone() | (1u8 << i), i as u8)
+            })
+            .collect::<Vec<(u8, u8)>>();
+    }
+}
+
+impl DeletionVariant for usize {
+    type Output = (usize, u8);
+
+    fn deletion_variants(&self, dimensions: usize) -> Vec<(usize, u8)> {
+        return range(0, dimensions)
+            .map(|i| {
+                (self.clone() | (1usize << i), i as u8)
+            })
+            .collect::<Vec<(usize, u8)>>();
+    }
+}
+
 
 #[cfg(test)] 
 mod test {
-    use db::value::{Window, SubstitutionVariant, DeletionVariant, Hamming};
+    use db::{Value, Window, SubstitutionVariant, DeletionVariant};
 
     #[test]
     fn test_window_min_start_and_finish_u8() {
