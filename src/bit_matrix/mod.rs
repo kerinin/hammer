@@ -15,12 +15,12 @@
 //! ```
 //! let left =          vec![0, 1, 2, 4, 5];
 //! let right =         vec![100, 1, 2, 4, 5];
-//! let left_matrix =   left.as_bitmatrix().transpose()
-//! let right_matrix =  right.as_bitmatrix().transpose()
+//! let left_matrix =   left.as_bitmatrix().transpose();
+//! let right_matrix =  right.as_bitmatrix().transpose();
 //!
 //! use db::value::{Hamming};
 //!
-//! assert_eq!(left_matrix.hamming(&right_matrix), 1)
+//! assert_eq!(left_matrix.hamming(&right_matrix), 1);
 //! ```
 
 mod as_bit_matrix;
@@ -47,7 +47,7 @@ pub trait AsBitMatrix {
     ///
     /// ```
     /// let vector =            vec![0, 1, 2, 3];
-    /// let matrix =            raw.as_bitmatrix()
+    /// let matrix =            vector.as_bitmatrix();
     /// ```
     fn as_bit_matrix(self) -> BitMatrix;
 
@@ -56,6 +56,7 @@ pub trait AsBitMatrix {
     /// # Examples
     ///
     /// ```
+    // # use bit_matrix::BitMatrix;
     /// let matrix =            BitMatrix::new(vec![vec![0u8, 1u8, 2u8, 3u8]]);
     /// let vector: Vec<u64> =  AsBitMatrix::from_bit_matrix(matrix);
     /// ```

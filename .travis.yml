@@ -9,3 +9,8 @@ rust:
 
 after_script:
   - curl http://www.rust-ci.org/artifacts/put?t=$RUSTCI_TOKEN | sh
+
+notifications:
+  email:
+    on_success: never
+    on_failure: change
