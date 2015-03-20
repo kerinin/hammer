@@ -12,7 +12,7 @@
 //!
 //! Convert & transpose:
 //!
-//! ```
+//! ```ignore
 //! let left =          vec![0, 1, 2, 4, 5];
 //! let right =         vec![100, 1, 2, 4, 5];
 //! let left_matrix =   left.as_bitmatrix().transpose();
@@ -45,7 +45,7 @@ pub trait AsBitMatrix {
     ///
     /// # Examples
     ///
-    /// ```
+    /// ```ignore
     /// let vector =            vec![0, 1, 2, 3];
     /// let matrix =            vector.as_bitmatrix();
     /// ```
@@ -55,7 +55,7 @@ pub trait AsBitMatrix {
     ///
     /// # Examples
     ///
-    /// ```
+    /// ```ignore
     // # use bit_matrix::BitMatrix;
     /// let matrix =            BitMatrix::new(vec![vec![0u8, 1u8, 2u8, 3u8]]);
     /// let vector: Vec<u64> =  AsBitMatrix::from_bit_matrix(matrix);

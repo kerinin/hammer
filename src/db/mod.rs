@@ -17,7 +17,7 @@
 //!
 //! # Examples
 //!
-//! ```
+//! ```ignore
 //! let dimensions = 64;
 //! let tolerance = 1;
 //! let mut db: SubstitutionDB<usize> = SubstitutionDB::new(dimensions, tolerance)
@@ -43,9 +43,19 @@ mod bench; // Uncomment to get benchmarks to run
 use std::hash;
 use std::cmp;
 use std::clone;
+use std::collections::HashSet;
 
 use db::substitution_db::SubstitutionPartition;
 use db::deletion_db::DeletionPartition;
+
+/// Abstract interface for Hamming distance databases
+///
+pub trait Database<V: Value> {
+    fn new(dimensions: usize, tolerance: usize) -> Self;
+    fn get(&self, key: &V) -> Option<HashSet<V>>;
+    fn insert(&mut self, key: V) -> bool;
+    fn remove(&mut self, key: &V) -> bool;
+}
 
 /// HmSearch Database using substitution variants
 ///

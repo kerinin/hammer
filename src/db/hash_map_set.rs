@@ -7,7 +7,7 @@
 //!
 //! # Examples
 //!
-//! ```
+//! ```ignore
 //! let mut sets = HashMapSet::new();
 //!
 //! // Returns true if "value" has not been inserted into the set at "key"
