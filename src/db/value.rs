@@ -23,6 +23,12 @@ impl Window for usize {
     }
 }
 
+impl Window for Vec<u8> {
+    fn window(&self, start_dimension: usize, dimensions: usize) -> Vec<u8> {
+        self[start_dimension..(start_dimension + dimensions)].to_vec()
+    }
+}
+
 impl Value for u8 {
     fn hamming(&self, other: &u8) -> usize {
         (*self ^ *other).count_ones() as usize // bitxor
@@ -37,6 +43,16 @@ impl Value for usize {
         (*self ^ *other).count_ones() as usize // bitxor
     }
     fn hamming_lte(&self, other: &usize, bound: usize) -> bool {
+        self.hamming(other) <= bound
+    }
+}
+
+impl Value for Vec<u8> {
+    fn hamming(&self, other: &Vec<u8>) -> usize {
+        self.iter().zip(other.iter()).filter(|&(&self_i, &other_i)| self_i != other_i).count()
+    }
+    fn hamming_lte(&self, other: &Vec<u8>, bound: usize) -> bool {
+        // NOTE: Might want to optimize this eventually...
         self.hamming(other) <= bound
     }
 }
@@ -70,6 +86,40 @@ impl Value for (usize, u8) {
 
     fn hamming_lte(&self, other: &(usize, u8), bound: usize) -> bool {
         self.hamming(other) <= bound
+    }
+}
+
+impl Value for (Vec<u8>, usize) {
+    fn hamming(&self, other: &(Vec<u8>, usize)) -> usize {
+        let &(ref self_value, self_deleted_index) = self;
+        let &(ref other_value, other_deleted_index) = other;
+
+        (0..self_value.len()).filter(|&i| {
+            (self_deleted_index == i && other_deleted_index != i) ||
+            (self_deleted_index != i && other_deleted_index == i) ||
+            (self_deleted_index != i && other_deleted_index != i && self_value[i] != other_value[i])
+        }).count()
+    }
+
+    fn hamming_lte(&self, other: &(Vec<u8>, usize), bound: usize) -> bool {
+        let mut hamming = 0;
+        let &(ref self_value, self_deleted_index) = self;
+        let &(ref other_value, other_deleted_index) = other;
+
+        for i in (0..self_value.len()) {
+            let different = (self_deleted_index == i && other_deleted_index != i) ||
+                (self_deleted_index != i && other_deleted_index == i) ||
+                (self_deleted_index != i && other_deleted_index != i && self_value[i] != other_value[i]);
+
+            if different {
+                hamming += 1;
+                if hamming >= bound {
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 }
 
@@ -119,11 +169,118 @@ impl DeletionVariant for usize {
     }
 }
 
+impl DeletionVariant for Vec<u8> {
+    type Output = (Vec<u8>, usize);
+
+    fn deletion_variants(&self, dimensions: usize) -> Vec<(Vec<u8>, usize)> {
+        return range(0, dimensions)
+            .map(|i| {
+                let mut cloned_self = self.clone();
+                cloned_self[i] = std::u8::MAX;
+                (cloned_self, i)
+            })
+            .collect::<Vec<(Vec<u8>, usize)>>();
+    }
+}
+
 
 #[cfg(test)] 
 mod test {
     use db::{Value, Window, SubstitutionVariant, DeletionVariant};
 
+    // Vec<u8> tests
+    #[test]
+    fn test_window_min_start_and_finish_vec_u8() {
+        let a = vec![1u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 1u8];
+        let b = vec![];
+
+        assert_eq!(a.window(0,0), b);
+    }
+
+    #[test]
+    fn test_window_max_start_vec_u8() {
+        let a = vec![1u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 1u8];
+        let b = vec![1u8];
+
+        assert_eq!(a.window(7,1), b);
+    }
+
+    #[test]
+    fn test_window_min_start_and_max_finish_vec_u8() {
+        let a = vec![1u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 1u8];
+        let b = vec![1u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 1u8];
+
+        assert_eq!(a.window(0,8), b);
+    }
+
+    #[test]
+    fn test_window_n_start_and_max_finish_vec_u8() {
+        let a = vec![1u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 1u8];
+        let b = vec![0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 1u8];
+
+        assert_eq!(a.window(1,7), b);
+    }
+
+    #[test]
+    fn test_window_min_start_and_n_finish_vec_u8() {
+        let a = vec![0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 1u8];
+        let b = vec![0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8];
+
+        assert_eq!(a.window(0,7), b);
+    }
+
+    #[test]
+    fn test_window_n_start_and_n_finish_vec_u8() {
+        let a = vec![0u8, 0u8, 0u8, 1u8, 1u8, 0u8, 0u8, 0u8];
+        let b = vec![1u8, 1u8];
+
+        assert_eq!(a.window(3,2), b);
+    }
+
+    #[test]
+    fn test_deletion_variants_vec_u8() {
+        let a = vec![0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8];
+        let expected = vec![
+            (vec![255u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8], 0usize),
+            (vec![0u8, 255u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8], 1usize),
+            (vec![0u8, 0u8, 255u8, 0u8, 0u8, 0u8, 0u8, 0u8], 2usize),
+            (vec![0u8, 0u8, 0u8, 255u8, 0u8, 0u8, 0u8, 0u8], 3usize),
+        ];
+
+        assert_eq!(a.deletion_variants(4), expected);
+    }
+
+    #[test]
+    fn test_hamming_zero_vec_u8() {
+        let a = vec![0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8];
+        let b = vec![0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8];
+
+        assert_eq!(a.hamming(&b), 0);
+    }
+
+    #[test]
+    fn test_hamming_one_vec_u8() {
+        let a = vec![0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8];
+        let b = vec![1u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8];
+        let c = vec![0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 1u8];
+        let d = vec![0u8, 0u8, 0u8, 1u8, 0u8, 0u8, 0u8, 0u8];
+
+        assert_eq!(a.hamming(&b), 1);
+        assert_eq!(a.hamming(&c), 1);
+        assert_eq!(a.hamming(&d), 1);
+    }
+
+    #[test]
+    fn test_hamming_max_vec_u8() {
+        let a = vec![0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8];
+        let b = vec![1u8, 1u8, 1u8, 1u8, 1u8, 1u8, 1u8, 1u8];
+
+        assert_eq!(a.hamming(&b), 8);
+    }
+
+
+
+    // u8 tests
     #[test]
     fn test_window_min_start_and_finish_u8() {
         let a = 0b10000001u8;
