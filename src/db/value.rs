@@ -1,7 +1,15 @@
+extern crate byteorder;
+
 use std;
+use std::cmp;
+use std::clone;
+use std::hash;
 use std::num::Int;
 
+use std::collections::BitVec;
+
 use db::{Value, Window, SubstitutionVariant, DeletionVariant};
+use self::byteorder::{ByteOrder, LittleEndian};
 
 impl Window for u8 {
     fn window(&self, start_dimension: usize, dimensions: usize) -> u8 {
@@ -30,30 +38,50 @@ impl Window for Vec<u8> {
 }
 
 impl Value for u8 {
+    // `count_ones` should be faster than iterating over vectors as would happen
+    // with the default implementation
+    //
     fn hamming(&self, other: &u8) -> usize {
         (*self ^ *other).count_ones() as usize // bitxor
     }
-    fn hamming_lte(&self, other: &u8, bound: usize) -> bool {
-        self.hamming(other) <= bound
+    fn hamming_indices(&self, other: &u8) -> Vec<usize> {
+        let different = *self ^ *other;
+        BitVec::from_bytes(&[different]).iter()
+            .enumerate()
+            .filter(|&(_, b)| b)
+            .map(|(i, _)| i)
+            .collect()
     }
 }
 
 impl Value for usize {
+    // `count_ones` should be faster than iterating over vectors as would happen
+    // with the default implementation
+    //
     fn hamming(&self, other: &usize) -> usize {
         (*self ^ *other).count_ones() as usize // bitxor
     }
-    fn hamming_lte(&self, other: &usize, bound: usize) -> bool {
-        self.hamming(other) <= bound
+    fn hamming_indices(&self, other: &usize) -> Vec<usize> {
+        let different = *self ^ *other;
+        let mut buf = vec![0; std::usize::BYTES as usize];
+        <LittleEndian as ByteOrder>::write_u64(&mut buf, different as u64);
+
+        BitVec::from_bytes(buf.as_slice()).iter()
+            .enumerate()
+            .filter(|&(_, b)| b)
+            .map(|(i, _)| i)
+            .collect()
     }
 }
 
-impl Value for Vec<u8> {
-    fn hamming(&self, other: &Vec<u8>) -> usize {
-        self.iter().zip(other.iter()).filter(|&(&self_i, &other_i)| self_i != other_i).count()
-    }
-    fn hamming_lte(&self, other: &Vec<u8>, bound: usize) -> bool {
-        // NOTE: Might want to optimize this eventually...
-        self.hamming(other) <= bound
+impl<T: cmp::Eq + clone::Clone + hash::Hash> Value for Vec<T> {
+    fn hamming_indices(&self, other: &Vec<T>) -> Vec<usize> {
+        self.iter()
+            .zip(other.iter())
+            .enumerate()
+            .filter(|&(_, (self_i, other_i))| self_i != other_i)
+            .map(|(i, _)| i)
+            .collect()
     }
 }
 
@@ -68,8 +96,20 @@ impl Value for (u8, u8) {
         return (deletion_different | binary_different).count_ones() as usize;
     }
 
-    fn hamming_lte(&self, other: &(u8, u8), bound: usize) -> bool {
-        self.hamming(other) <= bound
+    fn hamming_indices(&self, other: &(u8, u8)) -> Vec<usize> {
+        let &(self_value, self_deleted_index) = self;
+        let &(other_value, other_deleted_index) = other;
+
+        let deletion_different = (1u8 << self_deleted_index) ^ (1u8 << other_deleted_index);
+        let binary_different = self_value ^ other_value;
+
+        let different = deletion_different | binary_different;
+
+        BitVec::from_bytes(&[different]).iter()
+            .enumerate()
+            .filter(|&(_, b)| b)
+            .map(|(i, _)| i)
+            .collect()
     }
 }
 
@@ -84,24 +124,28 @@ impl Value for (usize, u8) {
         return (deletion_different | binary_different).count_ones() as usize;
     }
 
-    fn hamming_lte(&self, other: &(usize, u8), bound: usize) -> bool {
-        self.hamming(other) <= bound
+    fn hamming_indices(&self, other: &(usize, u8)) -> Vec<usize> {
+        let &(self_value, self_deleted_index) = self;
+        let &(other_value, other_deleted_index) = other;
+
+        let deletion_different = (1usize << self_deleted_index) ^ (1usize << other_deleted_index);
+        let binary_different = self_value ^ other_value;
+
+        let different = deletion_different | binary_different;
+        let mut buf = vec![0; std::usize::BYTES as usize];
+        // NOTE: This may be doing wierd stuff on 32-bit systems
+        <LittleEndian as ByteOrder>::write_u64(&mut buf, different as u64);
+
+        BitVec::from_bytes(buf.as_slice()).iter()
+            .enumerate()
+            .filter(|&(_, b)| b)
+            .map(|(i, _)| i)
+            .collect()
     }
 }
 
-impl Value for (Vec<u8>, usize) {
-    fn hamming(&self, other: &(Vec<u8>, usize)) -> usize {
-        let &(ref self_value, self_deleted_index) = self;
-        let &(ref other_value, other_deleted_index) = other;
-
-        (0..self_value.len()).filter(|&i| {
-            (self_deleted_index == i && other_deleted_index != i) ||
-            (self_deleted_index != i && other_deleted_index == i) ||
-            (self_deleted_index != i && other_deleted_index != i && self_value[i] != other_value[i])
-        }).count()
-    }
-
-    fn hamming_lte(&self, other: &(Vec<u8>, usize), bound: usize) -> bool {
+impl<T: cmp::Eq + clone::Clone + hash::Hash> Value for (Vec<T>, usize) {
+    fn hamming_lte(&self, other: &(Vec<T>, usize), bound: usize) -> bool {
         let mut hamming = 0;
         let &(ref self_value, self_deleted_index) = self;
         let &(ref other_value, other_deleted_index) = other;
@@ -120,6 +164,17 @@ impl Value for (Vec<u8>, usize) {
         }
 
         return false;
+    }
+
+    fn hamming_indices(&self, other: &(Vec<T>, usize)) -> Vec<usize> {
+        let &(ref self_value, self_deleted_index) = self;
+        let &(ref other_value, other_deleted_index) = other;
+
+        (0..self_value.len()).filter(|&i| {
+            (self_deleted_index == i && other_deleted_index != i) ||
+            (self_deleted_index != i && other_deleted_index == i) ||
+            (self_deleted_index != i && other_deleted_index != i && self_value[i] != other_value[i])
+        }).collect()
     }
 }
 

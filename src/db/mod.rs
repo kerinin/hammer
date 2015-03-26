@@ -80,12 +80,21 @@ pub struct DeletionDB<V> where V: Value + Window + DeletionVariant {
 pub trait Value: hash::Hash + cmp::Eq + clone::Clone {
     /// Hamming distance betwen `self` and `rhs`
     ///
-    fn hamming(&self, rhs: &Self) -> usize;
+    fn hamming(&self, rhs: &Self) -> usize {
+        self.hamming_indices(rhs).len()
+    }
 
     /// Returns true if the hamming distance between `self` and `rhs` is less than
     /// or equal to `bound`, false otherwise
     ///
-    fn hamming_lte(&self, rhs: &Self, bound: usize) -> bool;
+    fn hamming_lte(&self, rhs: &Self, bound: usize) -> bool {
+        self.hamming(rhs) <= bound
+    }
+
+    /// Returns a vector of dimension indices whose value is different between 
+    /// `self` and `rhs`
+    ///
+    fn hamming_indices(&self, rhs: &Self) -> Vec<usize>;
 }
 
 pub trait Window {

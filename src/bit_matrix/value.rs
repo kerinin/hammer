@@ -14,10 +14,13 @@ impl Value for BitMatrix {
     /// indexes `C` for which `self.data[R][C] != other.data[R][C]` for ANY row
     /// index `R`.
     ///
-    fn hamming(&self, other: &BitMatrix) -> usize {
+    /// NOTE: Duplicating this in `hamming` and avoiding the enumeration & vector 
+    /// conversion might be slightly more performant...
+    ///
+    fn hamming_indices(&self, other: &BitMatrix) -> Vec<usize> {
         let all = BitVec::from_elem(self.columns(), false);
 
-        let shared_dimensions = self.data.iter()
+        let different_dimensions = self.data.iter()
             .zip(other.data.iter())
             .fold(all, |mut memo, (self_i, other_i)| {
                 let xor_bytes_i = self_i.iter().zip(other_i.iter()).map(|(self_byte, other_byte)| {
@@ -29,16 +32,11 @@ impl Value for BitMatrix {
             });
 
         // Return the count of values which were not shared between all rows
-        shared_dimensions.iter().filter(|x| *x).count()
-    }
-    
-    /// Hamming bound check.
-    ///
-    /// Processes a row at a time, terminates early if the hamming bound has been
-    /// exceeded.
-    fn hamming_lte(&self, other: &BitMatrix, bound: usize) -> bool {
-        // NOTE: Implement the early bailing...
-        self.hamming(other) <= bound
+        different_dimensions.iter()
+            .enumerate()
+            .filter(|&(_, x)| x)
+            .map(|(i, _)| i)
+            .collect()
     }
 }
 
@@ -49,7 +47,7 @@ impl Value for (BitMatrix, usize) {
     /// `other`, given that the second tuple element describes a dimension whose 
     /// value is `#` (as opposed to `0` or `1`).
     ///
-    fn hamming(&self, other: &(BitMatrix, usize)) -> usize {
+    fn hamming_indices(&self, other: &(BitMatrix, usize)) -> Vec<usize> {
         let (self_value, self_deleted_index) = self.clone();
         let (other_value, other_deleted_index) = other.clone();
 
@@ -69,41 +67,11 @@ impl Value for (BitMatrix, usize) {
             different_dimensions.union(&BitVec::from_bytes(xor_bytes_i.as_slice()));
         }
 
-        different_dimensions.iter().filter(|x| *x).count()
-    }
-    
-    /// Hamming bound check.
-    ///
-    /// True if the number of columns whose value differs between `self` and
-    /// `other` is less than or equal to `bound`, given that the second tuple 
-    /// element describes a dimension whose value is `#` (as opposed to `0` or `1`).
-    ///
-    /// Processes a row at a time, terminates early if the hamming bound has been
-    /// exceeded.
-    fn hamming_lte(&self, other: &(BitMatrix, usize), bound: usize) -> bool {
-        let (self_value, self_deleted_index) = self.clone();
-        let (other_value, other_deleted_index) = other.clone();
-
-        let mut different_dimensions = BitVec::from_elem(self_value.columns(), false);
-
-        // Faster than building the bitmap and XOR-ing...
-        if self_deleted_index != other_deleted_index {
-            different_dimensions.set(self_value.columns() - self_deleted_index - 1, true);
-            different_dimensions.set(other_value.columns() - other_deleted_index - 1, true);
-        }
-
-        for i in 0..self_value.rows() {
-            let xor_bytes_i = self_value.data[i].iter().zip(other_value.data[i].iter()).map(|(self_byte, other_byte)| {
-                self_byte ^ other_byte
-            }).collect::<Vec<u8>>();
-
-            different_dimensions.union(&BitVec::from_bytes(xor_bytes_i.as_slice()));
-            if different_dimensions.iter().filter(|x| *x).count() > bound {
-                return true;
-            }
-        }
-
-        different_dimensions.iter().filter(|x| *x).count() > bound
+        different_dimensions.iter()
+            .enumerate()
+            .filter(|&(_, x)| x)
+            .map(|(i, _)| i)
+            .collect()
     }
 }
 
