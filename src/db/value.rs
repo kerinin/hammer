@@ -8,7 +8,8 @@ use std::num::Int;
 
 use std::collections::BitVec;
 
-use db::{Value, Window, SubstitutionVariant, DeletionVariant};
+use db::{Value, Window};
+// use db::SubstitutionVariant;
 use self::byteorder::{ByteOrder, LittleEndian};
 
 impl Window for u8 {
@@ -178,6 +179,7 @@ impl<T: cmp::Eq + clone::Clone + hash::Hash> Value for (Vec<T>, usize) {
     }
 }
 
+/*
 impl SubstitutionVariant for u8 {
     fn substitution_variants(&self, dimensions: usize) -> Vec<u8> {
         return (0..dimensions)
@@ -237,6 +239,7 @@ impl DeletionVariant for Vec<u8> {
             .collect::<Vec<(Vec<u8>, usize)>>();
     }
 }
+*/
 
 
 #[cfg(test)] 

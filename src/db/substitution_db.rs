@@ -114,7 +114,7 @@ impl<V: Value + Window + SubstitutionVariant> Database<V> for SubstitutionDB<V> 
             let transformed_key = key.window(partition.start_dimension, partition.dimensions);
 
             if partition.zero_kv.insert(transformed_key.clone(), key.clone()) {
-                for k in transformed_key.substitution_variants(partition.dimensions).iter() {
+                for k in transformed_key.substitution_variants(partition.dimensions) {
                     partition.one_kv.insert(k.clone(), key.clone());
                 }
                 true
@@ -136,7 +136,7 @@ impl<V: Value + Window + SubstitutionVariant> Database<V> for SubstitutionDB<V> 
             let transformed_key = &key.window(partition.start_dimension, partition.dimensions);
 
             if partition.zero_kv.remove(transformed_key, key) {
-                for k in transformed_key.substitution_variants(partition.dimensions).iter() {
+                for ref k in transformed_key.substitution_variants(partition.dimensions) {
                     partition.one_kv.remove(k, key);
                 }
                 true
