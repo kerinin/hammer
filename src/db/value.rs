@@ -180,7 +180,7 @@ impl<T: cmp::Eq + clone::Clone + hash::Hash> Value for (Vec<T>, usize) {
 
 impl SubstitutionVariant for u8 {
     fn substitution_variants(&self, dimensions: usize) -> Vec<u8> {
-        return range(0, dimensions)
+        return (0..dimensions)
             .map(|i| {
                 let delta = 1u8 << i;
                 self.clone() ^ delta
@@ -191,7 +191,7 @@ impl SubstitutionVariant for u8 {
 
 impl SubstitutionVariant for usize {
     fn substitution_variants(&self, dimensions: usize) -> Vec<usize> {
-        return range(0, dimensions)
+        return (0..dimensions)
             .map(|i| {
                 let delta = 1usize << i;
                 self.clone() ^ delta
@@ -204,7 +204,7 @@ impl DeletionVariant for u8 {
     type Output = (u8, u8);
 
     fn deletion_variants(&self, dimensions: usize) -> Vec<(u8, u8)> {
-        return range(0, dimensions)
+        return (0..dimensions)
             .map(|i| {
                 (self.clone() | (1u8 << i), i as u8)
             })
@@ -216,7 +216,7 @@ impl DeletionVariant for usize {
     type Output = (usize, u8);
 
     fn deletion_variants(&self, dimensions: usize) -> Vec<(usize, u8)> {
-        return range(0, dimensions)
+        return (0..dimensions)
             .map(|i| {
                 (self.clone() | (1usize << i), i as u8)
             })
@@ -228,7 +228,7 @@ impl DeletionVariant for Vec<u8> {
     type Output = (Vec<u8>, usize);
 
     fn deletion_variants(&self, dimensions: usize) -> Vec<(Vec<u8>, usize)> {
-        return range(0, dimensions)
+        return (0..dimensions)
             .map(|i| {
                 let mut cloned_self = self.clone();
                 cloned_self[i] = std::u8::MAX;
