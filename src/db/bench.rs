@@ -3,7 +3,22 @@ extern crate rand;
 
 use self::rand::{thread_rng, Rng};
 
-use db::{Database, SubstitutionDB};
+use db::{Database, SubstitutionDB, DeletionDB};
+
+#[bench]
+fn insert_large_value(b: &mut test::Bencher) {
+    let mut p: DeletionDB<Vec<u8>> = Database::new(100, 4);
+
+    let mut rng = thread_rng();
+    let mut value = Vec::with_capacity(100);
+    for _ in (0..100) {
+        value.push(rng.gen());
+    }
+
+    b.iter(|| {
+        p.insert(value.clone());
+    })
+}
 
 #[bench]
 fn insert_new_value(b: &mut test::Bencher) {
