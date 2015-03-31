@@ -9,7 +9,9 @@ use db::hash_map_set::HashMapSet;
 use db::result_accumulator::ResultAccumulator;
 use db::{Database, Value, Window, SubstitutionDB, SubstitutionVariant};
 
-pub struct SubstitutionPartition<V: Value> {
+pub struct SubstitutionPartition<V> where
+    V: Value + SubstitutionVariant,
+{
     pub start_dimension: usize,
     pub dimensions: usize,
 
@@ -17,15 +19,19 @@ pub struct SubstitutionPartition<V: Value> {
     pub one_kv: HashMapSet<V, V>,
 }
 
-impl<V: Value> SubstitutionPartition<V> {
+impl<V> SubstitutionPartition<V> where
+    V: Value + SubstitutionVariant,
+{
     pub fn new(start_dimension: usize, dimensions: usize) -> SubstitutionPartition<V> {
-        let zero_kv: HashMapSet<V, V> = HashMapSet::new();
-        let one_kv: HashMapSet<V, V> = HashMapSet::new();
+        let zero_kv = HashMapSet::new();
+        let one_kv = HashMapSet::new();
         return SubstitutionPartition {start_dimension: start_dimension, dimensions: dimensions, zero_kv: zero_kv, one_kv: one_kv};
     }
 }
 
-impl<V: Value + Window + SubstitutionVariant> Database<V> for SubstitutionDB<V> {
+impl<V> Database<V> for SubstitutionDB<V> where
+    V: Value + Window + SubstitutionVariant,
+{
     /// Create a new DB
     ///
     /// Partitions the keyspace as evenly as possible - all partitions
@@ -149,13 +155,17 @@ impl<V: Value + Window + SubstitutionVariant> Database<V> for SubstitutionDB<V> 
     }
 }
 
-impl<V: Value + Window + SubstitutionVariant> fmt::Debug for SubstitutionDB<V> {
+impl<V> fmt::Debug for SubstitutionDB<V> where
+    V: Value + Window + SubstitutionVariant,
+{
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         write!(f, "({}:{}:{})", self.dimensions, self.tolerance, self.partition_count)
     }
 }
 
-impl<V: Value + Window + SubstitutionVariant> PartialEq for SubstitutionDB<V> {
+impl<V> PartialEq for SubstitutionDB<V> where
+    V: Value + Window + SubstitutionVariant,
+{
     fn eq(&self, other: &SubstitutionDB<V>) -> bool {
         return self.dimensions == other.dimensions &&
             self.tolerance == other.tolerance &&

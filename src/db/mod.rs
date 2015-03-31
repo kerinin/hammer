@@ -32,11 +32,13 @@
 //! assert_eq!(results, vec![0,1,3,7]);
 //! ```
 
-// mod substitution_db;
+mod substitution_db;
 mod deletion_db;
 mod value;
 mod hash_map_set;
 mod result_accumulator;
+mod deletion_variant;
+mod substitution_variant;
 
 // mod bench; // Uncomment to get benchmarks to run
 
@@ -45,7 +47,7 @@ use std::cmp;
 use std::clone;
 use std::collections::HashSet;
 
-// use db::substitution_db::SubstitutionPartition;
+use db::substitution_db::SubstitutionPartition;
 use db::deletion_db::DeletionPartition;
 
 /// Abstract interface for Hamming distance databases
@@ -57,24 +59,24 @@ pub trait Database<V: Value> {
     fn remove(&mut self, key: &V) -> bool;
 }
 
-/*
 /// HmSearch Database using substitution variants
 ///
-pub struct SubstitutionDB<V> where V: Value + Window + SubstitutionVariant {
+pub struct SubstitutionDB<V> where
+    V: Value + Window + SubstitutionVariant,
+    <<V as SubstitutionVariant>::Iter as Iterator>::Item: cmp::Eq + hash::Hash + clone::Clone,
+{
     dimensions: usize,
     tolerance: usize,
     partition_count: usize,
     partitions: Vec<SubstitutionPartition<V>>,
 }
-*/
 
 /// HmSearch Database using deletion variants
 ///
-pub struct DeletionDB<V> where 
-    V: Value + Window,
-    DeletionVariantIter<V>: Iterator,
-    <DeletionVariantIter<V> as Iterator>::Item: cmp::Eq + hash::Hash + clone::Clone,
-    {
+pub struct DeletionDB<V> where
+    V: Value + Window + DeletionVariant,
+    <<V as DeletionVariant>::Iter as Iterator>::Item: cmp::Eq + hash::Hash + clone::Clone,
+{
     dimensions: usize,
     tolerance: usize,
     partition_count: usize,
@@ -113,88 +115,16 @@ pub trait Window {
     fn window(&self, start_dimension: usize, dimensions: usize) -> Self;
 }
 
-/*
 /// Return a set of single-dimensional permutation variants
 ///
-pub trait SubstitutionVariant where Self: Value {
-    /// Substitution variants
-    ///
-    /// Returns an array of all possible single-column permutation of `self`.
-    /// Alternately, returns the set of values with Hamming distance `1` from 
-    /// `self`
-    ///
-    fn substitution_variants(&self, dimensions: usize) -> Iterator<Item = Self>;
-}
-*/
+pub trait SubstitutionVariant {
+    type Iter: Iterator<Item = Self>;
 
-pub struct DeletionVariantIter<T> {
-    // The original value, which shouldn't be modified
-    source: T,
-    // Mutable clone of `original`, returned from `next` as deletion variant
-    variant: T,
-    // Iteration cursor
-    index: usize,
-    // The number of dimensions to iterate over
-    dimensions: usize,
+    fn substitution_variants(&self, dimensions: usize) -> <Self as SubstitutionVariant>::Iter;
 }
 
-impl<T> DeletionVariantIter<T> where T: clone::Clone {
-    pub fn new(v: T, dimensions: usize) -> Self {
-        DeletionVariantIter {
-            variant: v.clone(),
-            source: v,
-            index: 0,
-            dimensions: dimensions,
-        }
-    }
+pub trait DeletionVariant {
+    type Iter: Iterator;
+
+    fn deletion_variants(&self, dimensions: usize) -> <Self as DeletionVariant>::Iter;
 }
-
-impl Iterator for DeletionVariantIter<u8> {
-    type Item = (u8, u8);
-
-    fn next(&mut self) -> Option<(u8, u8)> {
-        if self.index >= self.dimensions {
-            None
-        } else {
-            let next_value = (self.source.clone() | (1u8 << self.index), self.index as u8);
-            self.index += 1;
-            Some(next_value)
-        }
-    }
-}
-
-
-
-
-// What do I want to do here?
-// * Implement 'next' for each type (Iterator trait)
-// * Be able to convert a value into an iterator
-/*
-struct Foo;
-struct FooIterator {
-    foo: Foo,
-}
-
-fn take_iter<'a, I>(mut i: I) where I: Iterator<Item = &'a Foo> + marker::Sized {
-    i.next();
-}
-
-impl FooIterator {
-    pub fn from_foo(f: Foo) -> Self {
-        FooIterator{foo: f}
-    }
-}
-impl<'a> Iterator for FooIterator {
-    type Item = &'a Foo;
-    
-    fn next(&mut self) -> Option<&Foo> {
-        Some(&self.foo)
-    }
-}
-
-fn main() {
-    let f = Foo;
-    let i = FooIterator::from_foo(f);
-    take_iter(i)
-}
-*/

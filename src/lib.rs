@@ -1,5 +1,4 @@
 #![feature(core)]
-#![feature(std_misc)]
 #![feature(collections)]
 #![feature(test)]
 #![feature(convert)]

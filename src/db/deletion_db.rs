@@ -11,35 +11,32 @@ use self::num::rational::Ratio;
 
 use db::result_accumulator::ResultAccumulator;
 use db::hash_map_set::HashMapSet;
-use db::{Database, Value, Window, DeletionDB, DeletionVariantIter};
+use db::{Database, Value, Window, DeletionDB, DeletionVariant};
 
 pub struct DeletionPartition<V> where
-    V: Value,
-    DeletionVariantIter<V>: Iterator,
-    <DeletionVariantIter<V> as Iterator>::Item: cmp::Eq + hash::Hash + clone::Clone,
-    {
+    V: Value + DeletionVariant,
+    <<V as DeletionVariant>::Iter as Iterator>::Item: cmp::Eq + hash::Hash + clone::Clone,
+{
     pub start_dimension: usize,
     pub dimensions: usize,
 
-    pub kv: HashMapSet<<DeletionVariantIter<V> as Iterator>::Item, V>,
+    pub kv: HashMapSet<<<V as DeletionVariant>::Iter as Iterator>::Item, V>,
 }
 
-impl<V> DeletionPartition<V> where 
-    V: Value + Window,
-    DeletionVariantIter<V>: Iterator,
-    <DeletionVariantIter<V> as Iterator>::Item: cmp::Eq + hash::Hash + clone::Clone,
-    {
+impl<V> DeletionPartition<V> where
+    V: Value + DeletionVariant,
+    <<V as DeletionVariant>::Iter as Iterator>::Item: cmp::Eq + hash::Hash + clone::Clone,
+{
     pub fn new(start_dimension: usize, dimensions: usize) -> DeletionPartition<V> {
-        let kv: HashMapSet<<DeletionVariantIter<V> as Iterator>::Item, V> = HashMapSet::new();
+        let kv: HashMapSet<<<V as DeletionVariant>::Iter as Iterator>::Item, V> = HashMapSet::new();
         return DeletionPartition {start_dimension: start_dimension, dimensions: dimensions, kv: kv};
     }
 }
 
-impl<V> Database<V> for DeletionDB<V> where 
-    V: Value + Window,
-    DeletionVariantIter<V>: Iterator,
-    <DeletionVariantIter<V> as Iterator>::Item: cmp::Eq + hash::Hash + clone::Clone,
-    {
+impl<V> Database<V> for DeletionDB<V> where
+    V: Value + Window + DeletionVariant,
+    <<V as DeletionVariant>::Iter as Iterator>::Item: cmp::Eq + hash::Hash + clone::Clone,
+{
     /// Create a new DB
     ///
     /// Partitions the keyspace as evenly as possible - all partitions
@@ -97,8 +94,7 @@ impl<V> Database<V> for DeletionDB<V> where
             let mut counts: HashMap<V, usize> = HashMap::new();
             let transformed_key = &key.window(partition.start_dimension, partition.dimensions);
 
-            // for ref deletion_variant in transformed_key.deletion_variants(partition.dimensions) {
-            for deletion_variant in DeletionVariantIter::new(transformed_key, partition.dimensions) {
+            for deletion_variant in transformed_key.deletion_variants(partition.dimensions) {
                 match partition.kv.get(&deletion_variant) {
                     Some(found_keys) => {
                         for found_key in found_keys.iter() {
@@ -134,8 +130,7 @@ impl<V> Database<V> for DeletionDB<V> where
             let transformed_key = key.window(partition.start_dimension, partition.dimensions);
 
             // NOTE: think about how to detect 'new' values
-            // transformed_key.deletion_variants(partition.dimensions).map(|deletion_variant| {
-            DeletionVariantIter::new(transformed_key, partition.dimensions).map(|deletion_variant| {
+            transformed_key.deletion_variants(partition.dimensions).map(|deletion_variant| {
                 partition.kv.insert(deletion_variant.clone(), key.clone())
 
             }).collect::<Vec<bool>>().iter().any(|i| *i)
@@ -153,8 +148,7 @@ impl<V> Database<V> for DeletionDB<V> where
         self.partitions.iter_mut().map(|ref mut partition| {
             let transformed_key = key.window(partition.start_dimension, partition.dimensions);
 
-            // transformed_key.deletion_variants(partition.dimensions).map(|ref deletion_variant| {
-            DeletionVariantIter::new(transformed_key, partition.dimensions).map(|ref deletion_variant| {
+            transformed_key.deletion_variants(partition.dimensions).map(|ref deletion_variant| {
                 partition.kv.remove(deletion_variant, key)
 
             }).collect::<Vec<bool>>().iter().any(|i| *i)
@@ -165,20 +159,18 @@ impl<V> Database<V> for DeletionDB<V> where
 }
 
 impl<V> fmt::Debug for DeletionDB<V> where
-    V: Value + Window,
-    DeletionVariantIter<V>: Iterator,
-    <DeletionVariantIter<V> as Iterator>::Item: cmp::Eq + hash::Hash + clone::Clone,
-    {
+    V: Value + Window + DeletionVariant,
+    <<V as DeletionVariant>::Iter as Iterator>::Item: cmp::Eq + hash::Hash + clone::Clone,
+{
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         write!(f, "({}:{}:{})", self.dimensions, self.tolerance, self.partition_count)
     }
 }
 
 impl<V> PartialEq for DeletionDB<V> where
-    V: Value + Window,
-    DeletionVariantIter<V>: Iterator,
-    <DeletionVariantIter<V> as Iterator>::Item: cmp::Eq + hash::Hash + clone::Clone,
-    {
+    V: Value + Window + DeletionVariant,
+    <<V as DeletionVariant>::Iter as Iterator>::Item: cmp::Eq + hash::Hash + clone::Clone,
+{
     fn eq(&self, other: &DeletionDB<V>) -> bool {
         return self.dimensions == other.dimensions &&
             self.tolerance == other.tolerance &&

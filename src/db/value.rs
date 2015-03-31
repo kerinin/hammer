@@ -9,7 +9,6 @@ use std::num::Int;
 use std::collections::BitVec;
 
 use db::{Value, Window};
-// use db::SubstitutionVariant;
 use self::byteorder::{ByteOrder, LittleEndian};
 
 impl Window for u8 {
@@ -20,7 +19,12 @@ impl Window for u8 {
         //  >> 1+2     00011111
         let bits = std::u8::BITS as usize;
         let trim_high = bits - (start_dimension + dimensions);
-        (self << trim_high) >> (trim_high + start_dimension)
+
+        if trim_high >= std::u8::BITS as usize {
+            0u8
+        } else {
+            (self << trim_high) >> (trim_high + start_dimension)
+        }
     }
 }
 
@@ -67,7 +71,7 @@ impl Value for usize {
         let mut buf = vec![0; std::usize::BYTES as usize];
         <LittleEndian as ByteOrder>::write_u64(&mut buf, different as u64);
 
-        BitVec::from_bytes(buf.as_slice()).iter()
+        BitVec::from_bytes(&buf[..]).iter()
             .enumerate()
             .filter(|&(_, b)| b)
             .map(|(i, _)| i)
@@ -85,161 +89,6 @@ impl<T: cmp::Eq + clone::Clone + hash::Hash> Value for Vec<T> {
             .collect()
     }
 }
-
-impl Value for (u8, u8) {
-    fn hamming(&self, other: &(u8, u8)) -> usize {
-        let &(self_value, self_deleted_index) = self;
-        let &(other_value, other_deleted_index) = other;
-
-        let deletion_different = (1u8 << self_deleted_index) ^ (1u8 << other_deleted_index);
-        let binary_different = self_value ^ other_value;
-
-        return (deletion_different | binary_different).count_ones() as usize;
-    }
-
-    fn hamming_indices(&self, other: &(u8, u8)) -> Vec<usize> {
-        let &(self_value, self_deleted_index) = self;
-        let &(other_value, other_deleted_index) = other;
-
-        let deletion_different = (1u8 << self_deleted_index) ^ (1u8 << other_deleted_index);
-        let binary_different = self_value ^ other_value;
-
-        let different = deletion_different | binary_different;
-
-        BitVec::from_bytes(&[different]).iter()
-            .enumerate()
-            .filter(|&(_, b)| b)
-            .map(|(i, _)| i)
-            .collect()
-    }
-}
-
-impl Value for (usize, u8) {
-    fn hamming(&self, other: &(usize, u8)) -> usize {
-        let &(self_value, self_deleted_index) = self;
-        let &(other_value, other_deleted_index) = other;
-
-        let deletion_different = (1usize << self_deleted_index) ^ (1usize << other_deleted_index);
-        let binary_different = self_value ^ other_value;
-
-        return (deletion_different | binary_different).count_ones() as usize;
-    }
-
-    fn hamming_indices(&self, other: &(usize, u8)) -> Vec<usize> {
-        let &(self_value, self_deleted_index) = self;
-        let &(other_value, other_deleted_index) = other;
-
-        let deletion_different = (1usize << self_deleted_index) ^ (1usize << other_deleted_index);
-        let binary_different = self_value ^ other_value;
-
-        let different = deletion_different | binary_different;
-        let mut buf = vec![0; std::usize::BYTES as usize];
-        // NOTE: This may be doing wierd stuff on 32-bit systems
-        <LittleEndian as ByteOrder>::write_u64(&mut buf, different as u64);
-
-        BitVec::from_bytes(buf.as_slice()).iter()
-            .enumerate()
-            .filter(|&(_, b)| b)
-            .map(|(i, _)| i)
-            .collect()
-    }
-}
-
-impl<T: cmp::Eq + clone::Clone + hash::Hash> Value for (Vec<T>, usize) {
-    fn hamming_lte(&self, other: &(Vec<T>, usize), bound: usize) -> bool {
-        let mut hamming = 0;
-        let &(ref self_value, self_deleted_index) = self;
-        let &(ref other_value, other_deleted_index) = other;
-
-        for i in (0..self_value.len()) {
-            let different = (self_deleted_index == i && other_deleted_index != i) ||
-                (self_deleted_index != i && other_deleted_index == i) ||
-                (self_deleted_index != i && other_deleted_index != i && self_value[i] != other_value[i]);
-
-            if different {
-                hamming += 1;
-                if hamming >= bound {
-                    return true;
-                }
-            }
-        }
-
-        return false;
-    }
-
-    fn hamming_indices(&self, other: &(Vec<T>, usize)) -> Vec<usize> {
-        let &(ref self_value, self_deleted_index) = self;
-        let &(ref other_value, other_deleted_index) = other;
-
-        (0..self_value.len()).filter(|&i| {
-            (self_deleted_index == i && other_deleted_index != i) ||
-            (self_deleted_index != i && other_deleted_index == i) ||
-            (self_deleted_index != i && other_deleted_index != i && self_value[i] != other_value[i])
-        }).collect()
-    }
-}
-
-/*
-impl SubstitutionVariant for u8 {
-    fn substitution_variants(&self, dimensions: usize) -> Vec<u8> {
-        return (0..dimensions)
-            .map(|i| {
-                let delta = 1u8 << i;
-                self.clone() ^ delta
-            })
-            .collect::<Vec<u8>>();
-    }
-}
-
-impl SubstitutionVariant for usize {
-    fn substitution_variants(&self, dimensions: usize) -> Vec<usize> {
-        return (0..dimensions)
-            .map(|i| {
-                let delta = 1usize << i;
-                self.clone() ^ delta
-            })
-            .collect::<Vec<usize>>();
-    }
-}
-
-impl DeletionVariant for u8 {
-    type Output = (u8, u8);
-
-    fn deletion_variants(&self, dimensions: usize) -> Vec<(u8, u8)> {
-        return (0..dimensions)
-            .map(|i| {
-                (self.clone() | (1u8 << i), i as u8)
-            })
-            .collect::<Vec<(u8, u8)>>();
-    }
-}
-
-impl DeletionVariant for usize {
-    type Output = (usize, u8);
-
-    fn deletion_variants(&self, dimensions: usize) -> Vec<(usize, u8)> {
-        return (0..dimensions)
-            .map(|i| {
-                (self.clone() | (1usize << i), i as u8)
-            })
-            .collect::<Vec<(usize, u8)>>();
-    }
-}
-
-impl DeletionVariant for Vec<u8> {
-    type Output = (Vec<u8>, usize);
-
-    fn deletion_variants(&self, dimensions: usize) -> Vec<(Vec<u8>, usize)> {
-        return (0..dimensions)
-            .map(|i| {
-                let mut cloned_self = self.clone();
-                cloned_self[i] = std::u8::MAX;
-                (cloned_self, i)
-            })
-            .collect::<Vec<(Vec<u8>, usize)>>();
-    }
-}
-*/
 
 
 #[cfg(test)] 
@@ -301,13 +150,13 @@ mod test {
     fn test_deletion_variants_vec_u8() {
         let a = vec![0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8];
         let expected = vec![
-            (vec![255u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8], 0usize),
-            (vec![0u8, 255u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8], 1usize),
-            (vec![0u8, 0u8, 255u8, 0u8, 0u8, 0u8, 0u8, 0u8], 2usize),
-            (vec![0u8, 0u8, 0u8, 255u8, 0u8, 0u8, 0u8, 0u8], 3usize),
+            (vec![255u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8], 0u32),
+            (vec![0u8, 255u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8], 1u32),
+            (vec![0u8, 0u8, 255u8, 0u8, 0u8, 0u8, 0u8, 0u8], 2u32),
+            (vec![0u8, 0u8, 0u8, 255u8, 0u8, 0u8, 0u8, 0u8], 3u32),
         ];
 
-        assert_eq!(a.deletion_variants(4), expected);
+        assert_eq!(a.deletion_variants(4).collect(), expected);
     }
 
     #[test]
@@ -402,7 +251,7 @@ mod test {
             0b00001000u8,
         ];
 
-        assert_eq!(a.substitution_variants(4), expected);
+        assert_eq!(a.substitution_variants(4).collect(), expected);
     }
     #[test]
 
@@ -415,7 +264,7 @@ mod test {
             (0b00001000u8, 3u8),
         ];
 
-        assert_eq!(a.deletion_variants(4), expected);
+        assert_eq!(a.deletion_variants(4).collect(), expected);
     }
 
     #[test]
@@ -508,20 +357,20 @@ mod test {
             0b00001000usize,
         ];
 
-        assert_eq!(a.substitution_variants(4), expected);
+        assert_eq!(a.substitution_variants(4).collect(), expected);
     }
 
     #[test]
     fn test_deletion_variants_usize() {
         let a = 0b00000000usize;
         let expected = vec![
-            (0b00000001usize, 0u8),
-            (0b00000010usize, 1u8),
-            (0b00000100usize, 2u8),
-            (0b00001000usize, 3u8),
+            (0b00000001usize, 0u32),
+            (0b00000010usize, 1u32),
+            (0b00000100usize, 2u32),
+            (0b00001000usize, 3u32),
         ];
 
-        assert_eq!(a.deletion_variants(4), expected);
+        assert_eq!(a.deletion_variants(4).collect(), expected);
     }
 
     #[test]
@@ -550,103 +399,5 @@ mod test {
         let b = 0b11111111usize;
 
         assert_eq!(a.hamming(&b), 8);
-    }
-
-
-
-    #[test]
-    fn test_deletion_hamming_equal_u8_u8() {
-        let a = (0b11111111u8, 0u8);
-        let b = (0b11111111u8, 0u8);
-
-        let c = (0b00000001u8, 0u8);
-        let d = (0b00000001u8, 0u8);
-
-        assert_eq!(a.hamming(&b), 0);
-        assert_eq!(c.hamming(&d), 0);
-    }
-
-    #[test]
-    fn test_deletion_hamming_binary_unequal_u8_u8() {
-        let a = (0b11111111u8, 0u8);
-        let b = (0b01111111u8, 0u8);
-
-        let c = (0b10000001u8, 0u8);
-        let d = (0b00000001u8, 0u8);
-
-        assert_eq!(a.hamming(&b), 1);
-        assert_eq!(c.hamming(&d), 1);
-    }
-
-    #[test]
-    fn test_deletion_hamming_deleted_unequal_u8_u8() {
-        let a = (0b11111111u8, 0u8);
-        let b = (0b11111111u8, 1u8);
-
-        let c = (0b00000001u8, 0u8);
-        let d = (0b00000010u8, 1u8);
-
-        assert_eq!(a.hamming(&b), 2);
-        assert_eq!(c.hamming(&d), 2);
-    }
-
-    #[test]
-    fn test_deletion_hamming_binary_and_deleted_unequal_u8_u8() {
-        let a = (0b11111111u8, 0u8);
-        let b = (0b01111111u8, 1u8);
-
-        let c = (0b10000001u8, 0u8);
-        let d = (0b00000010u8, 1u8);
-
-        assert_eq!(a.hamming(&b), 3);
-        assert_eq!(c.hamming(&d), 3);
-    }
-
-    #[test]
-    fn test_deletion_hamming_equal_usize_u8() {
-        let a = (0b11111111usize, 0u8);
-        let b = (0b11111111usize, 0u8);
-
-        let c = (0b00000001usize, 0u8);
-        let d = (0b00000001usize, 0u8);
-
-        assert_eq!(a.hamming(&b), 0);
-        assert_eq!(c.hamming(&d), 0);
-    }
-
-    #[test]
-    fn test_deletion_hamming_binary_unequal_usize_u8() {
-        let a = (0b11111111usize, 0u8);
-        let b = (0b01111111usize, 0u8);
-
-        let c = (0b10000001usize, 0u8);
-        let d = (0b00000001usize, 0u8);
-
-        assert_eq!(a.hamming(&b), 1);
-        assert_eq!(c.hamming(&d), 1);
-    }
-
-    #[test]
-    fn test_deletion_hamming_deleted_unequal_usize_u8() {
-        let a = (0b11111111usize, 0u8);
-        let b = (0b11111111usize, 1u8);
-
-        let c = (0b00000001usize, 0u8);
-        let d = (0b00000010usize, 1u8);
-
-        assert_eq!(a.hamming(&b), 2);
-        assert_eq!(c.hamming(&d), 2);
-    }
-
-    #[test]
-    fn test_deletion_hamming_binary_and_deleted_unequal_usize_u8() {
-        let a = (0b11111111usize, 0u8);
-        let b = (0b01111111usize, 1u8);
-
-        let c = (0b10000001usize, 0u8);
-        let d = (0b00000010usize, 1u8);
-
-        assert_eq!(a.hamming(&b), 3);
-        assert_eq!(c.hamming(&d), 3);
     }
 }
