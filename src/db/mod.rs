@@ -40,7 +40,7 @@ mod result_accumulator;
 mod deletion_variant;
 mod substitution_variant;
 
-// mod bench; // Uncomment to get benchmarks to run
+mod bench; // Uncomment to get benchmarks to run
 
 use std::hash;
 use std::cmp;
