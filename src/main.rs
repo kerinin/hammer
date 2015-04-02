@@ -2,6 +2,8 @@
 #![feature(collections)]
 #![feature(test)]
 #![feature(convert)]
+#![feature(std_misc)]
+#![feature(hash)]
 
 #[macro_use]
 

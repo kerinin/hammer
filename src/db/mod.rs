@@ -39,6 +39,7 @@ mod hash_map_set;
 mod result_accumulator;
 mod deletion_variant;
 mod substitution_variant;
+mod hashing;
 
 mod bench; // Uncomment to get benchmarks to run
 
@@ -48,7 +49,7 @@ use std::clone;
 use std::collections::HashSet;
 
 use db::substitution_db::SubstitutionPartition;
-use db::deletion_db::DeletionPartition;
+use db::hash_map_set::HashMapSet;
 
 /// Abstract interface for Hamming distance databases
 ///
@@ -69,6 +70,16 @@ pub struct SubstitutionDB<V> where
     tolerance: usize,
     partition_count: usize,
     partitions: Vec<SubstitutionPartition<V>>,
+}
+
+pub struct DeletionPartition<V> where
+    V: Value + DeletionVariant,
+    <<V as DeletionVariant>::Iter as Iterator>::Item: cmp::Eq + hash::Hash + clone::Clone,
+{
+    pub start_dimension: usize,
+    pub dimensions: usize,
+
+    pub kv: HashMapSet<<<V as DeletionVariant>::Iter as Iterator>::Item, V>,
 }
 
 /// HmSearch Database using deletion variants

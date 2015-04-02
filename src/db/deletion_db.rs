@@ -13,16 +13,6 @@ use db::result_accumulator::ResultAccumulator;
 use db::hash_map_set::HashMapSet;
 use db::{Database, Value, Window, DeletionDB, DeletionVariant};
 
-pub struct DeletionPartition<V> where
-    V: Value + DeletionVariant,
-    <<V as DeletionVariant>::Iter as Iterator>::Item: cmp::Eq + hash::Hash + clone::Clone,
-{
-    pub start_dimension: usize,
-    pub dimensions: usize,
-
-    pub kv: HashMapSet<<<V as DeletionVariant>::Iter as Iterator>::Item, V>,
-}
-
 impl<V> DeletionPartition<V> where
     V: Value + DeletionVariant,
     <<V as DeletionVariant>::Iter as Iterator>::Item: cmp::Eq + hash::Hash + clone::Clone,
