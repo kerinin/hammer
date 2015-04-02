@@ -79,14 +79,14 @@ impl<V: Value + Window + DeletionVariant> Database<V> for DeletionDB<V> {
 
         // Split across tasks?
         for partition in self.partitions.iter() {
-            let mut counts = HashMap::new();
+            let mut counts: HashMap<V, usize> = HashMap::new();
             let transformed_key = &key.window(partition.start_dimension, partition.dimensions);
 
             for deletion_variant in transformed_key.deletion_variants(partition.dimensions).iter() {
                 match partition.kv.get(deletion_variant) {
                     Some(found_keys) => {
                         for found_key in found_keys.iter() {
-                            match counts.entry(found_key) {
+                            match counts.entry(found_key.clone()) {
                                 Occupied(mut entry) => { *entry.get_mut() += 1; },
                                 Vacant(entry) => { entry.insert(1); },
                             }
@@ -98,9 +98,9 @@ impl<V: Value + Window + DeletionVariant> Database<V> for DeletionDB<V> {
 
             for (found_key, count) in counts {
                 if count > 2 {
-                    results.insert_zero_variant(found_key)
+                    results.insert_zero_variant(&found_key)
                 } else {
-                    results.insert_one_variant(found_key)
+                    results.insert_one_variant(&found_key)
                 }
             }
         }

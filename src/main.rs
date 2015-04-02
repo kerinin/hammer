@@ -2,6 +2,7 @@
 #![feature(std_misc)]
 #![feature(collections)]
 #![feature(test)]
+#![feature(convert)]
 
 #[macro_use]
 
@@ -18,7 +19,7 @@ extern crate docopt;
 //extern crate router;
 //extern crate persistent;
 
-pub mod bit_matrix;
+// pub mod bit_matrix;
 pub mod db;
 //pub mod http;
 // pub mod evicting_store;
