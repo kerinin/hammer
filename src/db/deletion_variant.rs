@@ -3,6 +3,7 @@ use std::clone;
 use std::iter;
 
 use db::DeletionVariant;
+use db::hashing::Hashed;
 
 pub struct DeletionVariantIter<T> {
     // The original value, which shouldn't be modified
@@ -79,6 +80,27 @@ impl iter::Iterator for DeletionVariantIter<Vec<u8>> {
             self.index += 1;
 
             Some((self.variant.clone(), (self.index - 1) as u32))
+        }
+    }
+}
+
+impl iter::Iterator for DeletionVariantIter<Hashed<Vec<u8>>> {
+    type Item = (Vec<u8>, u32);
+
+    fn next(&mut self) -> Option<(Vec<u8>, u32)> {
+        if self.index >= self.dimensions {
+            None
+        } else {
+            let source = &*self.source;
+            let mut variant = (*self.variant).clone();
+
+            if self.index > 0 {
+                variant[self.index - 1] = source[self.index - 1];
+            }
+            variant[self.index] = std::u8::MAX;
+            self.index += 1;
+
+            Some((variant, (self.index - 1) as u32))
         }
     }
 }

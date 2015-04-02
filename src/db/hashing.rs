@@ -7,12 +7,14 @@ use std::borrow::*;
 use std::collections::hash_state::*;
 use std::marker::*;
 
+use db::*;
+
 /// `Hasher` implementation for pre-hashed types
 ///
 /// This hasher is intended to be used with types that expect to hash a value,
 /// in cases where your data is already hashed (for example, using `Hashed<T>`)
 ///
-struct ProxyHasher {
+pub struct ProxyHasher {
     hash: u64,
 }
 
@@ -22,15 +24,14 @@ struct ProxyHasher {
 /// hash evaluations will use the original hash value, reducing the time 
 /// required to hash large objects.
 ///
-#[derive(Clone)]
-struct Hashed<T, H = SipHasher> {
+pub struct Hashed<T, H = SipHasher> {
     hash_value: u64,
     value: T,
     marker: PhantomData<H>,
 }
 
 impl<T, H> Hashed<T,H> where T: Hash, H: Hasher + Default {
-    fn new(value: T) -> Hashed<T, H> {
+    pub fn new(value: T) -> Hashed<T, H> {
         let mut hashed = Hashed {hash_value: 0, value: value, marker: PhantomData};
         let mut hasher: H = Default::default();
         hashed.value.hash(&mut hasher);
@@ -38,12 +39,27 @@ impl<T, H> Hashed<T,H> where T: Hash, H: Hasher + Default {
         hashed
     }
 
-    fn new_with_state<S>(value: T, state: S) -> Hashed<T,H> where S: HashState<Hasher = H> {
+    pub fn new_with_state<S>(value: T, state: S) -> Hashed<T,H> where S: HashState<Hasher = H> {
         let mut hashed = Hashed {hash_value: 0, value: value, marker: PhantomData};
         let mut hasher: H = state.hasher();
         hashed.value.hash(&mut hasher);
         hashed.hash_value = hasher.finish();
         hashed
+    }
+}
+
+impl<T,H> Value for Hashed<T,H> where T: Value {
+    fn hamming_indices(&self, other: &Self) -> Vec<usize> {
+        let self_value: &T = &**self;
+        let other_value: &T = &**other;
+        self_value.hamming_indices(other_value)
+    }
+}
+
+impl<T,H> Window for Hashed<T,H> where T: Window + Hash, H: Hasher + Default {
+    fn window(&self, start_dimension: usize, dimensions: usize) -> Hashed<T,H> {
+        let self_value: &T = &**self;
+        Hashed::new(self_value.window(start_dimension, dimensions))
     }
 }
 
@@ -56,6 +72,21 @@ impl<T,H> Hash for Hashed<T,H> {
         for hashed in data.iter() {
             state.write_u64(hashed.hash_value);
         }
+    }
+}
+
+impl<T,H> Clone for Hashed<T,H> where T: Clone {
+    fn clone(&self) -> Hashed<T,H> {
+        Hashed {
+            hash_value: self.hash_value.clone(),
+            value: self.value.clone(),
+            marker: PhantomData,
+        }
+    }
+
+    fn clone_from(&mut self, source: &Hashed<T,H>) {
+        self.hash_value = source.hash_value.clone();
+        self.value = source.value.clone();
     }
 }
 

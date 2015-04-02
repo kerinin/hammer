@@ -118,6 +118,9 @@ pub trait Value: hash::Hash + cmp::Eq + clone::Clone {
 }
 
 pub trait Window {
+    // NOTE: Consider using an associated type for the output, so things like Hashed<T>
+    // can return a different type
+
     /// Subsample on a set of dimensions
     ///
     /// `start_dimension` the index of the 1st dimension to include in the slice, 
