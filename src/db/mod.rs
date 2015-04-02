@@ -46,6 +46,7 @@ mod bench; // Uncomment to get benchmarks to run
 use std::hash;
 use std::cmp;
 use std::clone;
+use std::rc::*;
 use std::collections::HashSet;
 
 use db::substitution_db::SubstitutionPartition;
@@ -79,7 +80,7 @@ pub struct DeletionPartition<V> where
     pub start_dimension: usize,
     pub dimensions: usize,
 
-    pub kv: HashMapSet<<<V as DeletionVariant>::Iter as Iterator>::Item, V>,
+    pub kv: HashMapSet<<<V as DeletionVariant>::Iter as Iterator>::Item, Rc<V>>,
 }
 
 /// HmSearch Database using deletion variants

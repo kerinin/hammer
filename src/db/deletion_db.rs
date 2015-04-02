@@ -4,6 +4,7 @@ use std::fmt;
 use std::cmp;
 use std::hash;
 use std::clone;
+use std::rc::*;
 use std::collections::{HashSet, HashMap};
 use std::collections::hash_map::Entry::{Occupied, Vacant};
 
@@ -11,6 +12,7 @@ use self::num::rational::Ratio;
 
 use db::result_accumulator::ResultAccumulator;
 use db::hash_map_set::HashMapSet;
+use db::hashing::*;
 use db::*;
 
 impl<V> DeletionPartition<V> where
@@ -18,7 +20,7 @@ impl<V> DeletionPartition<V> where
     <<V as DeletionVariant>::Iter as Iterator>::Item: cmp::Eq + hash::Hash + clone::Clone,
 {
     pub fn new(start_dimension: usize, dimensions: usize) -> DeletionPartition<V> {
-        let kv: HashMapSet<<<V as DeletionVariant>::Iter as Iterator>::Item, V> = HashMapSet::new();
+        let kv: HashMapSet<<<V as DeletionVariant>::Iter as Iterator>::Item, Rc<V>> = HashMapSet::new();
         return DeletionPartition {start_dimension: start_dimension, dimensions: dimensions, kv: kv};
     }
 }
@@ -79,6 +81,8 @@ impl<V> Database<V> for DeletionDB<V> where
     fn get(&self, key: &V) -> Option<HashSet<V>> {
         let mut results = ResultAccumulator::new(self.tolerance, key.clone());
 
+        // NOTE: Need to flip the iteration order so we only evaluate deletion variants once...
+        
         // Split across tasks?
         for partition in self.partitions.iter() {
             let mut counts: HashMap<V, usize> = HashMap::new();
@@ -87,6 +91,7 @@ impl<V> Database<V> for DeletionDB<V> where
             for deletion_variant in transformed_key.deletion_variants(partition.dimensions) {
                 match partition.kv.get(&deletion_variant) {
                     Some(found_keys) => {
+                        // Iterate through the values found in the deletion variant's set
                         for found_key in found_keys.iter() {
                             match counts.entry(found_key.clone()) {
                                 Occupied(mut entry) => { *entry.get_mut() += 1; },
@@ -115,13 +120,15 @@ impl<V> Database<V> for DeletionDB<V> where
     /// Returns true if key was added to ANY index
     ///
     fn insert(&mut self, key: V) -> bool {
+        let rc_key = Rc::new(key.clone());
+
         // Split across tasks?
         self.partitions.iter_mut().map(|ref mut partition| {
             let transformed_key = key.window(partition.start_dimension, partition.dimensions);
 
             // NOTE: think about how to detect 'new' values
             transformed_key.deletion_variants(partition.dimensions).map(|deletion_variant| {
-                partition.kv.insert(deletion_variant.clone(), key.clone())
+                partition.kv.insert(deletion_variant.clone(), rc_key.clone())
 
             }).collect::<Vec<bool>>().iter().any(|i| *i)
 
@@ -134,12 +141,14 @@ impl<V> Database<V> for DeletionDB<V> where
     /// Returns true if key was removed from ANY index
     ///
     fn remove(&mut self, key: &V) -> bool {
+        let rc_key = Rc::new(key.clone());
+
         // Split across tasks?
         self.partitions.iter_mut().map(|ref mut partition| {
             let transformed_key = key.window(partition.start_dimension, partition.dimensions);
 
             transformed_key.deletion_variants(partition.dimensions).map(|ref deletion_variant| {
-                partition.kv.remove(deletion_variant, key)
+                partition.kv.remove(deletion_variant, &rc_key)
 
             }).collect::<Vec<bool>>().iter().any(|i| *i)
 
