@@ -156,7 +156,7 @@ mod test {
             (vec![0u8, 0u8, 0u8, 255u8, 0u8, 0u8, 0u8, 0u8], 3u32),
         ];
 
-        assert_eq!(a.deletion_variants(4).collect(), expected);
+        assert_eq!(a.deletion_variants(4).collect::<Vec<(Vec<u8>, u32)>>(), expected);
     }
 
     #[test]
@@ -251,7 +251,7 @@ mod test {
             0b00001000u8,
         ];
 
-        assert_eq!(a.substitution_variants(4).collect(), expected);
+        assert_eq!(a.substitution_variants(4).collect::<Vec<u8>>(), expected);
     }
     #[test]
 
@@ -264,7 +264,7 @@ mod test {
             (0b00001000u8, 3u8),
         ];
 
-        assert_eq!(a.deletion_variants(4).collect(), expected);
+        assert_eq!(a.deletion_variants(4).collect::<Vec<(u8, u8)>>(), expected);
     }
 
     #[test]
@@ -357,7 +357,7 @@ mod test {
             0b00001000usize,
         ];
 
-        assert_eq!(a.substitution_variants(4).collect(), expected);
+        assert_eq!(a.substitution_variants(4).collect::<Vec<usize>>(), expected);
     }
 
     #[test]
@@ -370,7 +370,7 @@ mod test {
             (0b00001000usize, 3u32),
         ];
 
-        assert_eq!(a.deletion_variants(4).collect(), expected);
+        assert_eq!(a.deletion_variants(4).collect::<Vec<(usize, u32)>>(), expected);
     }
 
     #[test]

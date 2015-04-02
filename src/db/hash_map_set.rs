@@ -28,25 +28,46 @@
 use std::clone;
 use std::cmp;
 use std::hash;
+use std::marker;
 
-use std::collections::{HashMap, HashSet};
+use std::collections::*;
 use std::collections::hash_map::Entry::{Vacant, Occupied};
 
 #[derive(Debug)]
-pub struct HashMapSet<K: cmp::Eq + hash::Hash, V: cmp::Eq + hash::Hash> {
-    data: HashMap<K, HashSet<V>>,
+pub struct HashMapSet<K, V, S = hash_map::RandomState>
+where   K: cmp::Eq + hash::Hash, 
+        V: cmp::Eq + hash::Hash, 
+        S: marker::Sized + clone::Clone + hash_state::HashState,
+{
+    state: S,
+    data: HashMap<K, HashSet<V, S>, S>,
 }
 
-impl<K: hash::Hash + cmp::Eq + clone::Clone, V: hash::Hash + cmp::Eq + clone::Clone> HashMapSet<K, V> {
-    pub fn new() -> HashMapSet<K, V> {
-        let data: HashMap<K, HashSet<V>> = HashMap::new();
-        return HashMapSet {data: data};
+impl<K, V> HashMapSet<K, V, hash_map::RandomState>
+where   K: cmp::Eq + hash::Hash, 
+        V: cmp::Eq + hash::Hash, 
+{
+    pub fn new() -> HashMapSet<K, V, hash_map::RandomState> {
+        let state = hash_map::RandomState::new();
+        let data: HashMap<K, HashSet<V>> = HashMap::with_hash_state(state.clone());
+        return HashMapSet {state: state, data: data};
+    }
+}
+
+impl<K, V, S> HashMapSet<K, V, S>
+where   K: clone::Clone + cmp::Eq + hash::Hash, 
+        V: cmp::Eq + hash::Hash, 
+        S: clone::Clone + hash_state::HashState,
+{
+    pub fn with_hash_state(state: S) -> HashMapSet<K, V, S> {
+        let data: HashMap<K, HashSet<V, S>, S> = HashMap::with_hash_state(state.clone());
+        return HashMapSet {state: state, data: data};
     }
 
     pub fn insert(&mut self, key: K, value: V) -> bool {
         match self.data.entry(key) {
             Vacant(entry) => {
-                let mut set: HashSet<V> = HashSet::new();
+                let mut set: HashSet<V, S> = HashSet::with_hash_state(self.state.clone());
                 set.insert(value);
                 entry.insert(set);
                 true
@@ -57,7 +78,7 @@ impl<K: hash::Hash + cmp::Eq + clone::Clone, V: hash::Hash + cmp::Eq + clone::Cl
         }
     }
 
-    pub fn get(&self, key: &K) -> Option<&HashSet<V>> {
+    pub fn get(&self, key: &K) -> Option<&HashSet<V, S>> {
         return self.data.get(key);
     }
 

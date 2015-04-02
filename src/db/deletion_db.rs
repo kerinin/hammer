@@ -11,7 +11,7 @@ use self::num::rational::Ratio;
 
 use db::result_accumulator::ResultAccumulator;
 use db::hash_map_set::HashMapSet;
-use db::{Database, Value, Window, DeletionDB, DeletionVariant};
+use db::*;
 
 impl<V> DeletionPartition<V> where
     V: Value + DeletionVariant,
@@ -188,8 +188,7 @@ mod test {
     use std::collections::HashSet;
     use self::rand::{thread_rng, sample, Rng};
 
-    use db::{Database, DeletionDB};
-    use db::deletion_db::DeletionPartition;
+    use db::*;
 
     #[test]
     fn partition_evenly() {
