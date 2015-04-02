@@ -81,12 +81,10 @@ impl<V> Database<V> for DeletionDB<V> where
     fn get(&self, key: &V) -> Option<HashSet<V>> {
         let mut results = ResultAccumulator::new(self.tolerance, key.clone());
 
-        // NOTE: Need to flip the iteration order so we only evaluate deletion variants once...
-        
         // Split across tasks?
         for partition in self.partitions.iter() {
-            let mut counts: HashMap<V, usize> = HashMap::new();
-            let transformed_key = &key.window(partition.start_dimension, partition.dimensions);
+            let mut counts: HashMap<Rc<V>, usize> = HashMap::new();
+            let transformed_key = key.window(partition.start_dimension, partition.dimensions);
 
             for deletion_variant in transformed_key.deletion_variants(partition.dimensions) {
                 match partition.kv.get(&deletion_variant) {

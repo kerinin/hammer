@@ -1,8 +1,8 @@
 #![feature(core)]
+#![feature(std_misc)]
 #![feature(collections)]
 #![feature(test)]
 #![feature(convert)]
-#![feature(std_misc)]
 #![feature(hash)]
 
 // pub mod bit_matrix;

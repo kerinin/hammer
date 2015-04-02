@@ -135,11 +135,24 @@ pub trait Window {
 pub trait SubstitutionVariant {
     type Iter: Iterator<Item = Self>;
 
+    /// Substitution variants
+    ///
+    /// Returns an array of all possible single-column permutation of `self`.
+    /// Alternately, returns the set of values with Hamming distance `1` from 
+    /// `self`
+    ///
     fn substitution_variants(&self, dimensions: usize) -> <Self as SubstitutionVariant>::Iter;
 }
 
 pub trait DeletionVariant {
     type Iter: Iterator;
 
+    /// Returns an array of all possible deletion variants of `self`
+    ///
+    /// A "deletion variant" as defined in
+    /// [Zhang](http://www.cse.unsw.edu.au/~weiw/files/SSDBM13-HmSearch-Final.pdf)
+    /// is a value obtained by substituting a "deletion marker" for a single 
+    /// dimension of a value.
+    ///
     fn deletion_variants(&self, dimensions: usize) -> <Self as DeletionVariant>::Iter;
 }

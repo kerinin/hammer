@@ -32,7 +32,12 @@ impl Window for usize {
     fn window(&self, start_dimension: usize, dimensions: usize) -> usize {
         let bits = std::usize::BITS as usize;
         let trim_high = bits - (start_dimension + dimensions);
-        (self << trim_high) >> (trim_high + start_dimension)
+
+        if trim_high >= std::usize::BITS as usize {
+            0usize
+        } else {
+            (self << trim_high) >> (trim_high + start_dimension)
+        }
     }
 }
 
