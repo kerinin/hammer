@@ -15,22 +15,50 @@
 //! use `SubstitutionDB` to store binary vectors, and `DeletionDB` to store 
 //! vectors of anything more complex.
 //!
+//! Values are indexed by partitioning the value into a number of smaller pieces
+//! such that the hamming distince from a partitioned query to a partitioned value 
+//! must be either 0 or 1 for at least one partition.  For example, for hamming 
+//! distance 3, if a value is split into 2 halves, the three 'different' dimensions 
+//! will either be in the same partition, or two will be in one partition and one 
+//! will be in the other.
+//!
+//! The number of partitions `K` which will guarantee at least one partition with a 
+//! hamming distance of 1, given a query with hamming distance `D` is 
+//! `K = ceil(D+3)/2`.
+//!
+//! This can be used to solve for an appropriate partition data type, given a
+//! value type and a hamming distance:
+//!
+//! Value      | Hamming | Window
+//! -----------+---------+--------
+//! (u64, u64) | 0       | (u64, u64)
+//! (u64, u64) | 1-4     | u64
+//! (u64, u64) | 5-13    | u32
+//! (u64, u64) | 13-29   | u16
+//! (u64, u64) | 29+     | u8
+//!
+//! u64        | 0       | u64
+//! u64        | 1-4     | u32
+//! u64        | 5-13    | u16
+//! u64        | 13+     | u8
+//!
 //! # Examples
 //!
 //! ```ignore
 //! let dimensions = 64;
-//! let tolerance = 1;
-//! let mut db: SubstitutionDB<usize> = SubstitutionDB::new(dimensions, tolerance)
+//! let tolerance = 6;
+//! let mut db: SubstitutionDB<u16, u64> = SubstitutionDB::new(dimensions, tolerance)
 //!
 //! db.insert(0);
 //! db.insert(1);
 //! db.insert(3);
 //! db.insert(7);
-//! db.insert(1000);
+//! db.insert(1209384029384);
 //!
 //! let results = db.get(&0).iter().collect();
 //! assert_eq!(results, vec![0,1,3,7]);
 //! ```
+//!
 
 mod hash_map_set;
 mod hamming;

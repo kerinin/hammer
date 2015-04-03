@@ -17,8 +17,8 @@ use db::deletion_variant::*;
 use db::hamming::*;
 use db::window::*;
 
-struct DeletionPartition<K, V> where
-    K: Eq + Hash, V: Eq + Hash
+struct DeletionPartition<K, V>
+where K: Eq + Hash, V: Eq + Hash
 {
     pub start_dimension: usize,
     pub dimensions: usize,
@@ -116,6 +116,7 @@ where W: DeletionVariant,
                     Some(found_keys) => {
                         // Iterate through the values found in the deletion variant's set
                         for found_key in found_keys.iter() {
+                            // Increment the key's count (this is sort of cumberson in Rust...)
                             match counts.entry(found_key.clone()) {
                                 Occupied(mut entry) => { *entry.get_mut() += 1; },
                                 Vacant(entry) => { entry.insert(1); },

@@ -48,6 +48,26 @@ impl Hamming for u8 {
     }
 }
 
+impl Hamming for u64 {
+    // `count_ones` should be faster than iterating over vectors as would happen
+    // with the default implementation
+    //
+    fn hamming(&self, other: &u64) -> usize {
+        (*self ^ *other).count_ones() as usize // bitxor
+    }
+    fn hamming_indices(&self, other: &u64) -> Vec<usize> {
+        let different = *self ^ *other;
+        let mut buf = vec![0; 64usize];
+        <LittleEndian as ByteOrder>::write_u64(&mut buf, different as u64);
+
+        BitVec::from_bytes(&buf[..]).iter()
+            .enumerate()
+            .filter(|&(_, b)| b)
+            .map(|(i, _)| i)
+            .collect()
+    }
+}
+
 impl Hamming for usize {
     // `count_ones` should be faster than iterating over vectors as would happen
     // with the default implementation
@@ -69,6 +89,8 @@ impl Hamming for usize {
 }
 
 impl<T: Eq + Clone + Hash> Hamming for Vec<T> {
+    // NOTE: Optimize the bound query
+    
     fn hamming_indices(&self, other: &Vec<T>) -> Vec<usize> {
         self.iter()
             .zip(other.iter())
