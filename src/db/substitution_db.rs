@@ -4,13 +4,40 @@ use std::fmt;
 use std::cmp::*;
 use std::hash::*;
 use std::clone::*;
-use std::collections::HashSet;
+use std::collections::*;
 
 use self::num::rational::Ratio;
 
-use db::hash_map_set::HashMapSet;
-use db::result_accumulator::ResultAccumulator;
 use db::*;
+use db::hash_map_set::*;
+use db::result_accumulator::*;
+use db::substitution_variant::*;
+use db::value::*;
+use db::window::*;
+
+struct SubstitutionPartition<K, V>
+where K: Hash + Eq,
+    V: Hash + Eq,
+{
+    pub start_dimension: usize,
+    pub dimensions: usize,
+
+    pub zero_kv: HashMapSet<K, V>,
+    pub one_kv: HashMapSet<K, V>,
+}
+
+/// HmSearch Database using substitution variants
+///
+pub struct SubstitutionDB<W, V>
+where W: SubstitutionVariant,
+    V: Hash + Eq,
+    <<W as SubstitutionVariant>::Iter as Iterator>::Item: Hash + Eq,
+{
+    dimensions: usize,
+    tolerance: usize,
+    partition_count: usize,
+    partitions: Vec<SubstitutionPartition<<<W as SubstitutionVariant>::Iter as Iterator>::Item, V>>,
+}
 
 impl<K, V> SubstitutionPartition<K, V>
 where K: Hash + Eq,

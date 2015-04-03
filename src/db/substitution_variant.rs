@@ -1,7 +1,19 @@
 use std::clone;
 use std::iter;
 
-use db::SubstitutionVariant;
+/// Return a set of single-dimensional permutation variants
+///
+pub trait SubstitutionVariant {
+    type Iter: Iterator<Item = Self>;
+
+    /// Substitution variants
+    ///
+    /// Returns an array of all possible single-column permutation of `self`.
+    /// Alternately, returns the set of values with Hamming distance `1` from 
+    /// `self`
+    ///
+    fn substitution_variants(&self, dimensions: usize) -> <Self as SubstitutionVariant>::Iter;
+}
 
 /// Iterator for values that can be treated as a bitmap
 ///

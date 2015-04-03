@@ -35,6 +35,7 @@
 mod hash_map_set;
 mod hashing;
 mod value;
+mod window;
 mod substitution_db;
 mod substitution_variant;
 mod deletion_db;
@@ -58,109 +59,4 @@ pub trait Database<V> {
     fn get(&self, key: &V) -> Option<HashSet<V>>;
     fn insert(&mut self, key: V) -> bool;
     fn remove(&mut self, key: &V) -> bool;
-}
-
-pub struct SubstitutionPartition<K, V>
-where K: Hash + Eq,
-    V: Hash + Eq,
-{
-    pub start_dimension: usize,
-    pub dimensions: usize,
-
-    pub zero_kv: HashMapSet<K, V>,
-    pub one_kv: HashMapSet<K, V>,
-}
-
-/// HmSearch Database using substitution variants
-///
-pub struct SubstitutionDB<W, V>
-where W: SubstitutionVariant,
-    V: Hash + Eq,
-    <<W as SubstitutionVariant>::Iter as Iterator>::Item: Hash + Eq,
-{
-    dimensions: usize,
-    tolerance: usize,
-    partition_count: usize,
-    partitions: Vec<SubstitutionPartition<<<W as SubstitutionVariant>::Iter as Iterator>::Item, V>>,
-}
-
-pub struct DeletionPartition<K, V> where
-    K: Eq + Hash, V: Eq + Hash
-{
-    pub start_dimension: usize,
-    pub dimensions: usize,
-
-    pub kv: HashMapSet<K, Rc<V>>,
-}
-
-/// HmSearch Database using deletion variants
-///
-pub struct DeletionDB<W, V>
-where W: DeletionVariant,
-    V: Hash + Eq,
-    <<W as DeletionVariant>::Iter as Iterator>::Item: Hash + Eq,
-{
-    dimensions: usize,
-    tolerance: usize,
-    partition_count: usize,
-    partitions: Vec<DeletionPartition<<<W as DeletionVariant>::Iter as Iterator>::Item, V>>,
-}
-
-/// HmSearch-indexable value
-///
-pub trait Value: Hash + Eq + Clone {
-    /// Hamming distance betwen `self` and `rhs`
-    ///
-    fn hamming(&self, rhs: &Self) -> usize {
-        self.hamming_indices(rhs).len()
-    }
-
-    /// Returns true if the hamming distance between `self` and `rhs` is less than
-    /// or equal to `bound`, false otherwise
-    ///
-    fn hamming_lte(&self, rhs: &Self, bound: usize) -> bool {
-        self.hamming(rhs) <= bound
-    }
-
-    /// Returns a vector of dimension indices whose value is different between 
-    /// `self` and `rhs`
-    ///
-    fn hamming_indices(&self, rhs: &Self) -> Vec<usize>;
-}
-
-pub trait Window<T> {
-    /// Subsample on a set of dimensions
-    ///
-    /// `start_dimension` the index of the 1st dimension to include in the slice, 
-    ///      0-indexed from least significant
-    /// `dimensions` the total number of dimensions to include
-    ///
-    fn window(&self, start_dimension: usize, dimensions: usize) -> T;
-}
-
-/// Return a set of single-dimensional permutation variants
-///
-pub trait SubstitutionVariant {
-    type Iter: Iterator<Item = Self>;
-
-    /// Substitution variants
-    ///
-    /// Returns an array of all possible single-column permutation of `self`.
-    /// Alternately, returns the set of values with Hamming distance `1` from 
-    /// `self`
-    ///
-    fn substitution_variants(&self, dimensions: usize) -> <Self as SubstitutionVariant>::Iter;
-}
-
-pub trait DeletionVariant {
-    type Iter: Iterator;
-
-    /// Returns an array of all possible deletion variants of `self`
-    ///
-    /// A "deletion variant" as defined in
-    /// [Zhang](http://www.cse.unsw.edu.au/~weiw/files/SSDBM13-HmSearch-Final.pdf)
-    /// is a value obtained by substituting a "deletion marker" for a single 
-    /// dimension of a value.
-    ///
-    fn deletion_variants(&self, dimensions: usize) -> <Self as DeletionVariant>::Iter;
 }

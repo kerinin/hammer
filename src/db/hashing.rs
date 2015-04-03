@@ -7,7 +7,8 @@ use std::borrow::*;
 use std::collections::hash_state::*;
 use std::marker::*;
 
-use db::*;
+use db::value::*;
+use db::window::*;
 
 /// `Hasher` implementation for pre-hashed types
 ///

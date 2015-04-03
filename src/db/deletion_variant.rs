@@ -2,7 +2,18 @@ use std;
 use std::clone;
 use std::iter;
 
-use db::DeletionVariant;
+pub trait DeletionVariant {
+    type Iter: Iterator;
+
+    /// Returns an array of all possible deletion variants of `self`
+    ///
+    /// A "deletion variant" as defined in
+    /// [Zhang](http://www.cse.unsw.edu.au/~weiw/files/SSDBM13-HmSearch-Final.pdf)
+    /// is a value obtained by substituting a "deletion marker" for a single 
+    /// dimension of a value.
+    ///
+    fn deletion_variants(&self, dimensions: usize) -> <Self as DeletionVariant>::Iter;
+}
 
 pub struct DeletionVariantIter<T> {
     // The original value, which shouldn't be modified

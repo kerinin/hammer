@@ -1,7 +1,7 @@
 use std::collections::{HashMap, HashSet};
 use std::collections::hash_map::Entry::{Occupied, Vacant};
 
-use db::Value;
+use db::value::*;
 
 pub struct ResultAccumulator<V: Value> {
     tolerance: usize,

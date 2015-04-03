@@ -5,14 +5,39 @@ use std::cmp::*;
 use std::hash::*;
 use std::clone::*;
 use std::rc::*;
-use std::collections::{HashSet, HashMap};
-use std::collections::hash_map::Entry::{Occupied, Vacant};
+use std::collections::*;
+use std::collections::hash_map::Entry::*;
 
 use self::num::rational::Ratio;
 
-use db::result_accumulator::ResultAccumulator;
-use db::hash_map_set::HashMapSet;
 use db::*;
+use db::result_accumulator::*;
+use db::hash_map_set::*;
+use db::deletion_variant::*;
+use db::value::*;
+use db::window::*;
+
+struct DeletionPartition<K, V> where
+    K: Eq + Hash, V: Eq + Hash
+{
+    pub start_dimension: usize,
+    pub dimensions: usize,
+
+    pub kv: HashMapSet<K, Rc<V>>,
+}
+
+/// HmSearch Database using deletion variants
+///
+pub struct DeletionDB<W, V>
+where W: DeletionVariant,
+    V: Hash + Eq,
+    <<W as DeletionVariant>::Iter as Iterator>::Item: Hash + Eq,
+{
+    dimensions: usize,
+    tolerance: usize,
+    partition_count: usize,
+    partitions: Vec<DeletionPartition<<<W as DeletionVariant>::Iter as Iterator>::Item, V>>,
+}
 
 impl<K, V> DeletionPartition<K, V>
 where K: Hash + Eq,
