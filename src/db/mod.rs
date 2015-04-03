@@ -49,7 +49,6 @@ use std::clone;
 use std::rc::*;
 use std::collections::HashSet;
 
-use db::substitution_db::SubstitutionPartition;
 use db::hash_map_set::HashMapSet;
 
 /// Abstract interface for Hamming distance databases
@@ -59,6 +58,16 @@ pub trait Database<V: Value> {
     fn get(&self, key: &V) -> Option<HashSet<V>>;
     fn insert(&mut self, key: V) -> bool;
     fn remove(&mut self, key: &V) -> bool;
+}
+
+pub struct SubstitutionPartition<V> where
+    V: Value + SubstitutionVariant,
+{
+    pub start_dimension: usize,
+    pub dimensions: usize,
+
+    pub zero_kv: HashMapSet<V, V>,
+    pub one_kv: HashMapSet<V, V>,
 }
 
 /// HmSearch Database using substitution variants

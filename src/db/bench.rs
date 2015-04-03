@@ -1,9 +1,9 @@
 extern crate test;
 extern crate rand;
 
-use self::rand::{thread_rng, Rng};
+use self::rand::*;
 
-use db::{Database, SubstitutionDB, DeletionDB};
+use db::*;
 use db::hashing::*;
 
 #[bench]

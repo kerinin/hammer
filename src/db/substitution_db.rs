@@ -7,17 +7,7 @@ use self::num::rational::Ratio;
 
 use db::hash_map_set::HashMapSet;
 use db::result_accumulator::ResultAccumulator;
-use db::{Database, Value, Window, SubstitutionDB, SubstitutionVariant};
-
-pub struct SubstitutionPartition<V> where
-    V: Value + SubstitutionVariant,
-{
-    pub start_dimension: usize,
-    pub dimensions: usize,
-
-    pub zero_kv: HashMapSet<V, V>,
-    pub one_kv: HashMapSet<V, V>,
-}
+use db::*;
 
 impl<V> SubstitutionPartition<V> where
     V: Value + SubstitutionVariant,
@@ -193,8 +183,7 @@ mod test {
     use std::collections::HashSet;
     use self::rand::{thread_rng, sample, Rng};
 
-    use db::{Database, SubstitutionDB};
-    use db::substitution_db::SubstitutionPartition;
+    use db::*;
 
     #[test]
     fn partition_evenly() {

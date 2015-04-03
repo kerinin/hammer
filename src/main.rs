@@ -1,4 +1,3 @@
-fn main() {}
 /*
 #![feature(core)]
 #![feature(std_misc)]
