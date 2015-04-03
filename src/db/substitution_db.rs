@@ -208,7 +208,7 @@ where W: Hash + Eq + Clone + SubstitutionVariant,
 // Internal tests
 #[test]
 fn test_sdb_partition_evenly() {
-    let a: SubstitutionDB<usize, usize> = Database::new(32, 5);
+    let a: SubstitutionDB<u64, u64> = Database::new(32, 5);
     let b = SubstitutionDB {
         dimensions: 32,
         tolerance: 5,
@@ -225,7 +225,7 @@ fn test_sdb_partition_evenly() {
 
 #[test]
 fn test_sdb_partition_unevenly() {
-    let a: SubstitutionDB<usize, usize> = Database::new(32, 7);
+    let a: SubstitutionDB<u64, u64> = Database::new(32, 7);
     let b = SubstitutionDB {
         dimensions: 32,
         tolerance: 7,
@@ -243,7 +243,7 @@ fn test_sdb_partition_unevenly() {
 
 #[test]
 fn test_sdb_partition_too_many() {
-    let a: SubstitutionDB<usize, usize> = Database::new(4, 8);
+    let a: SubstitutionDB<u64, u64> = Database::new(4, 8);
     let b = SubstitutionDB {
         dimensions: 4,
         tolerance: 8,
@@ -260,7 +260,7 @@ fn test_sdb_partition_too_many() {
 
 #[test]
 fn test_sdb_partition_zero() {
-    let a: SubstitutionDB<usize, usize> = Database::new(32, 0);
+    let a: SubstitutionDB<u64, u64> = Database::new(32, 0);
     let b = SubstitutionDB {
         dimensions: 32,
         tolerance: 0,
@@ -275,7 +275,7 @@ fn test_sdb_partition_zero() {
 
 #[test]
 fn test_sdb_partition_with_no_bytes() {
-    let a: SubstitutionDB<usize, usize> = Database::new(0, 0);
+    let a: SubstitutionDB<u64, u64> = Database::new(0, 0);
     let b = SubstitutionDB {
         dimensions: 0,
         tolerance: 0,
@@ -294,7 +294,6 @@ mod test {
     extern crate rand;
     extern crate quickcheck;
 
-    use std;
     use self::quickcheck::quickcheck;
 
     use std::collections::HashSet;
@@ -305,8 +304,8 @@ mod test {
 
     #[test]
     fn find_missing_key() {
-        let p: SubstitutionDB<usize, usize> = Database::new(8, 2);
-        let a = 0b11111111usize;
+        let p: SubstitutionDB<u64, u64> = Database::new(8, 2);
+        let a = 0b11111111u64;
         let keys = p.get(&a);
 
         assert_eq!(None, keys);
@@ -314,16 +313,16 @@ mod test {
 
     #[test]
     fn insert_first_key() {
-        let mut p: SubstitutionDB<usize, usize> = Database::new(8, 2);
-        let a = 0b11111111usize;
+        let mut p: SubstitutionDB<u64, u64> = Database::new(8, 2);
+        let a = 0b11111111u64;
 
         assert!(p.insert(a.clone()));
     }
 
     #[test]
     fn insert_second_key() {
-        let mut p: SubstitutionDB<usize, usize> = Database::new(8, 2);
-        let a = 0b11111111usize;
+        let mut p: SubstitutionDB<u64, u64> = Database::new(8, 2);
+        let a = 0b11111111u64;
 
         p.insert(a.clone());
 
@@ -332,9 +331,9 @@ mod test {
 
     #[test]
     fn find_inserted_key() {
-        let mut p: SubstitutionDB<usize, usize> = Database::new(8, 2);
-        let a = 0b11111111usize;
-        let mut b: HashSet<usize> = HashSet::new();
+        let mut p: SubstitutionDB<u64, u64> = Database::new(8, 2);
+        let a = 0b11111111u64;
+        let mut b: HashSet<u64> = HashSet::new();
         b.insert(a.clone());
 
         assert!(p.insert(a.clone()));
@@ -346,9 +345,9 @@ mod test {
 
     #[test]
     fn find_permutations_of_inserted_key() {
-        let mut p: SubstitutionDB<usize, usize> = Database::new(8, 2);
-        let a = 0b00001111usize;
-        let b = 0b00000111usize;
+        let mut p: SubstitutionDB<u64, u64> = Database::new(8, 2);
+        let a = 0b00001111u64;
+        let b = 0b00000111u64;
         let mut c = HashSet::new();
         c.insert(a.clone());
 
@@ -361,13 +360,13 @@ mod test {
 
     #[test]
     fn find_permutations_of_multiple_similar_keys() {
-        let mut p: SubstitutionDB<usize, usize> = Database::new(8, 4);
-        let a = 0b00000000usize;
-        let b = 0b10000000usize;
-        let c = 0b10000001usize;
-        let d = 0b11000001usize;
-        let e = 0b11000011usize;
-        let mut f: HashSet<usize> = HashSet::new();
+        let mut p: SubstitutionDB<u64, u64> = Database::new(8, 4);
+        let a = 0b00000000u64;
+        let b = 0b10000000u64;
+        let c = 0b10000001u64;
+        let d = 0b11000001u64;
+        let e = 0b11000011u64;
+        let mut f: HashSet<u64> = HashSet::new();
         f.insert(b.clone());
         f.insert(c.clone());
         f.insert(d.clone());
@@ -393,15 +392,15 @@ mod test {
             .map(|i| sample(&mut rng2, 0..dimensions, i % max_hd));
 
         for start_dimensions in start_dimensions_seq.take(1000usize) {
-            let mut p: SubstitutionDB<usize, usize> = Database::new(dimensions, max_hd);
-            let a = 0b11111111usize;
+            let mut p: SubstitutionDB<u64, u64> = Database::new(dimensions, max_hd);
+            let a = 0b11111111u64;
 
             let mut b = a.clone();
             for start_dimension in start_dimensions.iter() {
-                b = b ^ (0b10000000usize >> *start_dimension);
+                b = b ^ (0b10000000u64 >> *start_dimension);
             }
 
-            let mut c: HashSet<usize> = HashSet::new();
+            let mut c: HashSet<u64> = HashSet::new();
             c.insert(a.clone());
 
             assert!(p.insert(a.clone()));
@@ -425,16 +424,16 @@ mod test {
             // Filter selections with less than the max tolerance
             .filter(|start_dimensions| start_dimensions.len() > max_hd);
 
-        for start_dimensions in start_dimensions_seq.take(1000usize) {
-            let mut p: SubstitutionDB<usize, usize> = Database::new(dimensions, max_hd);
-            let a = 0b11111111usize;
+        for start_dimensions in start_dimensions_seq.take(1000) {
+            let mut p: SubstitutionDB<u64, u64> = Database::new(dimensions, max_hd);
+            let a = 0b11111111u64;
 
             let mut b = a.clone();
             for start_dimension in start_dimensions.iter() {
-                b = b & (0b10000000usize >> *start_dimension);
+                b = b & (0b10000000u64 >> *start_dimension);
             }
 
-            let mut c: HashSet<usize> = HashSet::new();
+            let mut c: HashSet<u64> = HashSet::new();
             c.insert(a.clone());
 
             assert!(p.insert(a.clone()));
@@ -447,8 +446,8 @@ mod test {
 
     #[test]
     fn remove_inserted_key() {
-        let mut p: SubstitutionDB<usize, usize> = Database::new(8, 2);
-        let a = 0b00001111usize;
+        let mut p: SubstitutionDB<u64, u64> = Database::new(8, 2);
+        let a = 0b00001111u64;
 
         p.insert(a.clone());
 
@@ -461,8 +460,8 @@ mod test {
 
     #[test]
     fn remove_missing_key() {
-        let mut p: SubstitutionDB<usize, usize> = Database::new(8, 2);
-        let a = 0b00001111usize;
+        let mut p: SubstitutionDB<u64, u64> = Database::new(8, 2);
+        let a = 0b00001111u64;
 
         assert!(!p.remove(&a));
     }
@@ -470,14 +469,13 @@ mod test {
     /*
      * We want to simulate adding & removing a ton of keys and then verify the
      * state is consistent.  
-     */
     #[test]
     #[should_panic]
     fn stability_under_load() {
         // NOTE: we need a better way of coercing values - right now we only support
         // Vec<u8> - would be much better to implement a generic so we could set 
         // values directly.  IE, we need to convert u16 to [u8] here, and that's annoying
-        let mut p: SubstitutionDB<usize, usize> = Database::new(16, 4);
+        let mut p: SubstitutionDB<u64, u64> = Database::new(16, 4);
 
         let mut expected_present = [false; 65536];
         let mut expected_absent = [false; 65536];
@@ -486,23 +484,23 @@ mod test {
         let seq = rng.gen_iter::<u16>();
 
         for i in seq.take(100000usize) {
-            if expected_present[i as usize] {
-                p.remove(&(i as usize));
-                expected_present[i as usize] = false;
-                expected_absent[i as usize] = true;
+            if expected_present[i] {
+                p.remove(&(i as u64));
+                expected_present[i] = false;
+                expected_absent[i] = true;
             } else {
-                p.insert(i as usize);
-                expected_present[i as usize] = true;
-                expected_absent[i as usize] = false;
+                p.insert(i as u64);
+                expected_present[i] = true;
+                expected_absent[i] = false;
             }
 
             if i % 1000 == 0 {
                 //for i in 0..expected_present.len() {
-                for i in 0usize..256usize {
+                for i in 0..256 {
                     let mut found = false;
                     match p.get(&i) {
                         Some(set) => for key in set.iter() {
-                            if *key == i as usize {
+                            if *key == i as u64 {
                                 found = true;
                             };
                         },
@@ -516,7 +514,7 @@ mod test {
                     let mut found = false;
                     match p.get(&i) {
                         Some(set) => for key in set.iter() {
-                            if *key == i as usize {
+                            if *key == i as u64 {
                                 found = true;
                             };
                         },
@@ -528,16 +526,17 @@ mod test {
             }
         }
     }
+     */
 
     #[test]
     fn idempotent_read() {
-        fn prop(a: usize, b: usize, c: usize) -> quickcheck::TestResult {
+        fn prop(a: u64, b: u64, c: u64) -> quickcheck::TestResult {
             if a == c {
                 // Removing C should also remove A, if they are the same
                 return quickcheck::TestResult::discard()
             }
 
-            let mut p: SubstitutionDB<usize, usize> = Database::new(std::usize::BITS as usize, 4);
+            let mut p: SubstitutionDB<u64, u64> = Database::new(64, 4);
             p.insert(a.clone());
             p.insert(b.clone());
             p.insert(c.clone());
@@ -548,18 +547,18 @@ mod test {
                 None => quickcheck::TestResult::failed(),
             }
         }
-        quickcheck(prop as fn(usize, usize, usize) -> quickcheck::TestResult);
+        quickcheck(prop as fn(u64, u64, u64) -> quickcheck::TestResult);
     }
 
     #[test]
     fn idempotent_delete() {
-        fn prop(a: usize, b: usize, c: usize) -> quickcheck::TestResult {
+        fn prop(a: u64, b: u64, c: u64) -> quickcheck::TestResult {
             if a == c {
                 // Removing C should also remove A, if they are the same
                 return quickcheck::TestResult::discard()
             }
 
-            let mut p: SubstitutionDB<usize, usize> = Database::new(std::usize::BITS as usize, 4);
+            let mut p: SubstitutionDB<u64, u64> = Database::new(64, 4);
             p.insert(a.clone());
             p.insert(b.clone());
             p.insert(c.clone());
@@ -567,6 +566,6 @@ mod test {
 
             quickcheck::TestResult::from_bool(p.remove(&a))
         }
-        quickcheck(prop as fn(usize, usize, usize) -> quickcheck::TestResult);
+        quickcheck(prop as fn(u64, u64, u64) -> quickcheck::TestResult);
     }
 }

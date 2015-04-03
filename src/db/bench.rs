@@ -26,7 +26,7 @@ fn insert_large_value(b: &mut test::Bencher) {
 
 #[bench]
 fn insert_new_value(b: &mut test::Bencher) {
-    let mut p: SubstitutionDB<usize, usize> = Database::new(64, 4);
+    let mut p: SubstitutionDB<u64, u64> = Database::new(64, 4);
 
     let mut rng = thread_rng();
     let value = rng.gen();
@@ -38,7 +38,7 @@ fn insert_new_value(b: &mut test::Bencher) {
 
 #[bench]
 fn insert_existing_value(b: &mut test::Bencher) {
-    let mut p: SubstitutionDB<usize, usize> = Database::new(64, 4);
+    let mut p: SubstitutionDB<u64, u64> = Database::new(64, 4);
 
     let mut rng = thread_rng();
     let value = rng.gen();
@@ -51,7 +51,7 @@ fn insert_existing_value(b: &mut test::Bencher) {
 
 #[bench]
 fn find_existing_value(b: &mut test::Bencher) {
-    let mut p: SubstitutionDB<usize, usize> = Database::new(64, 4);
+    let mut p: SubstitutionDB<u64, u64> = Database::new(64, 4);
 
     let mut rng = thread_rng();
     let value = rng.gen();
@@ -64,7 +64,7 @@ fn find_existing_value(b: &mut test::Bencher) {
 
 #[bench]
 fn find_missing_value(b: &mut test::Bencher) {
-    let p: SubstitutionDB<usize, usize> = Database::new(64, 4);
+    let p: SubstitutionDB<u64, u64> = Database::new(64, 4);
 
     let mut rng = thread_rng();
     let value = rng.gen();
@@ -76,7 +76,7 @@ fn find_missing_value(b: &mut test::Bencher) {
 
 #[bench]
 fn remove_missing_value(b: &mut test::Bencher) {
-    let mut p: SubstitutionDB<usize, usize> = Database::new(64, 4);
+    let mut p: SubstitutionDB<u64, u64> = Database::new(64, 4);
 
     let mut rng = thread_rng();
     let value = rng.gen();
@@ -88,7 +88,7 @@ fn remove_missing_value(b: &mut test::Bencher) {
 
 #[bench]
 fn remove_existing_value(b: &mut test::Bencher) {
-    let mut p: SubstitutionDB<usize, usize> = Database::new(64, 4);
+    let mut p: SubstitutionDB<u64, u64> = Database::new(64, 4);
 
     let mut rng = thread_rng();
     let value = rng.gen();

@@ -28,48 +28,35 @@
 use std::clone;
 use std::cmp;
 use std::hash;
-use std::marker;
 
 use std::collections::*;
 use std::collections::hash_map::Entry::{Vacant, Occupied};
 
 #[derive(Debug)]
-pub struct HashMapSet<K, V, SH = hash_map::RandomState, SS = hash_map::RandomState>
+pub struct HashMapSet<K, V>
 where   K: cmp::Eq + hash::Hash, 
         V: cmp::Eq + hash::Hash, 
-        SH: marker::Sized + clone::Clone + hash_state::HashState,
-        SS: marker::Sized + clone::Clone + hash_state::HashState,
 {
-    set_state: SS,
-    data: HashMap<K, HashSet<V, SS>, SH>,
+    data: HashMap<K, HashSet<V>>,
 }
 
-impl<K, V> HashMapSet<K, V, hash_map::RandomState, hash_map::RandomState>
+impl<K, V> HashMapSet<K, V>
 where   K: cmp::Eq + hash::Hash, 
         V: cmp::Eq + hash::Hash, 
 {
-    pub fn new() -> HashMapSet<K, V, hash_map::RandomState, hash_map::RandomState> {
-        let state = hash_map::RandomState::new();
-        let data: HashMap<K, HashSet<V>> = HashMap::with_hash_state(state.clone());
-        return HashMapSet {set_state: state, data: data};
+    pub fn new() -> HashMapSet<K, V> {
+        HashMapSet {data: HashMap::new()}
     }
 }
 
-impl<K, V, SH, SS> HashMapSet<K, V, SH, SS>
+impl<K, V> HashMapSet<K, V>
 where   K: clone::Clone + cmp::Eq + hash::Hash, 
         V: cmp::Eq + hash::Hash, 
-        SH: clone::Clone + hash_state::HashState,
-        SS: clone::Clone + hash_state::HashState,
 {
-    pub fn with_hash_state(hash_state: SH, set_state: SS) -> HashMapSet<K, V, SH, SS> {
-        let data: HashMap<K, HashSet<V, SS>, SH> = HashMap::with_hash_state(hash_state.clone());
-        return HashMapSet {set_state: set_state, data: data};
-    }
-
     pub fn insert(&mut self, key: K, value: V) -> bool {
         match self.data.entry(key) {
             Vacant(entry) => {
-                let mut set: HashSet<V, SS> = HashSet::with_hash_state(self.set_state.clone());
+                let mut set: HashSet<V> = HashSet::new();
                 set.insert(value);
                 entry.insert(set);
                 true
@@ -80,7 +67,7 @@ where   K: clone::Clone + cmp::Eq + hash::Hash,
         }
     }
 
-    pub fn get(&self, key: &K) -> Option<&HashSet<V, SS>> {
+    pub fn get(&self, key: &K) -> Option<&HashSet<V>> {
         return self.data.get(key);
     }
 

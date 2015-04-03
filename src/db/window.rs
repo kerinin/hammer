@@ -1,4 +1,4 @@
-use std;
+// use std::u8;
 
 pub trait Window<T> {
     /// Subsample on a set of dimensions
@@ -16,10 +16,9 @@ impl Window<u8> for u8 {
         //              ^<--^
         //  << 1       11111110
         //  >> 1+2     00011111
-        let bits = std::u8::BITS as usize;
-        let trim_high = bits - (start_dimension + dimensions);
+        let trim_high = 8 - (start_dimension + dimensions);
 
-        if trim_high >= std::u8::BITS as usize {
+        if trim_high >= 8 {
             0u8
         } else {
             (self << trim_high) >> (trim_high + start_dimension)
@@ -27,13 +26,12 @@ impl Window<u8> for u8 {
     }
 }
 
-impl Window<usize> for usize {
-    fn window(&self, start_dimension: usize, dimensions: usize) -> usize {
-        let bits = std::usize::BITS as usize;
-        let trim_high = bits - (start_dimension + dimensions);
+impl Window<u64> for u64 {
+    fn window(&self, start_dimension: usize, dimensions: usize) -> u64 {
+        let trim_high = 64 - (start_dimension + dimensions);
 
-        if trim_high >= std::usize::BITS as usize {
-            0usize
+        if trim_high >= 64 {
+            0
         } else {
             (self << trim_high) >> (trim_high + start_dimension)
         }
@@ -153,52 +151,52 @@ mod test {
         assert_eq!(a.window(3,2), b);
     }
 
-    // USIZE tests
+    // u64 tests
 
     #[test]
-    fn test_window_min_start_and_finish_usize() {
-        let a = 0b10000001usize;
-        let b = 0b00000001usize;
+    fn test_window_min_start_and_finish_u64() {
+        let a = 0b10000001u64;
+        let b = 0b00000001u64;
 
         assert_eq!(a.window(0,1), b);
     }
 
     #[test]
-    fn test_window_max_start_usize() {
-        let a = 0b10000001usize;
-        let b = 0b00000001usize;
+    fn test_window_max_start_u64() {
+        let a = 0b10000001u64;
+        let b = 0b00000001u64;
 
         assert_eq!(a.window(7,1), b);
     }
 
     #[test]
-    fn test_window_min_start_and_max_finish_usize() {
-        let a = 0b10000001usize;
-        let b = 0b10000001usize;
+    fn test_window_min_start_and_max_finish_u64() {
+        let a = 0b10000001u64;
+        let b = 0b10000001u64;
 
         assert_eq!(a.window(0,8), b);
     }
 
     #[test]
-    fn test_window_n_start_and_max_finish_usize() {
-        let a = 0b11000011usize;
-        let b = 0b01100001usize;
+    fn test_window_n_start_and_max_finish_u64() {
+        let a = 0b11000011u64;
+        let b = 0b01100001u64;
 
         assert_eq!(a.window(1,7), b);
     }
 
     #[test]
-    fn test_window_min_start_and_n_finish_usize() {
-        let a = 0b11000011usize;
-        let b = 0b01000011usize;
+    fn test_window_min_start_and_n_finish_u64() {
+        let a = 0b11000011u64;
+        let b = 0b01000011u64;
 
         assert_eq!(a.window(0,7), b);
     }
 
     #[test]
-    fn test_window_n_start_and_n_finish_usize() {
-        let a = 0b11111000usize;
-        let b = 0b00000011usize;
+    fn test_window_n_start_and_n_finish_u64() {
+        let a = 0b11111000u64;
+        let b = 0b00000011u64;
 
         assert_eq!(a.window(3,2), b);
     }

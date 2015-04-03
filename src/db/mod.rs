@@ -70,7 +70,7 @@ mod substitution_db;
 mod deletion_variant;
 mod deletion_db;
 
-mod bench; // Uncomment to get benchmarks to run
+// mod bench; // Uncomment to get benchmarks to run
 
 use std::collections::HashSet;
 

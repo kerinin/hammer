@@ -1,13 +1,9 @@
 extern crate byteorder;
 extern crate num;
 
-use std;
 use std::cmp::*;
 use std::clone::*;
 use std::hash::*;
-use std::collections::*;
-
-use self::byteorder::*;
 
 /// HmSearch-indexable value
 ///
@@ -40,11 +36,8 @@ impl Hamming for u8 {
     }
     fn hamming_indices(&self, other: &u8) -> Vec<usize> {
         let different = *self ^ *other;
-        BitVec::from_bytes(&[different]).iter()
-            .enumerate()
-            .filter(|&(_, b)| b)
-            .map(|(i, _)| i)
-            .collect()
+
+        (0..8).filter(|i| 0u8 != 1u8 << i & different ).collect()
     }
 }
 
@@ -57,34 +50,8 @@ impl Hamming for u64 {
     }
     fn hamming_indices(&self, other: &u64) -> Vec<usize> {
         let different = *self ^ *other;
-        let mut buf = vec![0; 64usize];
-        <LittleEndian as ByteOrder>::write_u64(&mut buf, different as u64);
 
-        BitVec::from_bytes(&buf[..]).iter()
-            .enumerate()
-            .filter(|&(_, b)| b)
-            .map(|(i, _)| i)
-            .collect()
-    }
-}
-
-impl Hamming for usize {
-    // `count_ones` should be faster than iterating over vectors as would happen
-    // with the default implementation
-    //
-    fn hamming(&self, other: &usize) -> usize {
-        (*self ^ *other).count_ones() as usize // bitxor
-    }
-    fn hamming_indices(&self, other: &usize) -> Vec<usize> {
-        let different = *self ^ *other;
-        let mut buf = vec![0; std::usize::BYTES as usize];
-        <LittleEndian as ByteOrder>::write_u64(&mut buf, different as u64);
-
-        BitVec::from_bytes(&buf[..]).iter()
-            .enumerate()
-            .filter(|&(_, b)| b)
-            .map(|(i, _)| i)
-            .collect()
+        (0..64).filter(|i| 0u64 != 1u64 << i & different ).collect()
     }
 }
 
@@ -167,22 +134,22 @@ mod test {
     }
 
 
-    // USIZE tests
+    // u64 tests
 
     #[test]
-    fn test_hamming_zero_usize() {
-        let a = 0b00000000usize;
-        let b = 0b00000000usize;
+    fn test_hamming_zero_u64() {
+        let a = 0b00000000u64;
+        let b = 0b00000000u64;
 
         assert_eq!(a.hamming(&b), 0);
     }
 
     #[test]
-    fn test_hamming_one_usize() {
-        let a = 0b00000000usize;
-        let b = 0b10000000usize;
-        let c = 0b00000001usize;
-        let d = 0b00010000usize;
+    fn test_hamming_one_u64() {
+        let a = 0b00000000u64;
+        let b = 0b10000000u64;
+        let c = 0b00000001u64;
+        let d = 0b00010000u64;
 
         assert_eq!(a.hamming(&b), 1);
         assert_eq!(a.hamming(&c), 1);
@@ -190,9 +157,9 @@ mod test {
     }
 
     #[test]
-    fn test_hamming_max_usize() {
-        let a = 0b00000000usize;
-        let b = 0b11111111usize;
+    fn test_hamming_max_u64() {
+        let a = 0b00000000u64;
+        let b = 0b11111111u64;
 
         assert_eq!(a.hamming(&b), 8);
     }

@@ -66,14 +66,14 @@ impl iter::Iterator for BinarySubstitutionVariantIter<u8> {
     }
 }
 
-impl iter::Iterator for BinarySubstitutionVariantIter<usize> {
-    type Item = usize;
+impl iter::Iterator for BinarySubstitutionVariantIter<u64> {
+    type Item = u64;
 
-    fn next(&mut self) -> Option<usize> {
+    fn next(&mut self) -> Option<u64> {
         if self.index >= self.dimensions {
             None
         } else {
-            let next_value = self.source.clone() ^ (1usize << self.index);
+            let next_value = self.source.clone() ^ (1u64 << self.index);
             self.index += 1;
             Some(next_value)
         }
@@ -98,15 +98,15 @@ mod test {
     }
 
     #[test]
-    fn test_substitution_variants_usize() {
-        let a = 0b00000000usize;
+    fn test_substitution_variants_u64() {
+        let a = 0b00000000u64;
         let expected = vec![
-            0b00000001usize,
-            0b00000010usize,
-            0b00000100usize,
-            0b00001000usize,
+            0b00000001u64,
+            0b00000010u64,
+            0b00000100u64,
+            0b00001000u64,
         ];
 
-        assert_eq!(a.substitution_variants(4).collect::<Vec<usize>>(), expected);
+        assert_eq!(a.substitution_variants(4).collect::<Vec<u64>>(), expected);
     }
 }

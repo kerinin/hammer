@@ -4,20 +4,10 @@ use std::ops::*;
 use std::cmp::*;
 use std::fmt::*;
 use std::borrow::*;
-use std::collections::hash_state::*;
 use std::marker::*;
 
 use db::hamming::*;
 use db::window::*;
-
-/// `Hasher` implementation for pre-hashed types
-///
-/// This hasher is intended to be used with types that expect to hash a value,
-/// in cases where your data is already hashed (for example, using `Hashed<T>`)
-///
-pub struct ProxyHasher {
-    hash: u64,
-}
 
 /// Hash memoization wrapper
 ///
@@ -37,14 +27,6 @@ where T: Hash, H: Hasher + Default
     pub fn new(value: T) -> Hashed<T, H> {
         let mut hashed = Hashed {hash_value: 0, value: value, marker: PhantomData};
         let mut hasher: H = Default::default();
-        hashed.value.hash(&mut hasher);
-        hashed.hash_value = hasher.finish();
-        hashed
-    }
-
-    pub fn new_with_state<S>(value: T, state: S) -> Hashed<T,H> where S: HashState<Hasher = H> {
-        let mut hashed = Hashed {hash_value: 0, value: value, marker: PhantomData};
-        let mut hasher: H = state.hasher();
         hashed.value.hash(&mut hasher);
         hashed.hash_value = hasher.finish();
         hashed
@@ -73,13 +55,7 @@ where T: Window<W> + Hash,
 
 impl<T,H> Hash for Hashed<T,H> {
     fn hash<_H>(&self, state: &mut _H) where _H: Hasher {
-        state.write_u64(self.hash_value);
-    }
-
-    fn hash_slice<_H>(data: &[Self], state: &mut _H) where _H: Hasher {
-        for hashed in data.iter() {
-            state.write_u64(hashed.hash_value);
-        }
+        self.hash_value.hash(state);
     }
 }
 
@@ -92,11 +68,6 @@ where T: Clone
             value: self.value.clone(),
             marker: PhantomData,
         }
-    }
-
-    fn clone_from(&mut self, source: &Hashed<T,H>) {
-        self.hash_value = source.hash_value.clone();
-        self.value = source.value.clone();
     }
 }
 
@@ -141,50 +112,5 @@ impl<T,H> Debug for Hashed<T,H> where T: Debug {
 impl<T,H> Borrow<T> for Hashed<T,H> {
     fn borrow(&self) -> &T {
         &self.value
-    }
-}
-
-impl Default for ProxyHasher {
-    fn default() -> ProxyHasher {
-        ProxyHasher {hash: 0}
-    }
-}
-
-impl Hasher for ProxyHasher {
-    fn finish(&self) -> u64 {
-        self.hash.clone()
-    }
-    fn write(&mut self, bytes: &[u8]) {
-        println!("ProxyHasher#write called with {} bytes, not doing anything...", bytes.len());
-    }
-    fn write_u8(&mut self, i: u8) {
-        self.hash = self.hash ^ i as u64;
-    }
-    fn write_u16(&mut self, i: u16) {
-        self.hash = self.hash ^ i as u64;
-    }
-    fn write_u32(&mut self, i: u32) {
-        self.hash = self.hash ^ i as u64;
-    }
-    fn write_u64(&mut self, i: u64) {
-        self.hash = self.hash ^ i;
-    }
-    fn write_usize(&mut self, i: usize) {
-        self.hash = self.hash ^ i as u64;
-    }
-    fn write_i8(&mut self, i: i8) {
-        self.hash = self.hash ^ i as u64;
-    }
-    fn write_i16(&mut self, i: i16) {
-        self.hash = self.hash ^ i as u64;
-    }
-    fn write_i32(&mut self, i: i32) {
-        self.hash = self.hash ^ i as u64;
-    }
-    fn write_i64(&mut self, i: i64) {
-        self.hash = self.hash ^ i as u64;
-    }
-    fn write_isize(&mut self, i: isize) {
-        self.hash = self.hash ^ i as u64;
     }
 }
