@@ -145,7 +145,7 @@ impl Hasher for ProxyHasher {
         self.hash.clone()
     }
     fn write(&mut self, bytes: &[u8]) {
-        println!("ProxyHasher#write called with bytes, not doing anything...");
+        println!("ProxyHasher#write called with {} bytes, not doing anything...", bytes.len());
     }
     fn write_u8(&mut self, i: u8) {
         self.hash = self.hash ^ i as u64;

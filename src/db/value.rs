@@ -1,15 +1,14 @@
 extern crate byteorder;
+extern crate num;
 
 use std;
 use std::cmp;
 use std::clone;
 use std::hash;
-use std::num::Int;
-
 use std::collections::BitVec;
 
-use db::{Value, Window};
-use self::byteorder::{ByteOrder, LittleEndian};
+use db::*;
+use self::byteorder::*;
 
 impl Window for u8 {
     fn window(&self, start_dimension: usize, dimensions: usize) -> u8 {

@@ -12,7 +12,6 @@ use self::num::rational::Ratio;
 
 use db::result_accumulator::ResultAccumulator;
 use db::hash_map_set::HashMapSet;
-use db::hashing::*;
 use db::*;
 
 impl<V> DeletionPartition<V> where

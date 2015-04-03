@@ -3,8 +3,8 @@ name = "hammer"
 version = "0.0.1"
 authors = [ "Ryan Michael <kerinin@gmail.com>" ]
 
-[[bin]]
-name = "hammer"
+# [[bin]]
+# name = "hammer"
 
 [lib]
 name = "hammer"
