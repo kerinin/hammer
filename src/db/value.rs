@@ -10,7 +10,7 @@ use std::collections::BitVec;
 use db::*;
 use self::byteorder::*;
 
-impl Window for u8 {
+impl Window<u8> for u8 {
     fn window(&self, start_dimension: usize, dimensions: usize) -> u8 {
         //  2/4        11111111
         //              ^<--^
@@ -27,7 +27,7 @@ impl Window for u8 {
     }
 }
 
-impl Window for usize {
+impl Window<usize> for usize {
     fn window(&self, start_dimension: usize, dimensions: usize) -> usize {
         let bits = std::usize::BITS as usize;
         let trim_high = bits - (start_dimension + dimensions);
@@ -40,7 +40,7 @@ impl Window for usize {
     }
 }
 
-impl Window for Vec<u8> {
+impl Window<Vec<u8>> for Vec<u8> {
     fn window(&self, start_dimension: usize, dimensions: usize) -> Vec<u8> {
         self[start_dimension..(start_dimension + dimensions)].to_vec()
     }
@@ -97,7 +97,7 @@ impl<T: cmp::Eq + clone::Clone + hash::Hash> Value for Vec<T> {
 
 #[cfg(test)] 
 mod test {
-    use db::{Value, Window, SubstitutionVariant, DeletionVariant};
+    use db::*;
 
     // Vec<u8> tests
     /* I don't think this is a valid test...
@@ -148,19 +148,6 @@ mod test {
         let b = vec![1u8, 1u8];
 
         assert_eq!(a.window(3,2), b);
-    }
-
-    #[test]
-    fn test_deletion_variants_vec_u8() {
-        let a = vec![0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8];
-        let expected = vec![
-            (vec![255u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8], 0u32),
-            (vec![0u8, 255u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8], 1u32),
-            (vec![0u8, 0u8, 255u8, 0u8, 0u8, 0u8, 0u8, 0u8], 2u32),
-            (vec![0u8, 0u8, 0u8, 255u8, 0u8, 0u8, 0u8, 0u8], 3u32),
-        ];
-
-        assert_eq!(a.deletion_variants(4).collect::<Vec<(Vec<u8>, u32)>>(), expected);
     }
 
     #[test]
@@ -246,32 +233,6 @@ mod test {
     }
 
     #[test]
-    fn test_substitution_variants_u8() {
-        let a = 0b00000000u8;
-        let expected = vec![
-            0b00000001u8,
-            0b00000010u8,
-            0b00000100u8,
-            0b00001000u8,
-        ];
-
-        assert_eq!(a.substitution_variants(4).collect::<Vec<u8>>(), expected);
-    }
-    #[test]
-
-    fn test_deletion_variants_u8() {
-        let a = 0b00000000u8;
-        let expected = vec![
-            (0b00000001u8, 0u8),
-            (0b00000010u8, 1u8),
-            (0b00000100u8, 2u8),
-            (0b00001000u8, 3u8),
-        ];
-
-        assert_eq!(a.deletion_variants(4).collect::<Vec<(u8, u8)>>(), expected);
-    }
-
-    #[test]
     fn test_hamming_zero_u8() {
         let a = 0b00000000u8;
         let b = 0b00000000u8;
@@ -349,32 +310,6 @@ mod test {
         let b = 0b00000011usize;
 
         assert_eq!(a.window(3,2), b);
-    }
-
-    #[test]
-    fn test_substitution_variants_usize() {
-        let a = 0b00000000usize;
-        let expected = vec![
-            0b00000001usize,
-            0b00000010usize,
-            0b00000100usize,
-            0b00001000usize,
-        ];
-
-        assert_eq!(a.substitution_variants(4).collect::<Vec<usize>>(), expected);
-    }
-
-    #[test]
-    fn test_deletion_variants_usize() {
-        let a = 0b00000000usize;
-        let expected = vec![
-            (0b00000001usize, 0u32),
-            (0b00000010usize, 1u32),
-            (0b00000100usize, 2u32),
-            (0b00001000usize, 3u32),
-        ];
-
-        assert_eq!(a.deletion_variants(4).collect::<Vec<(usize, u32)>>(), expected);
     }
 
     #[test]

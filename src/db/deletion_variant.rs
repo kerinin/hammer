@@ -3,7 +3,6 @@ use std::clone;
 use std::iter;
 
 use db::DeletionVariant;
-use db::hashing::Hashed;
 
 pub struct DeletionVariantIter<T> {
     // The original value, which shouldn't be modified
@@ -27,8 +26,8 @@ impl<T> DeletionVariantIter<T> where T: clone::Clone {
     }
 }
 
-impl<T> DeletionVariant for T where
-    T: clone::Clone,
+impl<T> DeletionVariant for T
+where T: clone::Clone,
     DeletionVariantIter<T>: Iterator,
 {
     type Iter = DeletionVariantIter<T>;
@@ -84,23 +83,46 @@ impl iter::Iterator for DeletionVariantIter<Vec<u8>> {
     }
 }
 
-impl iter::Iterator for DeletionVariantIter<Hashed<Vec<u8>>> {
-    type Item = (Vec<u8>, u32);
+#[cfg(test)] 
+mod test {
+    use db::*;
 
-    fn next(&mut self) -> Option<(Vec<u8>, u32)> {
-        if self.index >= self.dimensions {
-            None
-        } else {
-            let source = &*self.source;
-            let mut variant = (*self.variant).clone();
+    #[test]
+    fn test_deletion_variants_vec_u8() {
+        let a = vec![0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8];
+        let expected = vec![
+            (vec![255u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8], 0u32),
+            (vec![0u8, 255u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8], 1u32),
+            (vec![0u8, 0u8, 255u8, 0u8, 0u8, 0u8, 0u8, 0u8], 2u32),
+            (vec![0u8, 0u8, 0u8, 255u8, 0u8, 0u8, 0u8, 0u8], 3u32),
+        ];
 
-            if self.index > 0 {
-                variant[self.index - 1] = source[self.index - 1];
-            }
-            variant[self.index] = std::u8::MAX;
-            self.index += 1;
+        assert_eq!(a.deletion_variants(4).collect::<Vec<(Vec<u8>, u32)>>(), expected);
+    }
 
-            Some((variant, (self.index - 1) as u32))
-        }
+    #[test]
+    fn test_deletion_variants_u8() {
+        let a = 0b00000000u8;
+        let expected = vec![
+            (0b00000001u8, 0u8),
+            (0b00000010u8, 1u8),
+            (0b00000100u8, 2u8),
+            (0b00001000u8, 3u8),
+        ];
+
+        assert_eq!(a.deletion_variants(4).collect::<Vec<(u8, u8)>>(), expected);
+    }
+
+    #[test]
+    fn test_deletion_variants_usize() {
+        let a = 0b00000000usize;
+        let expected = vec![
+            (0b00000001usize, 0u32),
+            (0b00000010usize, 1u32),
+            (0b00000100usize, 2u32),
+            (0b00001000usize, 3u32),
+        ];
+
+        assert_eq!(a.deletion_variants(4).collect::<Vec<(usize, u32)>>(), expected);
     }
 }

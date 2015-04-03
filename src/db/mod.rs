@@ -32,20 +32,20 @@
 //! assert_eq!(results, vec![0,1,3,7]);
 //! ```
 
-mod substitution_db;
-mod deletion_db;
-mod value;
 mod hash_map_set;
-mod result_accumulator;
-mod deletion_variant;
-mod substitution_variant;
 mod hashing;
+mod value;
+mod substitution_db;
+mod substitution_variant;
+mod deletion_db;
+mod deletion_variant;
+mod result_accumulator;
 
 mod bench; // Uncomment to get benchmarks to run
 
-use std::hash;
-use std::cmp;
-use std::clone;
+use std::hash::*;
+use std::cmp::*;
+use std::clone::*;
 use std::rc::*;
 use std::collections::HashSet;
 
@@ -53,60 +53,62 @@ use db::hash_map_set::HashMapSet;
 
 /// Abstract interface for Hamming distance databases
 ///
-pub trait Database<V: Value> {
+pub trait Database<V> {
     fn new(dimensions: usize, tolerance: usize) -> Self;
     fn get(&self, key: &V) -> Option<HashSet<V>>;
     fn insert(&mut self, key: V) -> bool;
     fn remove(&mut self, key: &V) -> bool;
 }
 
-pub struct SubstitutionPartition<V> where
-    V: Value + SubstitutionVariant,
+pub struct SubstitutionPartition<K, V>
+where K: Hash + Eq,
+    V: Hash + Eq,
 {
     pub start_dimension: usize,
     pub dimensions: usize,
 
-    pub zero_kv: HashMapSet<V, V>,
-    pub one_kv: HashMapSet<V, V>,
+    pub zero_kv: HashMapSet<K, V>,
+    pub one_kv: HashMapSet<K, V>,
 }
 
 /// HmSearch Database using substitution variants
 ///
-pub struct SubstitutionDB<V> where
-    V: Value + Window + SubstitutionVariant,
-    <<V as SubstitutionVariant>::Iter as Iterator>::Item: cmp::Eq + hash::Hash + clone::Clone,
+pub struct SubstitutionDB<W, V>
+where W: SubstitutionVariant,
+    V: Hash + Eq,
+    <<W as SubstitutionVariant>::Iter as Iterator>::Item: Hash + Eq,
 {
     dimensions: usize,
     tolerance: usize,
     partition_count: usize,
-    partitions: Vec<SubstitutionPartition<V>>,
+    partitions: Vec<SubstitutionPartition<<<W as SubstitutionVariant>::Iter as Iterator>::Item, V>>,
 }
 
-pub struct DeletionPartition<V> where
-    V: Value + DeletionVariant,
-    <<V as DeletionVariant>::Iter as Iterator>::Item: cmp::Eq + hash::Hash + clone::Clone,
+pub struct DeletionPartition<K, V> where
+    K: Eq + Hash, V: Eq + Hash
 {
     pub start_dimension: usize,
     pub dimensions: usize,
 
-    pub kv: HashMapSet<<<V as DeletionVariant>::Iter as Iterator>::Item, Rc<V>>,
+    pub kv: HashMapSet<K, Rc<V>>,
 }
 
 /// HmSearch Database using deletion variants
 ///
-pub struct DeletionDB<V> where
-    V: Value + Window + DeletionVariant,
-    <<V as DeletionVariant>::Iter as Iterator>::Item: cmp::Eq + hash::Hash + clone::Clone,
+pub struct DeletionDB<W, V>
+where W: DeletionVariant,
+    V: Hash + Eq,
+    <<W as DeletionVariant>::Iter as Iterator>::Item: Hash + Eq,
 {
     dimensions: usize,
     tolerance: usize,
     partition_count: usize,
-    partitions: Vec<DeletionPartition<V>>,
+    partitions: Vec<DeletionPartition<<<W as DeletionVariant>::Iter as Iterator>::Item, V>>,
 }
 
 /// HmSearch-indexable value
 ///
-pub trait Value: hash::Hash + cmp::Eq + clone::Clone {
+pub trait Value: Hash + Eq + Clone {
     /// Hamming distance betwen `self` and `rhs`
     ///
     fn hamming(&self, rhs: &Self) -> usize {
@@ -126,14 +128,14 @@ pub trait Value: hash::Hash + cmp::Eq + clone::Clone {
     fn hamming_indices(&self, rhs: &Self) -> Vec<usize>;
 }
 
-pub trait Window {
+pub trait Window<T> {
     /// Subsample on a set of dimensions
     ///
     /// `start_dimension` the index of the 1st dimension to include in the slice, 
     ///      0-indexed from least significant
     /// `dimensions` the total number of dimensions to include
     ///
-    fn window(&self, start_dimension: usize, dimensions: usize) -> Self;
+    fn window(&self, start_dimension: usize, dimensions: usize) -> T;
 }
 
 /// Return a set of single-dimensional permutation variants

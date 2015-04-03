@@ -56,10 +56,10 @@ impl<T,H> Value for Hashed<T,H> where T: Value {
     }
 }
 
-impl<T,H> Window for Hashed<T,H> where T: Window + Hash, H: Hasher + Default {
-    fn window(&self, start_dimension: usize, dimensions: usize) -> Hashed<T,H> {
+impl<T, H, W> Window<W> for Hashed<T, H> where T: Window<W> + Hash, H: Hasher + Default {
+    fn window(&self, start_dimension: usize, dimensions: usize) -> W {
         let self_value: &T = &**self;
-        Hashed::new(self_value.window(start_dimension, dimensions))
+        self_value.window(start_dimension, dimensions)
     }
 }
 

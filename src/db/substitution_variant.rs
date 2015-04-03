@@ -65,3 +65,34 @@ impl iter::Iterator for BinarySubstitutionVariantIter<usize> {
         }
     }
 }
+
+#[cfg(test)] 
+mod test {
+    use db::*;
+
+    #[test]
+    fn test_substitution_variants_u8() {
+        let a = 0b00000000u8;
+        let expected = vec![
+            0b00000001u8,
+            0b00000010u8,
+            0b00000100u8,
+            0b00001000u8,
+        ];
+
+        assert_eq!(a.substitution_variants(4).collect::<Vec<u8>>(), expected);
+    }
+
+    #[test]
+    fn test_substitution_variants_usize() {
+        let a = 0b00000000usize;
+        let expected = vec![
+            0b00000001usize,
+            0b00000010usize,
+            0b00000100usize,
+            0b00001000usize,
+        ];
+
+        assert_eq!(a.substitution_variants(4).collect::<Vec<usize>>(), expected);
+    }
+}
