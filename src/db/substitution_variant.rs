@@ -28,7 +28,9 @@ pub struct BinarySubstitutionVariantIter<T> {
     dimensions: usize,
 }
 
-impl<T> BinarySubstitutionVariantIter<T> where T: clone::Clone {
+impl<T> BinarySubstitutionVariantIter<T>
+where T: clone::Clone,
+{
     pub fn new(v: T, dimensions: usize) -> Self {
         BinarySubstitutionVariantIter {
             // variant: v.clone(),
@@ -39,9 +41,9 @@ impl<T> BinarySubstitutionVariantIter<T> where T: clone::Clone {
     }
 }
 
-impl<T> SubstitutionVariant for T where
-    T: clone::Clone,
-    BinarySubstitutionVariantIter<T>: Iterator<Item = T>
+impl<T> SubstitutionVariant for T
+where T: clone::Clone,
+    BinarySubstitutionVariantIter<T>: Iterator<Item = T>,
 {
     type Iter = BinarySubstitutionVariantIter<T>;
 
@@ -80,7 +82,7 @@ impl iter::Iterator for BinarySubstitutionVariantIter<usize> {
 
 #[cfg(test)] 
 mod test {
-    use db::*;
+    use db::substitution_variant::*;
 
     #[test]
     fn test_substitution_variants_u8() {

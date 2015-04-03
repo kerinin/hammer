@@ -1,14 +1,4 @@
-extern crate byteorder;
-extern crate num;
-
 use std;
-use std::cmp;
-use std::clone;
-use std::hash;
-use std::collections::BitVec;
-
-use db::*;
-use self::byteorder::*;
 
 pub trait Window<T> {
     /// Subsample on a set of dimensions
@@ -58,7 +48,7 @@ impl Window<Vec<u8>> for Vec<u8> {
 
 #[cfg(test)] 
 mod test {
-    use db::*;
+    use db::window::*;
 
     // Vec<u8> tests
     /* I don't think this is a valid test...

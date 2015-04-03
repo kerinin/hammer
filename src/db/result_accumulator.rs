@@ -1,15 +1,21 @@
+use std::cmp::*;
+use std::hash::*;
+use std::clone::*;
+
 use std::collections::{HashMap, HashSet};
 use std::collections::hash_map::Entry::{Occupied, Vacant};
 
-use db::value::*;
+use db::hamming::*;
 
-pub struct ResultAccumulator<V: Value> {
+pub struct ResultAccumulator<V> {
     tolerance: usize,
     query: V,
     candidates: HashMap<V, (usize, usize)>,
 }
 
-impl<V: Value> ResultAccumulator<V> {
+impl<V> ResultAccumulator<V>
+where V: Hash + Eq + Clone + Hamming
+{
     pub fn new(tolerance: usize, query: V) -> ResultAccumulator<V> {
         let candidates = HashMap::new();
         return ResultAccumulator {tolerance: tolerance, query: query, candidates: candidates};

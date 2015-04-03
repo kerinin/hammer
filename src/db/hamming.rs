@@ -7,12 +7,11 @@ use std::clone::*;
 use std::hash::*;
 use std::collections::*;
 
-use db::*;
 use self::byteorder::*;
 
 /// HmSearch-indexable value
 ///
-pub trait Value: Hash + Eq + Clone {
+pub trait Hamming {
     /// Hamming distance betwen `self` and `rhs`
     ///
     fn hamming(&self, rhs: &Self) -> usize {
@@ -32,7 +31,7 @@ pub trait Value: Hash + Eq + Clone {
     fn hamming_indices(&self, rhs: &Self) -> Vec<usize>;
 }
 
-impl Value for u8 {
+impl Hamming for u8 {
     // `count_ones` should be faster than iterating over vectors as would happen
     // with the default implementation
     //
@@ -49,7 +48,7 @@ impl Value for u8 {
     }
 }
 
-impl Value for usize {
+impl Hamming for usize {
     // `count_ones` should be faster than iterating over vectors as would happen
     // with the default implementation
     //
@@ -69,7 +68,7 @@ impl Value for usize {
     }
 }
 
-impl<T: Eq + Clone + Hash> Value for Vec<T> {
+impl<T: Eq + Clone + Hash> Hamming for Vec<T> {
     fn hamming_indices(&self, other: &Vec<T>) -> Vec<usize> {
         self.iter()
             .zip(other.iter())
@@ -83,7 +82,7 @@ impl<T: Eq + Clone + Hash> Value for Vec<T> {
 
 #[cfg(test)] 
 mod test {
-    use db::*;
+    use db::hamming::*;
 
     // Vec<u8> tests
     

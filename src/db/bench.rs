@@ -5,6 +5,8 @@ use self::rand::*;
 
 use db::*;
 use db::hashing::*;
+use db::deletion_db::*;
+use db::substitution_db::*;
 
 #[bench]
 fn insert_large_value(b: &mut test::Bencher) {

@@ -96,7 +96,7 @@ impl iter::Iterator for DeletionVariantIter<Vec<u8>> {
 
 #[cfg(test)] 
 mod test {
-    use db::*;
+    use db::deletion_variant::*;
 
     #[test]
     fn test_deletion_variants_vec_u8() {

@@ -14,7 +14,7 @@ use db::*;
 use db::result_accumulator::*;
 use db::hash_map_set::*;
 use db::deletion_variant::*;
-use db::value::*;
+use db::hamming::*;
 use db::window::*;
 
 struct DeletionPartition<K, V> where
@@ -51,7 +51,7 @@ where K: Hash + Eq,
 
 impl<W, V> Database<V> for DeletionDB<W, V>
 where W: DeletionVariant,
-    V: Hash + Eq + Value + Window<W>,
+    V: Hash + Eq + Clone + Hamming + Window<W>,
     <<W as DeletionVariant>::Iter as Iterator>::Item: Hash + Eq + Clone,
 {
     /// Create a new DB
@@ -210,6 +210,88 @@ where W: DeletionVariant,
     }
 }
 
+// Internal tests
+#[test]
+fn test_ddb_partition_evenly() {
+    let a: DeletionDB<usize, usize> = Database::new(32, 5);
+    let b = DeletionDB {
+        dimensions: 32,
+        tolerance: 5,
+        partition_count: 4,
+        partitions: vec![
+            DeletionPartition::new(0, 8),
+            DeletionPartition::new(8, 8),
+            DeletionPartition::new(16, 8),
+            DeletionPartition::new(24, 8)
+                ]};
+
+    assert_eq!(a, b);
+}
+
+#[test]
+fn test_ddb_partition_unevenly() {
+    let a: DeletionDB<usize, usize> = Database::new(32, 7);
+    let b = DeletionDB {
+        dimensions: 32,
+        tolerance: 7,
+        partition_count: 5,
+        partitions: vec![
+            DeletionPartition::new(0, 7),
+            DeletionPartition::new(7, 7),
+            DeletionPartition::new(14, 6),
+            DeletionPartition::new(20, 6),
+            DeletionPartition::new(26, 6)
+                ]};
+
+    assert_eq!(a, b);
+}
+
+#[test]
+fn test_ddb_partition_too_many() {
+    let a: DeletionDB<usize, usize> = Database::new(4, 8);
+    let b = DeletionDB {
+        dimensions: 4,
+        tolerance: 8,
+        partition_count: 3,
+        partitions: vec![
+            DeletionPartition::new(0, 2),
+            DeletionPartition::new(2, 1),
+            DeletionPartition::new(3, 1),
+            ]
+    };
+
+    assert_eq!(a, b);
+}
+
+#[test]
+fn test_ddb_partition_zero() {
+    let a: DeletionDB<usize, usize> = Database::new(32, 0);
+    let b = DeletionDB {
+        dimensions: 32,
+        tolerance: 0,
+        partition_count: 1,
+        partitions: vec![
+            DeletionPartition::new(0, 32),
+        ]
+    };
+
+    assert_eq!(a, b);
+}
+
+#[test]
+fn test_ddb_partition_with_no_bytes() {
+    let a: DeletionDB<usize, usize> = Database::new(0, 0);
+    let b = DeletionDB {
+        dimensions: 0,
+        tolerance: 0,
+        partition_count: 1,
+        partitions: vec![
+            DeletionPartition::new(0, 0),
+        ]
+    };
+
+    assert_eq!(a, b);
+}
 
 #[cfg(test)]
 mod test {
@@ -223,88 +305,7 @@ mod test {
     use self::rand::{thread_rng, sample, Rng};
 
     use db::*;
-
-    #[test]
-    fn partition_evenly() {
-        let a: DeletionDB<usize, usize> = Database::new(32, 5);
-        let b = DeletionDB {
-            dimensions: 32,
-            tolerance: 5,
-            partition_count: 4,
-            partitions: vec![
-                DeletionPartition::new(0, 8),
-                DeletionPartition::new(8, 8),
-                DeletionPartition::new(16, 8),
-                DeletionPartition::new(24, 8)
-                    ]};
-
-        assert_eq!(a, b);
-    }
-
-    #[test]
-    fn partition_unevenly() {
-        let a: DeletionDB<usize, usize> = Database::new(32, 7);
-        let b = DeletionDB {
-            dimensions: 32,
-            tolerance: 7,
-            partition_count: 5,
-            partitions: vec![
-                DeletionPartition::new(0, 7),
-                DeletionPartition::new(7, 7),
-                DeletionPartition::new(14, 6),
-                DeletionPartition::new(20, 6),
-                DeletionPartition::new(26, 6)
-                    ]};
-
-        assert_eq!(a, b);
-    }
-
-    #[test]
-    fn partition_too_many() {
-        let a: DeletionDB<usize, usize> = Database::new(4, 8);
-        let b = DeletionDB {
-            dimensions: 4,
-            tolerance: 8,
-            partition_count: 3,
-            partitions: vec![
-                DeletionPartition::new(0, 2),
-                DeletionPartition::new(2, 1),
-                DeletionPartition::new(3, 1),
-            ]
-        };
-
-        assert_eq!(a, b);
-    }
-
-    #[test]
-    fn partition_zero() {
-        let a: DeletionDB<usize, usize> = Database::new(32, 0);
-        let b = DeletionDB {
-            dimensions: 32,
-            tolerance: 0,
-            partition_count: 1,
-            partitions: vec![
-                DeletionPartition::new(0, 32),
-            ]
-        };
-
-        assert_eq!(a, b);
-    }
-
-    #[test]
-    fn partition_with_no_bytes() {
-        let a: DeletionDB<usize, usize> = Database::new(0, 0);
-        let b = DeletionDB {
-            dimensions: 0,
-            tolerance: 0,
-            partition_count: 1,
-            partitions: vec![
-                DeletionPartition::new(0, 0),
-            ]
-        };
-
-        assert_eq!(a, b);
-    }
+    use db::deletion_db::*;
 
     #[test]
     fn find_missing_key() {

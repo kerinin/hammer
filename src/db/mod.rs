@@ -33,24 +33,18 @@
 //! ```
 
 mod hash_map_set;
-mod hashing;
-mod value;
+mod hamming;
 mod window;
-mod substitution_db;
-mod substitution_variant;
-mod deletion_db;
-mod deletion_variant;
 mod result_accumulator;
+mod hashing;
+mod substitution_variant;
+mod substitution_db;
+mod deletion_variant;
+mod deletion_db;
 
 mod bench; // Uncomment to get benchmarks to run
 
-use std::hash::*;
-use std::cmp::*;
-use std::clone::*;
-use std::rc::*;
 use std::collections::HashSet;
-
-use db::hash_map_set::HashMapSet;
 
 /// Abstract interface for Hamming distance databases
 ///

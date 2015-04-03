@@ -12,7 +12,7 @@ use db::*;
 use db::hash_map_set::*;
 use db::result_accumulator::*;
 use db::substitution_variant::*;
-use db::value::*;
+use db::hamming::*;
 use db::window::*;
 
 struct SubstitutionPartition<K, V>
@@ -52,7 +52,7 @@ where K: Hash + Eq,
 
 impl<W, V> Database<V> for SubstitutionDB<W, V>
 where W: Hash + Eq + Clone + SubstitutionVariant,
-    V: Hash + Eq + Value + Window<W>,
+    V: Hash + Eq + Clone + Hamming + Window<W>,
 {
     /// Create a new DB
     ///
@@ -179,7 +179,7 @@ where W: Hash + Eq + Clone + SubstitutionVariant,
 
 impl<W, V> fmt::Debug for SubstitutionDB<W, V>
 where W: Hash + Eq + Clone + SubstitutionVariant,
-    V: Hash + Eq + Value + Window<W>,
+    V: Hash + Eq + Hamming + Window<W>,
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         write!(f, "({}:{}:{})", self.dimensions, self.tolerance, self.partition_count)
@@ -188,7 +188,7 @@ where W: Hash + Eq + Clone + SubstitutionVariant,
 
 impl<W, V> PartialEq for SubstitutionDB<W, V>
 where W: Hash + Eq + Clone + SubstitutionVariant,
-    V: Hash + Eq + Value + Window<W>,
+    V: Hash + Eq + Hamming + Window<W>,
 {
     fn eq(&self, other: &SubstitutionDB<W, V>) -> bool {
         return self.dimensions == other.dimensions &&
@@ -205,6 +205,89 @@ where W: Hash + Eq + Clone + SubstitutionVariant,
     }
 }
 
+// Internal tests
+#[test]
+fn test_sdb_partition_evenly() {
+    let a: SubstitutionDB<usize, usize> = Database::new(32, 5);
+    let b = SubstitutionDB {
+        dimensions: 32,
+        tolerance: 5,
+        partition_count: 4,
+        partitions: vec![
+            SubstitutionPartition::new(0, 8),
+            SubstitutionPartition::new(8, 8),
+            SubstitutionPartition::new(16, 8),
+            SubstitutionPartition::new(24, 8)
+                ]};
+
+    assert_eq!(a, b);
+}
+
+#[test]
+fn test_sdb_partition_unevenly() {
+    let a: SubstitutionDB<usize, usize> = Database::new(32, 7);
+    let b = SubstitutionDB {
+        dimensions: 32,
+        tolerance: 7,
+        partition_count: 5,
+        partitions: vec![
+            SubstitutionPartition::new(0, 7),
+            SubstitutionPartition::new(7, 7),
+            SubstitutionPartition::new(14, 6),
+            SubstitutionPartition::new(20, 6),
+            SubstitutionPartition::new(26, 6)
+                ]};
+
+    assert_eq!(a, b);
+}
+
+#[test]
+fn test_sdb_partition_too_many() {
+    let a: SubstitutionDB<usize, usize> = Database::new(4, 8);
+    let b = SubstitutionDB {
+        dimensions: 4,
+        tolerance: 8,
+        partition_count: 3,
+        partitions: vec![
+            SubstitutionPartition::new(0, 2),
+            SubstitutionPartition::new(2, 1),
+            SubstitutionPartition::new(3, 1),
+            ]
+    };
+
+    assert_eq!(a, b);
+}
+
+#[test]
+fn test_sdb_partition_zero() {
+    let a: SubstitutionDB<usize, usize> = Database::new(32, 0);
+    let b = SubstitutionDB {
+        dimensions: 32,
+        tolerance: 0,
+        partition_count: 1,
+        partitions: vec![
+            SubstitutionPartition::new(0, 32),
+        ]
+    };
+
+    assert_eq!(a, b);
+}
+
+#[test]
+fn test_sdb_partition_with_no_bytes() {
+    let a: SubstitutionDB<usize, usize> = Database::new(0, 0);
+    let b = SubstitutionDB {
+        dimensions: 0,
+        tolerance: 0,
+        partition_count: 1,
+        partitions: vec![
+            SubstitutionPartition::new(0, 0),
+        ]
+    };
+
+    assert_eq!(a, b);
+}
+
 
 #[cfg(test)]
 mod test {
@@ -218,88 +301,7 @@ mod test {
     use self::rand::{thread_rng, sample, Rng};
 
     use db::*;
-
-    #[test]
-    fn partition_evenly() {
-        let a: SubstitutionDB<usize, usize> = Database::new(32, 5);
-        let b = SubstitutionDB {
-            dimensions: 32,
-            tolerance: 5,
-            partition_count: 4,
-            partitions: vec![
-                SubstitutionPartition::new(0, 8),
-                SubstitutionPartition::new(8, 8),
-                SubstitutionPartition::new(16, 8),
-                SubstitutionPartition::new(24, 8)
-                    ]};
-
-        assert_eq!(a, b);
-    }
-
-    #[test]
-    fn partition_unevenly() {
-        let a: SubstitutionDB<usize, usize> = Database::new(32, 7);
-        let b = SubstitutionDB {
-            dimensions: 32,
-            tolerance: 7,
-            partition_count: 5,
-            partitions: vec![
-                SubstitutionPartition::new(0, 7),
-                SubstitutionPartition::new(7, 7),
-                SubstitutionPartition::new(14, 6),
-                SubstitutionPartition::new(20, 6),
-                SubstitutionPartition::new(26, 6)
-                    ]};
-
-        assert_eq!(a, b);
-    }
-
-    #[test]
-    fn partition_too_many() {
-        let a: SubstitutionDB<usize, usize> = Database::new(4, 8);
-        let b = SubstitutionDB {
-            dimensions: 4,
-            tolerance: 8,
-            partition_count: 3,
-            partitions: vec![
-                SubstitutionPartition::new(0, 2),
-                SubstitutionPartition::new(2, 1),
-                SubstitutionPartition::new(3, 1),
-            ]
-        };
-
-        assert_eq!(a, b);
-    }
-
-    #[test]
-    fn partition_zero() {
-        let a: SubstitutionDB<usize, usize> = Database::new(32, 0);
-        let b = SubstitutionDB {
-            dimensions: 32,
-            tolerance: 0,
-            partition_count: 1,
-            partitions: vec![
-                SubstitutionPartition::new(0, 32),
-            ]
-        };
-
-        assert_eq!(a, b);
-    }
-
-    #[test]
-    fn partition_with_no_bytes() {
-        let a: SubstitutionDB<usize, usize> = Database::new(0, 0);
-        let b = SubstitutionDB {
-            dimensions: 0,
-            tolerance: 0,
-            partition_count: 1,
-            partitions: vec![
-                SubstitutionPartition::new(0, 0),
-            ]
-        };
-
-        assert_eq!(a, b);
-    }
+    use db::substitution_db::*;
 
     #[test]
     fn find_missing_key() {

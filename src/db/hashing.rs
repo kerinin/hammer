@@ -7,7 +7,7 @@ use std::borrow::*;
 use std::collections::hash_state::*;
 use std::marker::*;
 
-use db::value::*;
+use db::hamming::*;
 use db::window::*;
 
 /// `Hasher` implementation for pre-hashed types
@@ -31,7 +31,9 @@ pub struct Hashed<T, H = SipHasher> {
     marker: PhantomData<H>,
 }
 
-impl<T, H> Hashed<T,H> where T: Hash, H: Hasher + Default {
+impl<T, H> Hashed<T,H>
+where T: Hash, H: Hasher + Default 
+{
     pub fn new(value: T) -> Hashed<T, H> {
         let mut hashed = Hashed {hash_value: 0, value: value, marker: PhantomData};
         let mut hasher: H = Default::default();
@@ -49,7 +51,9 @@ impl<T, H> Hashed<T,H> where T: Hash, H: Hasher + Default {
     }
 }
 
-impl<T,H> Value for Hashed<T,H> where T: Value {
+impl<T,H> Hamming for Hashed<T,H>
+where T: Hamming 
+{
     fn hamming_indices(&self, other: &Self) -> Vec<usize> {
         let self_value: &T = &**self;
         let other_value: &T = &**other;
@@ -57,7 +61,10 @@ impl<T,H> Value for Hashed<T,H> where T: Value {
     }
 }
 
-impl<T, H, W> Window<W> for Hashed<T, H> where T: Window<W> + Hash, H: Hasher + Default {
+impl<T, H, W> Window<W> for Hashed<T, H>
+where T: Window<W> + Hash,
+    H: Hasher + Default,
+{
     fn window(&self, start_dimension: usize, dimensions: usize) -> W {
         let self_value: &T = &**self;
         self_value.window(start_dimension, dimensions)
@@ -76,7 +83,9 @@ impl<T,H> Hash for Hashed<T,H> {
     }
 }
 
-impl<T,H> Clone for Hashed<T,H> where T: Clone {
+impl<T,H> Clone for Hashed<T,H>
+where T: Clone
+{
     fn clone(&self) -> Hashed<T,H> {
         Hashed {
             hash_value: self.hash_value.clone(),
