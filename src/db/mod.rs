@@ -60,15 +60,16 @@
 //! ```
 //!
 
+pub mod deletion_db;
+pub mod deletion_variant;
+pub mod hamming;
+pub mod hashing;
+pub mod substitution_db;
+pub mod substitution_variant;
+pub mod window;
+
 mod hash_map_set;
-mod hamming;
-mod window;
 mod result_accumulator;
-mod hashing;
-mod substitution_variant;
-mod substitution_db;
-mod deletion_variant;
-mod deletion_db;
 
 // mod bench; // Uncomment to get benchmarks to run
 
