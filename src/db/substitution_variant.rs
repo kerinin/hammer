@@ -3,7 +3,7 @@ use std::iter;
 
 /// Return a set of single-dimensional permutation variants
 ///
-pub trait SubstitutionVariant {
+pub trait SubstitutionVariant: Sized {
     type Iter: Iterator<Item = Self>;
 
     /// Substitution variants
