@@ -50,10 +50,12 @@ where K: Hash + Eq,
     }
 }
 
-impl<W, V> Database<V> for SubstitutionDB<W, V>
+impl<W, V> Database for SubstitutionDB<W, V>
 where W: Hash + Eq + Clone + SubstitutionVariant,
     V: Hash + Eq + Clone + Hamming + Window<W>,
 {
+    type Value = V;
+
     /// Create a new DB
     ///
     /// Partitions the keyspace as evenly as possible - all partitions

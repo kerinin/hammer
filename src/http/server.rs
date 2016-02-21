@@ -1,145 +1,127 @@
-use serialize::json;
 use std::collections::HashSet;
 
-use iron::status;
-use iron::prelude::{Set, Plugin, Chain, Request, Response, IronResult, Iron};
-use iron::typemap::Assoc;
-use iron::response::modifiers::{Status, Body};
-use iron::middleware::ChainBuilder;
+use bodyparser;
+use iron::prelude::*;
+use iron::{status, typemap};
+use router::Router;
+use persistent::State;
+use rustc_serialize::json;
 
-use router::{Router};
-use bodyparser::BodyParser;
-use persistent::{State};
+use db::Database;
+use db::substitution_db::SubstitutionDB;
 
 use super::add;
 use super::query;
 use super::delete;
-use db::database::Database;
-use db::hash_map_set::HashMapSet;
-use db::lru_set::LruSet;
-use db::store::Store;
-
-pub struct DB;
-impl Assoc<Database<HashMapSet<uint, uint>>> for DB {}
-impl Assoc<Database<LruSet<uint, uint>>> for DB {}
 
 pub struct Server {
     pub bind: String,
-    pub bits: uint,
-    pub tolerance: uint,
-    pub lru: Option<uint>,
+    pub bits: usize,
+    pub tolerance: usize,
 }
 
+struct DB;
+impl typemap::Key for DB { type Value = SubstitutionDB<u64, u64>; }
+
 impl Server {
-    pub fn serve(&self) {
+    pub fn serve(self) {
         let mut router = Router::new();
-        let db = match self.lru {
-            Some(..) => Database::new(self.bits, self.tolerance),
-            None => Database::new(self.bits, self.tolerance),
-        };
+        let db: SubstitutionDB<u64, u64> = Database::new(self.bits, self.tolerance);
 
         router.post("/add", handle_add);
         router.post("/query", handle_query);
         router.post("/delete", handle_delete);
 
-        let mut chain = ChainBuilder::new(router);
-        chain.link(State::<DB, Database<Store<uint,uint>>>::both(db));
-        let server = Iron::new(chain);
-
-        match server.listen(self.bind.as_slice()) {
-            Ok(..) => println!("Started Iron HTTP Server on {}", self.bind),
-            Err(e) => println!("Unable to start HTTP Server: {}", e),
-        }
+        let mut chain = Chain::new(router);
+        chain.link_before(State::<DB>::one(db));
+        Iron::new(chain).http(&*self.bind).unwrap();
     }
 }
 
 fn handle_add(req: &mut Request) -> IronResult<Response> {
-    let mutex = req.get::<State<DB, Database<uint>>>().unwrap();
+    match req.get::<bodyparser::Struct<add::Request>>() {
+        Ok(Some(req_body)) => {
+            let mx = req.get::<State<DB>>().unwrap();
 
-    match req.get::<BodyParser<add::Request>>() {
-        Some(parsed) => {
-            let mut scalar_results = Vec::with_capacity(parsed.scalars.len());
-            let mut db = mutex.write();
+            let mut scalar_results = Vec::with_capacity(req_body.scalars.len());
+            let mut db = mx.write().unwrap();
             
-            for scalar in parsed.scalars.iter() {
-                let added = db.insert(*scalar);
-                let scalar_result = add::ScalarResult {scalar: *scalar, added: added};
+            for scalar in req_body.scalars.into_iter() {
+                let added = db.insert(scalar.clone());
+                let scalar_result = add::ScalarResult {scalar: scalar, added: added};
                 scalar_results.push(scalar_result);
             }
 
-            Ok(Response::new()
-               .set(Status(status::Ok))
-               .set(Body(json::encode(&add::Response {scalars: scalar_results})))
-            )
+            Ok(Response::with((status::Ok, json::encode(&add::Response {scalars: scalar_results}).unwrap())))
         },
-        None => {
-            Ok(Response::new()
-               .set(Status(status::BadRequest))
-               .set(Body("Unable to parse JSON"))
-            )
+
+        Ok(None) => {
+            Ok(Response::with((status::BadRequest, "Missing body")))
+        },
+        
+        Err(err) => {
+            Ok(Response::with((status::BadRequest, format!("Unable to parse JSON: {:?}", err))))
         },
     }
 }
 
 fn handle_query(req: &mut Request) -> IronResult<Response> {
-    let mutex = req.get::<State<DB, Database<uint>>>().unwrap();
+    match req.get::<bodyparser::Struct<query::Request>>() {
+        Ok(Some(req_body)) => {
+            let mx = req.get::<State<DB>>().unwrap();
 
-    match req.get::<BodyParser<query::Request>>() {
-        Some(parsed) => {
-            let mut scalar_results = Vec::with_capacity(parsed.scalars.len());
-            let db = mutex.read();
+            let mut scalar_results = Vec::with_capacity(req_body.scalars.len());
+            let db = mx.write().unwrap();
             
-            for scalar in parsed.scalars.iter() {
-                match db.get(*scalar) {
+            for scalar in req_body.scalars.into_iter() {
+                match db.get(&scalar) {
                     Some(found) => {
-                        let scalar_result = query::ScalarResult {scalar: *scalar, found: found};
+                        let scalar_result = query::ScalarResult {scalar: scalar, found: found};
                         scalar_results.push(scalar_result);
                     },
                     None => {
-                        let scalar_result = query::ScalarResult {scalar: *scalar, found: HashSet::new()};
+                        let scalar_result = query::ScalarResult {scalar: scalar, found: HashSet::new()};
                         scalar_results.push(scalar_result);
                     },
                 }
             }
 
-            Ok(Response::new()
-               .set(Status(status::Ok))
-               .set(Body(json::encode(&query::Response {scalars: scalar_results})))
-            )
+            Ok(Response::with((status::Ok, json::encode(&query::Response {scalars: scalar_results}).unwrap())))
         },
-        None => {
-            Ok(Response::new()
-               .set(Status(status::BadRequest))
-               .set(Body("Unable to parse JSON"))
-            )
+
+        Ok(None) => {
+            Ok(Response::with((status::BadRequest, "Missing body")))
+        },
+        
+        Err(err) => {
+            Ok(Response::with((status::BadRequest, format!("Unable to parse JSON: {:?}", err))))
         },
     }
 }
 
 fn handle_delete(req: &mut Request) -> IronResult<Response> {
-    let mutex = req.get::<State<DB, Database<uint>>>().unwrap();
+    match req.get::<bodyparser::Struct<delete::Request>>() {
+        Ok(Some(req_body)) => {
+            let mx = req.get::<State<DB>>().unwrap();
 
-    match req.get::<BodyParser<delete::Request>>() {
-        Some(parsed) => {
-            let mut scalar_results = Vec::with_capacity(parsed.scalars.len());
-            let mut db = mutex.write();
+            let mut scalar_results = Vec::with_capacity(req_body.scalars.len());
+            let mut db = mx.write().unwrap();
             
-            for scalar in parsed.scalars.iter() {
-                let deleted = db.remove(*scalar);
-                let scalar_result = delete::ScalarResult {scalar: *scalar, deleted: deleted};
+            for scalar in req_body.scalars.into_iter() {
+                let deleted = db.remove(&scalar);
+                let scalar_result = delete::ScalarResult {scalar: scalar, deleted: deleted};
                 scalar_results.push(scalar_result);
             }
 
-            Ok(Response::new()
-               .set(Status(status::Ok))
-               .set(Body(json::encode(&delete::Response {scalars: scalar_results})))
-            )
+            Ok(Response::with((status::Ok, json::encode(&delete::Response {scalars: scalar_results}).unwrap())))
         },
-        None => {
-            Ok(Response::new()
-               .set(Status(status::BadRequest))
-               .set(Body("Unable to parse JSON"))
-            )
+
+        Ok(None) => {
+            Ok(Response::with((status::BadRequest, "Missing body")))
+        },
+        
+        Err(err) => {
+            Ok(Response::with((status::BadRequest, format!("Unable to parse JSON: {:?}", err))))
         },
     }
 }

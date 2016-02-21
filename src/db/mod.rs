@@ -77,9 +77,10 @@ use std::collections::HashSet;
 
 /// Abstract interface for Hamming distance databases
 ///
-pub trait Database<V> {
+pub trait Database {
+    type Value;
     fn new(dimensions: usize, tolerance: usize) -> Self;
-    fn get(&self, key: &V) -> Option<HashSet<V>>;
-    fn insert(&mut self, key: V) -> bool;
-    fn remove(&mut self, key: &V) -> bool;
+    fn get(&self, key: &Self::Value) -> Option<HashSet<Self::Value>>;
+    fn insert(&mut self, key: Self::Value) -> bool;
+    fn remove(&mut self, key: &Self::Value) -> bool;
 }

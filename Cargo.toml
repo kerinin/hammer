@@ -5,12 +5,22 @@ authors = [ "Ryan Michael <kerinin@gmail.com>" ]
 
 [lib]
 name = "hammer"
+path = "src/lib.rs"
+
+[[bin]]
+name = "hammer"
+path = "src/bin.rs"
 
 [dependencies]
 num = "*"
 rand = "*"
 byteorder = "0.4"
-# docopt = "*"
+iron = "*"
+router = "*"
+persistent = "*"
+bodyparser = "*"
+rustc-serialize = "*"
+docopt = "*"
 # docopt_macros = "*"
 # rustc-serialize = "*"
 

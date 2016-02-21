@@ -49,11 +49,13 @@ where K: Hash + Eq,
     }
 }
 
-impl<W, V> Database<V> for DeletionDB<W, V>
+impl<W, V> Database for DeletionDB<W, V>
 where W: DeletionVariant,
     V: Hash + Eq + Clone + Hamming + Window<W>,
     <<W as DeletionVariant>::Iter as Iterator>::Item: Hash + Eq + Clone,
 {
+    type Value = V;
+
     /// Create a new DB
     ///
     /// Partitions the keyspace as evenly as possible - all partitions

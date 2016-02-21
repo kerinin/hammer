@@ -21,6 +21,7 @@ pub struct Hashed<T, H = SipHasher> {
     marker: PhantomData<H>,
 }
 
+/*
 impl<T, H> Hashed<T,H>
 where T: Hash, H: Hasher + Default 
 {
@@ -32,6 +33,7 @@ where T: Hash, H: Hasher + Default
         hashed
     }
 }
+*/
 
 impl<T,H> Hamming for Hashed<T,H>
 where T: Hamming 
