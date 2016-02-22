@@ -2,9 +2,7 @@ extern crate num;
 
 use std::fmt;
 use std::cmp::*;
-use std::hash::*;
 use std::clone::*;
-use std::rc::*;
 use std::collections::*;
 use std::collections::hash_map::Entry::*;
 
@@ -17,51 +15,47 @@ use db::deletion_variant::*;
 use db::hamming::*;
 use db::window::*;
 
-struct DeletionPartition<K, V>
-where K: Eq + Hash, V: Eq + Hash
-{
+struct DeletionPartition<T> {
     pub start_dimension: usize,
     pub dimensions: usize,
 
-    pub kv: HashMapSet<K, Rc<V>>,
+    pub kv: T,
 }
 
-/// HmSearch Database using deletion variants
-///
-pub struct DeletionDB<W, V>
-where W: DeletionVariant,
-    V: Hash + Eq,
-    <<W as DeletionVariant>::Iter as Iterator>::Item: Hash + Eq,
-{
-    dimensions: usize,
-    tolerance: usize,
-    partition_count: usize,
-    partitions: Vec<DeletionPartition<<<W as DeletionVariant>::Iter as Iterator>::Item, V>>,
-}
-
-impl<K, V> DeletionPartition<K, V>
-where K: Hash + Eq,
-    V: Hash + Eq,
-{
-    pub fn new(start_dimension: usize, dimensions: usize) -> DeletionPartition<K, V> {
-        let kv: HashMapSet<K, Rc<V>> = HashMapSet::new();
+impl<T: HashMapSet> DeletionPartition<T> {
+    pub fn new(start_dimension: usize, dimensions: usize) -> DeletionPartition<T> {
+        let kv = HashMapSet::new();
         return DeletionPartition {start_dimension: start_dimension, dimensions: dimensions, kv: kv};
     }
 }
 
-impl<W, V> Database for DeletionDB<W, V>
-where W: DeletionVariant,
-    V: Hash + Eq + Clone + Hamming + Window<W>,
-    <<W as DeletionVariant>::Iter as Iterator>::Item: Hash + Eq + Clone,
+/// HmSearch Database using deletion variants
+///
+pub struct DeletionDB<T> {
+    dimensions: usize,
+    tolerance: usize,
+    partition_count: usize,
+    partitions: Vec<DeletionPartition<T>>,
+}
+
+// Value must be windowable
+// windoed value must be variant-able
+// variants must be the same type as key
+impl<T> Database for  DeletionDB<T> where
+T: HashMapSet,
+<T as HashMapSet>::Value: Hamming,
+<T as HashMapSet>::Value: Window<<T as HashMapSet>::Key>,
+<T as HashMapSet>::Key: DeletionVariant,
+<<<T as HashMapSet>::Key as DeletionVariant>::Iter as Iterator>::Item: Clone,
 {
-    type Value = V;
+    type Value = <T as HashMapSet>::Value;
 
     /// Create a new DB
     ///
     /// Partitions the keyspace as evenly as possible - all partitions
     /// will have either N or N-1 dimensions
     ///
-    fn new(dimensions: usize, tolerance: usize) -> DeletionDB<W, V> {
+    fn new(dimensions: usize, tolerance: usize) -> DeletionDB<T> {
 
         // Determine number of partitions
         let partition_count = if tolerance == 0 {
@@ -79,7 +73,7 @@ where W: DeletionVariant,
         let tail_count = partition_count - head_count;
 
         // Build the partitions
-        let mut partitions: Vec<DeletionPartition<<<W as DeletionVariant>::Iter as Iterator>::Item, V>> = Vec::with_capacity(head_count + tail_count);
+        let mut partitions: Vec<DeletionPartition<T>> = Vec::with_capacity(head_count + tail_count);
         for i in 0..head_count {
             let start_dimension = i * head_width;
             let dimensions = head_width;
@@ -105,12 +99,12 @@ where W: DeletionVariant,
 
     /// Get all indexed values within `self.tolerance` hammind distance of `key`
     ///
-    fn get(&self, key: &V) -> Option<HashSet<V>> {
+    fn get(&self, key: &<T as HashMapSet>::Value) -> Option<HashSet<<T as HashMapSet>::Value>> {
         let mut results = ResultAccumulator::new(self.tolerance, key.clone());
 
         // Split across tasks?
         for partition in self.partitions.iter() {
-            let mut counts: HashMap<Rc<V>, usize> = HashMap::new();
+            let mut counts: HashMap<<T as HashMapSet>::Value, usize> = HashMap::new();
             let transformed_key = key.window(partition.start_dimension, partition.dimensions);
 
             for deletion_variant in transformed_key.deletion_variants(partition.dimensions) {
@@ -145,16 +139,14 @@ where W: DeletionVariant,
     ///
     /// Returns true if key was added to ANY index
     ///
-    fn insert(&mut self, key: V) -> bool {
-        let rc_key = Rc::new(key.clone());
-
+    fn insert(&mut self, key: <T as HashMapSet>::Value) -> bool {
         // Split across tasks?
         self.partitions.iter_mut().map(|ref mut partition| {
             let transformed_key = key.window(partition.start_dimension, partition.dimensions);
 
             // NOTE: think about how to detect 'new' values
             transformed_key.deletion_variants(partition.dimensions).map(|deletion_variant| {
-                partition.kv.insert(deletion_variant.clone(), rc_key.clone())
+                partition.kv.insert(deletion_variant.clone(), key.clone())
 
             }).collect::<Vec<bool>>().iter().any(|i| *i)
 
@@ -166,15 +158,13 @@ where W: DeletionVariant,
     ///
     /// Returns true if key was removed from ANY index
     ///
-    fn remove(&mut self, key: &V) -> bool {
-        let rc_key = Rc::new(key.clone());
-
+    fn remove(&mut self, key: &<T as HashMapSet>::Value) -> bool {
         // Split across tasks?
         self.partitions.iter_mut().map(|ref mut partition| {
             let transformed_key = key.window(partition.start_dimension, partition.dimensions);
 
             transformed_key.deletion_variants(partition.dimensions).map(|ref deletion_variant| {
-                partition.kv.remove(deletion_variant, &rc_key)
+                partition.kv.remove(deletion_variant, &key)
 
             }).collect::<Vec<bool>>().iter().any(|i| *i)
 
@@ -183,29 +173,23 @@ where W: DeletionVariant,
     }
 }
 
-impl<W, V> fmt::Debug for DeletionDB<W, V>
-where W: DeletionVariant,
-    V: Hash + Eq,
-    <<W as DeletionVariant>::Iter as Iterator>::Item: Hash + Eq,
+impl<T> fmt::Debug for DeletionDB<T>
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         write!(f, "({}:{}:{})", self.dimensions, self.tolerance, self.partition_count)
     }
 }
 
-impl<W, V> PartialEq for DeletionDB<W, V>
-where W: DeletionVariant,
-    V: Hash + Eq,
-    <<W as DeletionVariant>::Iter as Iterator>::Item: Hash + Eq,
+impl<T> PartialEq for DeletionDB<T>
 {
-    fn eq(&self, other: &DeletionDB<W, V>) -> bool {
+    fn eq(&self, other: &DeletionDB<T>) -> bool {
         return self.dimensions == other.dimensions &&
             self.tolerance == other.tolerance &&
             self.partition_count == other.partition_count;// &&
             //self.partitions.eq(&other.partitions);
     }
 
-    fn ne(&self, other: &DeletionDB<W, V>) -> bool {
+    fn ne(&self, other: &DeletionDB<T>) -> bool {
         return self.dimensions != other.dimensions ||
             self.tolerance != other.tolerance ||
             self.partition_count != other.partition_count; // ||

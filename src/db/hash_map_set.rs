@@ -8,7 +8,7 @@
 //! # Examples
 //!
 //! ```ignore
-//! let mut sets = HashMapSet::new();
+//! let mut sets: InMemoryHashMapSet<&'static str, &'static str> = HashMapSet::new();
 //!
 //! // Returns true if "value" has not been inserted into the set at "key"
 //! assert_eq!(sets.insert("key", "value"), true);
@@ -32,28 +32,36 @@ use std::hash;
 use std::collections::*;
 use std::collections::hash_map::Entry::{Vacant, Occupied};
 
+pub trait HashMapSet: Sized {
+    type Key: clone::Clone + cmp::Eq + hash::Hash;
+    type Value: clone::Clone + cmp::Eq + hash::Hash;
+
+    fn new() -> Self;
+    fn insert(&mut self, key: Self::Key, value: Self::Value) -> bool;
+    fn get(&self, key: &Self::Key) -> Option<&HashSet<Self::Value>>;
+    fn remove(&mut self, key: &Self::Key, value: &Self::Value) -> bool;
+}
+
 #[derive(Debug)]
-pub struct HashMapSet<K, V>
-where   K: cmp::Eq + hash::Hash, 
-        V: cmp::Eq + hash::Hash, 
+pub struct InMemoryHashMapSet<K, V>
+where   K: clone::Clone + cmp::Eq + hash::Hash, 
+        V: clone::Clone + cmp::Eq + hash::Hash, 
 {
     data: HashMap<K, HashSet<V>>,
 }
 
-impl<K, V> HashMapSet<K, V>
-where   K: cmp::Eq + hash::Hash, 
-        V: cmp::Eq + hash::Hash, 
-{
-    pub fn new() -> HashMapSet<K, V> {
-        HashMapSet {data: HashMap::new()}
-    }
-}
-
-impl<K, V> HashMapSet<K, V>
+impl<K, V> HashMapSet for InMemoryHashMapSet<K, V>
 where   K: clone::Clone + cmp::Eq + hash::Hash, 
-        V: cmp::Eq + hash::Hash, 
+        V: clone::Clone + cmp::Eq + hash::Hash, 
 {
-    pub fn insert(&mut self, key: K, value: V) -> bool {
+    type Key = K;
+    type Value = V;
+
+    fn new() -> InMemoryHashMapSet<K, V> {
+        InMemoryHashMapSet {data: HashMap::new()}
+    }
+
+    fn insert(&mut self, key: K, value: V) -> bool {
         match self.data.entry(key) {
             Vacant(entry) => {
                 let mut set: HashSet<V> = HashSet::new();
@@ -67,11 +75,11 @@ where   K: clone::Clone + cmp::Eq + hash::Hash,
         }
     }
 
-    pub fn get(&self, key: &K) -> Option<&HashSet<V>> {
+    fn get(&self, key: &K) -> Option<&HashSet<V>> {
         return self.data.get(key);
     }
 
-    pub fn remove(&mut self, key: &K, value: &V) -> bool {
+    fn remove(&mut self, key: &K, value: &V) -> bool {
         let mut delete_key = false;
 
         let removed = match self.data.entry(key.clone()) {

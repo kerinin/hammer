@@ -3,8 +3,8 @@ use std::iter::*;
 use std::hash::*;
 use std::default::*;
 
-pub trait DeletionVariant {
-    type Iter: Iterator;
+pub trait DeletionVariant: Sized {
+    type Iter: Iterator<Item = Self>;
 
     /// Returns an array of all possible deletion variants of `self`
     ///
@@ -25,7 +25,7 @@ pub struct DeletionVariantIter<T> {
     dimensions: usize,
 }
 
-impl<T> DeletionVariantIter<T> where T: Clone {
+impl<T> DeletionVariantIter<T> {
     pub fn new(v: T, dimensions: usize) -> Self {
         DeletionVariantIter {
             source: v,
@@ -35,9 +35,9 @@ impl<T> DeletionVariantIter<T> where T: Clone {
     }
 }
 
-impl<T> DeletionVariant for T
-where T: Clone,
-    DeletionVariantIter<T>: Iterator,
+impl<T> DeletionVariant for T where 
+T: Clone,
+DeletionVariantIter<T>: Iterator<Item = T>
 {
     type Iter = DeletionVariantIter<T>;
 
@@ -88,10 +88,11 @@ impl Iterator for DeletionVariantIter<u64> {
     }
 }
 
-impl<T> DeletionVariant for Vec<T>
-where T: Hash,
-    Vec<T>: Clone,
-    XORDeletionVariantIter<Vec<T>>: Iterator,
+/*
+impl<T> DeletionVariant for Vec<T> where
+T: Hash,
+Vec<T>: Clone,
+XORDeletionVariantIter<Vec<T>>: Iterator,
 {
     type Iter = XORDeletionVariantIter<Vec<T>>;
 
@@ -99,6 +100,7 @@ where T: Hash,
         XORDeletionVariantIter::new(self.clone(), dimensions)
     }
 }
+*/
 
 pub struct XORDeletionVariantIter<T> {
     // XOR-ed hash of each dimension index & value in `source`

@@ -41,9 +41,9 @@ where T: clone::Clone,
     }
 }
 
-impl<T> SubstitutionVariant for T
-where T: clone::Clone,
-    BinarySubstitutionVariantIter<T>: Iterator<Item = T>,
+impl<T> SubstitutionVariant for T where
+T: clone::Clone,
+BinarySubstitutionVariantIter<T>: Iterator<Item = T>,
 {
     type Iter = BinarySubstitutionVariantIter<T>;
 

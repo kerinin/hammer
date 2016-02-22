@@ -67,8 +67,8 @@ pub mod hashing;
 pub mod substitution_db;
 pub mod substitution_variant;
 pub mod window;
+pub mod hash_map_set;
 
-mod hash_map_set;
 mod result_accumulator;
 
 // mod bench; // Uncomment to get benchmarks to run
@@ -79,6 +79,7 @@ use std::collections::HashSet;
 ///
 pub trait Database {
     type Value;
+
     fn new(dimensions: usize, tolerance: usize) -> Self;
     fn get(&self, key: &Self::Value) -> Option<HashSet<Self::Value>>;
     fn insert(&mut self, key: Self::Value) -> bool;
