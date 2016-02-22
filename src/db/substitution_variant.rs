@@ -1,4 +1,4 @@
-use std::clone;
+use std::clone::*;
 use std::iter;
 
 /// Return a set of single-dimensional permutation variants
@@ -20,8 +20,6 @@ pub trait SubstitutionVariant: Sized {
 pub struct BinarySubstitutionVariantIter<T> {
     // The original value, which shouldn't be modified
     source: T,
-    // Mutable clone of `original`, returned from `next` as substitution variant
-    // variant: T,
     // Iteration cursor
     index: usize,
     // The number of dimensions to iterate over
@@ -29,11 +27,10 @@ pub struct BinarySubstitutionVariantIter<T> {
 }
 
 impl<T> BinarySubstitutionVariantIter<T>
-where T: clone::Clone,
+where T: Clone,
 {
     pub fn new(v: T, dimensions: usize) -> Self {
         BinarySubstitutionVariantIter {
-            // variant: v.clone(),
             source: v,
             index: 0,
             dimensions: dimensions,
@@ -42,7 +39,7 @@ where T: clone::Clone,
 }
 
 impl<T> SubstitutionVariant for T where
-T: clone::Clone,
+T: Clone,
 BinarySubstitutionVariantIter<T>: Iterator<Item = T>,
 {
     type Iter = BinarySubstitutionVariantIter<T>;

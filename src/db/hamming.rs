@@ -55,6 +55,36 @@ impl Hamming for u64 {
     }
 }
 
+// Ignoring the deletion index for now
+impl Hamming for (u8, u8) {
+    fn hamming(&self, other: &(u8, u8)) -> usize {
+        let &(self_value, _) = self;
+        let &(ref other_value, _) = other;
+        self_value.hamming(other_value)
+    }
+
+    fn hamming_indices(&self, other: &(u8, u8)) -> Vec<usize> {
+        let &(self_value, _) = self;
+        let &(ref other_value, _) = other;
+        self_value.hamming_indices(other_value)
+    }
+}
+
+// Ignoring the deletion index for now
+impl Hamming for (u64, u8) {
+    fn hamming(&self, other: &(u64, u8)) -> usize {
+        let &(self_value, _) = self;
+        let &(ref other_value, _) = other;
+        self_value.hamming(other_value)
+    }
+
+    fn hamming_indices(&self, other: &(u64, u8)) -> Vec<usize> {
+        let &(self_value, _) = self;
+        let &(ref other_value, _) = other;
+        self_value.hamming_indices(other_value)
+    }
+}
+
 impl<T: Eq + Clone + Hash> Hamming for Vec<T> {
     // NOTE: Optimize the bound query
     
