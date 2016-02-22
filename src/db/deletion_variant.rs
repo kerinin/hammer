@@ -3,8 +3,8 @@ use std::iter::*;
 use std::hash::*;
 use std::default::*;
 
-pub trait DeletionVariant: Sized {
-    type Iter: Iterator<Item = Self>;
+pub trait DeletionVariant<T>: Sized {
+    type Iter: Iterator<Item=T>;
 
     /// Returns an array of all possible deletion variants of `self`
     ///
@@ -13,7 +13,7 @@ pub trait DeletionVariant: Sized {
     /// is a value obtained by substituting a "deletion marker" for a single 
     /// dimension of a value.
     ///
-    fn deletion_variants(&self, dimensions: usize) -> <Self as DeletionVariant>::Iter;
+    fn deletion_variants(&self, dimensions: usize) -> <Self as DeletionVariant<T>>::Iter;
 }
 
 pub struct DeletionVariantIter<T> {
@@ -35,9 +35,9 @@ impl<T> DeletionVariantIter<T> {
     }
 }
 
-impl<T> DeletionVariant for T where 
+impl<T, V> DeletionVariant<V> for T where 
 T: Clone,
-DeletionVariantIter<T>: Iterator<Item = T>
+DeletionVariantIter<T>: Iterator<Item = V>
 {
     type Iter = DeletionVariantIter<T>;
 
@@ -46,15 +46,14 @@ DeletionVariantIter<T>: Iterator<Item = T>
     }
 }
 
-impl Iterator for DeletionVariantIter<(u8, u8)> {
+impl Iterator for DeletionVariantIter<u8> {
     type Item = (u8, u8);
 
     fn next(&mut self) -> Option<(u8, u8)> {
         if self.index >= self.dimensions {
             None
         } else {
-            let (mut next_value, _) = self.source.clone();
-            next_value = next_value | (1u8 << self.index);
+            let next_value = self.source.clone() | (1u8 << self.index);
             
             self.index += 1;
             Some((next_value, self.index as u8))
@@ -62,15 +61,14 @@ impl Iterator for DeletionVariantIter<(u8, u8)> {
     }
 }
 
-impl Iterator for DeletionVariantIter<(usize, u8)> {
+impl Iterator for DeletionVariantIter<usize> {
     type Item = (usize, u8);
 
     fn next(&mut self) -> Option<(usize, u8)> {
         if self.index >= self.dimensions {
             None
         } else {
-            let (mut next_value, _) = self.source.clone();
-            next_value = next_value | (1usize << self.index);
+            let next_value = self.source.clone() | (1usize << self.index);
             
             self.index += 1;
             Some((next_value, self.index as u8))
@@ -78,15 +76,14 @@ impl Iterator for DeletionVariantIter<(usize, u8)> {
     }
 }
 
-impl Iterator for DeletionVariantIter<(u64, u8)> {
+impl Iterator for DeletionVariantIter<u64> {
     type Item = (u64, u8);
 
     fn next(&mut self) -> Option<(u64, u8)> {
         if self.index >= self.dimensions {
             None
         } else {
-            let (mut next_value, _) = self.source.clone();
-            next_value = next_value | (1u64 << self.index);
+            let next_value = self.source.clone() | (1u64 << self.index);
             
             self.index += 1;
             Some((next_value, self.index as u8))
@@ -94,11 +91,10 @@ impl Iterator for DeletionVariantIter<(u64, u8)> {
     }
 }
 
-/*
-impl<T> DeletionVariant for Vec<T> where
+impl<T, V> DeletionVariant<V> for Vec<T> where
 T: Hash,
 Vec<T>: Clone,
-XORDeletionVariantIter<Vec<T>>: Iterator,
+XORDeletionVariantIter<Vec<T>>: Iterator<Item = V>,
 {
     type Iter = XORDeletionVariantIter<Vec<T>>;
 
@@ -106,7 +102,6 @@ XORDeletionVariantIter<Vec<T>>: Iterator,
         XORDeletionVariantIter::new(self.clone(), dimensions)
     }
 }
-*/
 
 pub struct XORDeletionVariantIter<T> {
     // XOR-ed hash of each dimension index & value in `source`
@@ -149,6 +144,7 @@ impl Iterator for XORDeletionVariantIter<Vec<u8>> {
         if self.index >= self.dimensions {
             None
         } else {
+            // NOTE: Pretty sure this logic is fubar
             // NOTE: We're using the initial `source_hash` value as the deltion
             // marker becuase it means we don't have to XOR in the deltion marker
             // value.  We _may_ need to XOR in the deltion marker's index, IDK
@@ -162,7 +158,7 @@ impl Iterator for XORDeletionVariantIter<Vec<u8>> {
                 self.source_hash = self.source_hash ^ hasher.finish();
                 
                 // Remove the last index
-                let mut hasher: SipHasher = Default::default();
+                hasher = Default::default();
                 (self.index - 1).hash(&mut hasher);
 
                 self.source_hash = self.source_hash ^ hasher.finish();
@@ -200,10 +196,10 @@ mod test {
         // Test that the variants don't contain duplicates. (This could happen
         // from hash collisions, but that should be exceedingly rare)
         fn prop(a: u64) -> quickcheck::TestResult {
-            let variants = (a, 0u8).deletion_variants(64);
+            let variants = a.deletion_variants(64);
 
             for (i, variant) in variants.enumerate() {
-                if (a, 0u8).deletion_variants(64).take(i).any(|v| v == variant) {
+                if a.deletion_variants(64).take(i).any(|v| v == variant) {
                     return quickcheck::TestResult::failed();
                 }
             }
@@ -220,8 +216,8 @@ mod test {
             let flip = 1u64 << index % 64;
             let b = a ^ flip;
 
-            let a_variants = (a, 0u8).deletion_variants(64).fold(HashSet::new(), |mut s, v| { s.insert(v); s });
-            let b_variants = (b, 0u8).deletion_variants(64).fold(HashSet::new(), |mut s, v| { s.insert(v); s });
+            let a_variants = a.deletion_variants(64).fold(HashSet::new(), |mut s, v| { s.insert(v); s });
+            let b_variants = b.deletion_variants(64).fold(HashSet::new(), |mut s, v| { s.insert(v); s });
 
             if a_variants.intersection(&b_variants).count() == 0 {
                 return quickcheck::TestResult::failed();
@@ -232,7 +228,6 @@ mod test {
         quickcheck(prop as fn(u64, usize) -> quickcheck::TestResult);
     }
 
-    /*
     #[test]
     fn variants_compact_vec_u8() {
         // Test that the variants don't contain duplicates. (This could happen
@@ -242,10 +237,10 @@ mod test {
                 return quickcheck::TestResult::discard()
             }
 
-            let variants = (a, 0u8).deletion_variants(a.len());
+            let variants = a.deletion_variants(a.len());
 
             for (i, variant) in variants.enumerate() {
-                if (a, 0u8).deletion_variants(a.len()).take(i).any(|v| v == variant) {
+                if a.deletion_variants(a.len()).take(i).any(|v| v == variant) {
                     return quickcheck::TestResult::failed();
                 }
             }
@@ -267,8 +262,8 @@ mod test {
             let offset = index % b.len();
             b[offset] = b[offset] ^ 1u8;
 
-            let a_variants = (a, 0u8).deletion_variants(a.len()).fold(HashSet::new(), |mut s, v| { s.insert(v); s });
-            let b_variants = (b, 0u8).deletion_variants(b.len()).fold(HashSet::new(), |mut s, v| { s.insert(v); s });
+            let a_variants = a.deletion_variants(a.len()).fold(HashSet::new(), |mut s, v| { s.insert(v); s });
+            let b_variants = b.deletion_variants(b.len()).fold(HashSet::new(), |mut s, v| { s.insert(v); s });
 
             if a_variants.intersection(&b_variants).count() == 0 {
                 return quickcheck::TestResult::failed();
@@ -278,7 +273,6 @@ mod test {
         }
         quickcheck(prop as fn(Vec<u8>, usize) -> quickcheck::TestResult);
     }
-    */
 
     #[test]
     fn test_deletion_variants_u8() {
@@ -290,7 +284,7 @@ mod test {
             (0b00001000u8, 4u8),
         ];
 
-        assert_eq!((a, 0u8).deletion_variants(4).collect::<Vec<(u8, u8)>>(), expected);
+        assert_eq!(a.deletion_variants(4).collect::<Vec<(u8, u8)>>(), expected);
     }
 
     #[test]
@@ -303,6 +297,6 @@ mod test {
             (0b00001000usize, 4u8),
         ];
 
-        assert_eq!((a, 0u8).deletion_variants(4).collect::<Vec<(usize, u8)>>(), expected);
+        assert_eq!(a.deletion_variants(4).collect::<Vec<(usize, u8)>>(), expected);
     }
 }
