@@ -8,7 +8,7 @@
 //! # Examples
 //!
 //! ```ignore
-//! let mut sets: InMemoryHashMapSet<&'static str, &'static str> = MapSet::new();
+//! let mut sets: InMemoryHashMapSet<&'static str, &'static str> = InMemoryHashMapSet::new();
 //!
 //! // Returns true if "value" has not been inserted into the set at "key"
 //! assert_eq!(sets.insert("key", "value"), true);
@@ -43,7 +43,6 @@ pub trait MapSet: Sized {
     type Key: clone::Clone + cmp::Eq + hash::Hash;
     type Value: clone::Clone + cmp::Eq + hash::Hash;
 
-    fn new() -> Self;
     fn insert(&mut self, key: Self::Key, value: Self::Value) -> bool;
     fn get(&self, key: &Self::Key) -> Option<HashSet<Self::Value>>;
     fn remove(&mut self, key: &Self::Key, value: &Self::Value) -> bool;
@@ -73,15 +72,8 @@ fn prefix_compare(a: &[u8], b: &[u8]) -> c_int {
     }
 }
 
-impl<K, V> MapSet for RocksDBMapSet<K, V>
-where   K: clone::Clone + cmp::Eq + hash::Hash + Encodable + Decodable,
-V: clone::Clone + cmp::Eq + hash::Hash + Encodable + Decodable,
-{
-    type Key = K;
-    type Value = V;
-
-    fn new() -> RocksDBMapSet<K, V> {
-        let path = "path/to/rocksdb";
+impl<K, V> RocksDBMapSet<K, V> {
+    pub fn new(path: &str) -> RocksDBMapSet<K, V> {
         let mut opts = Options::new();
         opts.add_comparator("prefix comparator", prefix_compare);
 
@@ -93,6 +85,15 @@ V: clone::Clone + cmp::Eq + hash::Hash + Encodable + Decodable,
             db: db,
         }
     }
+}
+
+
+impl<K, V> MapSet for RocksDBMapSet<K, V>
+where   K: clone::Clone + cmp::Eq + hash::Hash + Encodable + Decodable,
+V: clone::Clone + cmp::Eq + hash::Hash + Encodable + Decodable,
+{
+    type Key = K;
+    type Value = V;
 
     fn insert(&mut self, key: K, value: V) -> bool {
         let encoded_key: Vec<u8> = encode(&(key, value), SizeLimit::Infinite).unwrap();
@@ -149,16 +150,21 @@ where   K: clone::Clone + cmp::Eq + hash::Hash,
     data: HashMap<K, HashSet<V>>,
 }
 
+impl<K, V> InMemoryHashMapSet<K, V>
+where   K: clone::Clone + cmp::Eq + hash::Hash, 
+        V: clone::Clone + cmp::Eq + hash::Hash, 
+{
+    pub fn new() -> InMemoryHashMapSet<K, V> {
+        InMemoryHashMapSet {data: HashMap::new()}
+    }
+}
+
 impl<K, V> MapSet for InMemoryHashMapSet<K, V>
 where   K: clone::Clone + cmp::Eq + hash::Hash, 
         V: clone::Clone + cmp::Eq + hash::Hash, 
 {
     type Key = K;
     type Value = V;
-
-    fn new() -> InMemoryHashMapSet<K, V> {
-        InMemoryHashMapSet {data: HashMap::new()}
-    }
 
     fn insert(&mut self, key: K, value: V) -> bool {
         match self.data.entry(key) {

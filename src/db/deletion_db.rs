@@ -91,7 +91,7 @@ V: Clone + Eq + Hash,
             tolerance: tolerance,
             partition_count: partition_count,
             partitions: partitions,
-            store: MapSet::new(),
+            store: InMemoryHashMapSet::new(),
         };
     }
 
@@ -216,7 +216,7 @@ fn test_ddb_partition_evenly() {
             Window{start_dimension:16, dimensions: 8},
             Window{start_dimension:24, dimensions: 8}
         ],
-        store: MapSet::new(),
+        store: InMemoryHashMapSet::new(),
     };
 
     assert_eq!(a, b);
@@ -239,7 +239,7 @@ fn test_ddb_partition_unevenly() {
             Window{start_dimension:20, dimensions: 6},
             Window{start_dimension:26, dimensions: 6},
         ],
-        store: MapSet::new(),
+        store: InMemoryHashMapSet::new(),
     };
 
     assert_eq!(a, b);
@@ -260,7 +260,7 @@ fn test_ddb_partition_too_many() {
             Window{start_dimension:2, dimensions: 1},
             Window{start_dimension:3, dimensions: 1},
         ],
-        store: MapSet::new(),
+        store: InMemoryHashMapSet::new(),
     };
 
     assert_eq!(a, b);
@@ -279,7 +279,7 @@ fn test_ddb_partition_zero() {
         partitions: vec![
             Window{start_dimension:0, dimensions: 32},
         ],
-        store: MapSet::new(),
+        store: InMemoryHashMapSet::new(),
     };
 
     assert_eq!(a, b);
@@ -298,7 +298,7 @@ fn test_ddb_partition_with_no_bytes() {
         partitions: vec![
             Window{start_dimension:0, dimensions: 0},
         ],
-        store: MapSet::new(),
+        store: InMemoryHashMapSet::new(),
     };
 
     assert_eq!(a, b);

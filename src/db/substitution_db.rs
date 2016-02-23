@@ -85,7 +85,7 @@ W: Clone + Eq + Hash + SubstitutionVariant,
             tolerance: tolerance,
             partition_count: partition_count,
             partitions: partitions,
-            store: MapSet::new(),
+            store: InMemoryHashMapSet::new(),
         };
     }
 
@@ -212,7 +212,7 @@ fn test_sdb_partition_evenly() {
             Window{start_dimension: 16, dimensions: 8},
             Window{start_dimension: 24, dimensions: 8},
         ],
-        store: MapSet::new(),
+        store: InMemoryHashMapSet::new(),
     };
 
     assert_eq!(a, b);
