@@ -54,7 +54,7 @@ impl Iterator for BinaryIter<u64> {
 
 #[cfg(test)] 
 mod test {
-    use db::substitution_variant::*;
+    use db::substitution::{SubstitutionVariant};
 
     #[test]
     fn test_substitution_variants_u8() {

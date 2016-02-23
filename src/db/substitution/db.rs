@@ -325,7 +325,7 @@ mod test {
     use self::rand::{thread_rng, sample, Rng};
 
     use db::*;
-    use db::substitution_db::*;
+    use db::substitution::{DB};
 
     #[test]
     fn find_missing_key() {
