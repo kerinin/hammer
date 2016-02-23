@@ -7,7 +7,6 @@ dependencies = [
  "byteorder 0.4.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "docopt 0.6.78 (registry+https://github.com/rust-lang/crates.io-index)",
  "iron 0.2.6 (registry+https://github.com/rust-lang/crates.io-index)",
- "libc 0.2.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "num 0.1.31 (registry+https://github.com/rust-lang/crates.io-index)",
  "persistent 0.0.9 (registry+https://github.com/rust-lang/crates.io-index)",
  "quickcheck 0.2.25 (registry+https://github.com/rust-lang/crates.io-index)",

@@ -23,7 +23,6 @@ rustc-serialize = "*"
 docopt = "*"
 rocksdb = "*"
 bincode = "*"
-libc = "*"
 uuid = "*"
 
 [dev-dependencies]
