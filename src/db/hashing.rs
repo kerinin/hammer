@@ -45,8 +45,8 @@ where T: Hamming
     }
 }
 
-impl<T, H, W> Window<W> for Hashed<T, H>
-where T: Window<W> + Hash,
+impl<T, H, W> Windowable<W> for Hashed<T, H>
+where T: Windowable<W> + Hash,
     H: Hasher + Default,
 {
     fn window(&self, start_dimension: usize, dimensions: usize) -> W {

@@ -3,7 +3,9 @@ extern crate num;
 use std::fmt;
 use std::cmp::*;
 use std::clone::*;
+use std::hash::*;
 use std::collections::*;
+use std::marker::PhantomData;
 
 use self::num::rational::Ratio;
 
@@ -14,45 +16,36 @@ use db::substitution_variant::*;
 use db::hamming::*;
 use db::window::*;
 
-struct SubstitutionPartition<T> {
-    pub start_dimension: usize,
-    pub dimensions: usize,
-
-    pub zero_kv: T,
-    pub one_kv: T,
-}
-
-impl<T: HashMapSet> SubstitutionPartition<T> {
-    pub fn new(start_dimension: usize, dimensions: usize) -> SubstitutionPartition<T> {
-        let zero_kv = HashMapSet::new();
-        let one_kv = HashMapSet::new();
-        return SubstitutionPartition {start_dimension: start_dimension, dimensions: dimensions, zero_kv: zero_kv, one_kv: one_kv};
-    }
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub enum Key<T> {
+    One(Window, T),
+    Zero(Window, T),
 }
 
 /// HmSearch Database using substitution variants
 ///
-pub struct SubstitutionDB<T> {
+pub struct SubstitutionDB<T, W, S = InMemoryHashMapSet<Key<W>, T>> {
+    value: PhantomData<T>,
+    window: PhantomData<W>,
     dimensions: usize,
     tolerance: usize,
     partition_count: usize,
-    partitions: Vec<SubstitutionPartition<T>>,
+    partitions: Vec<Window>,
+    store: S,
 }
 
-impl<T> Database for SubstitutionDB<T> where
-T: HashMapSet,
-<T as HashMapSet>::Value: Hamming,
-<T as HashMapSet>::Value: Window<<T as HashMapSet>::Key>,
-<T as HashMapSet>::Key: SubstitutionVariant,
+impl<T, W> Database for SubstitutionDB<T, W> where
+T: Clone + Eq + Hash + Hamming + Windowable<W>,
+W: Clone + Eq + Hash + SubstitutionVariant,
 {
-    type Value = <T as HashMapSet>::Value;
+    type Value = T;
 
     /// Create a new DB
     ///
     /// Partitions the keyspace as evenly as possible - all partitions
     /// will have either N or N-1 dimensions
     ///
-    fn new(dimensions: usize, tolerance: usize) -> SubstitutionDB<T> {
+    fn new(dimensions: usize, tolerance: usize) -> SubstitutionDB<T, W> {
 
         // Determine number of partitions
         let partition_count = if tolerance == 0 {
@@ -70,40 +63,43 @@ T: HashMapSet,
         let tail_count = partition_count - head_count;
 
         // Build the partitions
-        let mut partitions: Vec<SubstitutionPartition<T>> = Vec::with_capacity(head_count + tail_count);
+        let mut partitions: Vec<Window> = Vec::with_capacity(head_count + tail_count);
         for i in 0..head_count {
             let start_dimension = i * head_width;
             let dimensions = head_width;
-            let p: SubstitutionPartition<T> = SubstitutionPartition::new(start_dimension, dimensions);
 
-            partitions.push(p);
+            partitions.push(Window{start_dimension: start_dimension, dimensions: dimensions});
         }
         for i in 0..tail_count {
             let start_dimension = (head_count * head_width) + (i * tail_width);
             let dimensions = tail_width;
 
-            partitions.push(SubstitutionPartition::new(start_dimension, dimensions));
+            partitions.push(Window{start_dimension: start_dimension, dimensions: dimensions});
         }
 
         // Done!
         return SubstitutionDB {
+            value: PhantomData,
+            window: PhantomData,
             dimensions: dimensions,
             tolerance: tolerance,
             partition_count: partition_count,
             partitions: partitions,
+            store: HashMapSet::new(),
         };
     }
 
     /// Get all indexed values within `self.tolerance` hammind distance of `key`
     ///
-    fn get(&self, key: &<T as HashMapSet>::Value) -> Option<HashSet<<T as HashMapSet>::Value>> {
+    fn get(&self, key: &T) -> Option<HashSet<T>> {
         let mut results = ResultAccumulator::new(self.tolerance, key.clone());
 
         // Split across tasks?
-        for partition in self.partitions.iter() {
+        for window in self.partitions.iter() {
 
-            let transformed_key = &key.window(partition.start_dimension, partition.dimensions);
-            match partition.zero_kv.get(transformed_key) {
+            let transformed_key = &key.window(window.start_dimension, window.dimensions);
+
+            match self.store.get(&Key::Zero(window.clone(), transformed_key.clone())) {
                 Some(keys) => {
                     for k in keys.iter() {
                         results.insert_zero_variant(k)
@@ -112,7 +108,7 @@ T: HashMapSet,
                 None => {},
             }
 
-            match partition.one_kv.get(transformed_key) {
+            match self.store.get(&Key::One(window.clone(), transformed_key.clone())) {
                 Some(keys) => {
                     for k in keys.iter() {
                         results.insert_one_variant(k)
@@ -129,14 +125,16 @@ T: HashMapSet,
     ///
     /// Returns true if key was added to ANY index
     ///
-    fn insert(&mut self, key: <T as HashMapSet>::Value) -> bool {
-        // Split across tasks?
-        self.partitions.iter_mut().map(|ref mut partition| {
-            let transformed_key = key.window(partition.start_dimension, partition.dimensions);
+    fn insert(&mut self, key: T) -> bool {
 
-            if partition.zero_kv.insert(transformed_key.clone(), key.clone()) {
-                for k in transformed_key.substitution_variants(partition.dimensions) {
-                    partition.one_kv.insert(k.clone(), key.clone());
+        // Split across tasks?
+        self.partitions.clone().into_iter().map(|window| {
+
+            let transformed_key = key.window(window.start_dimension, window.dimensions);
+
+            if self.store.insert(Key::Zero(window.clone(), transformed_key.clone()), key.clone()) {
+                for k in transformed_key.substitution_variants(window.dimensions) {
+                    self.store.insert(Key::One(window.clone(), k.clone()), key.clone());
                 }
                 true
             } else {
@@ -151,14 +149,14 @@ T: HashMapSet,
     ///
     /// Returns true if key was removed from ANY index
     ///
-    fn remove(&mut self, key: &<T as HashMapSet>::Value) -> bool {
+    fn remove(&mut self, key: &T) -> bool {
         // Split across tasks?
-        self.partitions.iter_mut().map(|ref mut partition| {
-            let transformed_key = &key.window(partition.start_dimension, partition.dimensions);
+        self.partitions.clone().into_iter().map(|window| {
+            let transformed_key = &key.window(window.start_dimension, window.dimensions);
 
-            if partition.zero_kv.remove(transformed_key, key) {
-                for ref k in transformed_key.substitution_variants(partition.dimensions) {
-                    partition.one_kv.remove(k, key);
+            if self.store.remove(&Key::Zero(window.clone(), transformed_key.clone()), key) {
+                for ref k in transformed_key.substitution_variants(window.dimensions) {
+                    self.store.remove(&Key::Zero(window.clone(), k.clone()), key);
                 }
                 true
             } else {
@@ -170,23 +168,27 @@ T: HashMapSet,
     }
 }
 
-impl<T> fmt::Debug for SubstitutionDB<T>
+impl<T, W> fmt::Debug for SubstitutionDB<T, W> where
+T: Clone + Eq + Hash,
+W: Clone + Eq + Hash,
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         write!(f, "({}:{}:{})", self.dimensions, self.tolerance, self.partition_count)
     }
 }
 
-impl<T> PartialEq for SubstitutionDB<T>
+impl<T, W> PartialEq for SubstitutionDB<T, W> where
+T: Clone + Eq + Hash,
+W: Clone + Eq + Hash,
 {
-    fn eq(&self, other: &SubstitutionDB<T>) -> bool {
+    fn eq(&self, other: &SubstitutionDB<T, W>) -> bool {
         return self.dimensions == other.dimensions &&
             self.tolerance == other.tolerance &&
             self.partition_count == other.partition_count;// &&
             //self.partitions.eq(&other.partitions);
     }
 
-    fn ne(&self, other: &SubstitutionDB<T>) -> bool {
+    fn ne(&self, other: &SubstitutionDB<T, W>) -> bool {
         return self.dimensions != other.dimensions ||
             self.tolerance != other.tolerance ||
             self.partition_count != other.partition_count; // ||
@@ -197,51 +199,62 @@ impl<T> PartialEq for SubstitutionDB<T>
 // Internal tests
 #[test]
 fn test_sdb_partition_evenly() {
-    let a: SubstitutionDB<InMemoryHashMapSet<u64, u64>> = Database::new(32, 5);
+    let a: SubstitutionDB<u64, u64> = Database::new(32, 5);
     let b = SubstitutionDB {
+        value: PhantomData,
+        window: PhantomData,
         dimensions: 32,
         tolerance: 5,
         partition_count: 4,
         partitions: vec![
-            SubstitutionPartition::new(0, 8),
-            SubstitutionPartition::new(8, 8),
-            SubstitutionPartition::new(16, 8),
-            SubstitutionPartition::new(24, 8)
-                ]};
+            Window{start_dimension: 0, dimensions: 8},
+            Window{start_dimension: 8, dimensions: 8},
+            Window{start_dimension: 16, dimensions: 8},
+            Window{start_dimension: 24, dimensions: 8},
+        ],
+        store: HashMapSet::new(),
+    };
 
     assert_eq!(a, b);
 }
 
 #[test]
 fn test_sdb_partition_unevenly() {
-    let a: SubstitutionDB<InMemoryHashMapSet<u64, u64>> = Database::new(32, 7);
+    let a: SubstitutionDB<u64, u64> = Database::new(32, 7);
     let b = SubstitutionDB {
+        value: PhantomData,
+        window: PhantomData,
         dimensions: 32,
         tolerance: 7,
         partition_count: 5,
         partitions: vec![
-            SubstitutionPartition::new(0, 7),
-            SubstitutionPartition::new(7, 7),
-            SubstitutionPartition::new(14, 6),
-            SubstitutionPartition::new(20, 6),
-            SubstitutionPartition::new(26, 6)
-                ]};
+            Window{start_dimension:0, dimensions: 7},
+            Window{start_dimension:7, dimensions: 7},
+            Window{start_dimension:14, dimensions: 6},
+            Window{start_dimension:20, dimensions: 6},
+            Window{start_dimension:26, dimensions: 6}
+        ],
+        store: HashMapSet::new(),
+    };
 
     assert_eq!(a, b);
 }
 
 #[test]
 fn test_sdb_partition_too_many() {
-    let a: SubstitutionDB<InMemoryHashMapSet<u64, u64>> = Database::new(4, 8);
+    let a: SubstitutionDB<u64, u64> = Database::new(4, 8);
     let b = SubstitutionDB {
+        value: PhantomData,
+        window: PhantomData,
         dimensions: 4,
         tolerance: 8,
         partition_count: 3,
         partitions: vec![
-            SubstitutionPartition::new(0, 2),
-            SubstitutionPartition::new(2, 1),
-            SubstitutionPartition::new(3, 1),
-            ]
+            Window{start_dimension:0, dimensions: 2},
+            Window{start_dimension:2, dimensions: 1},
+            Window{start_dimension:3, dimensions: 1},
+        ],
+        store: HashMapSet::new(),
     };
 
     assert_eq!(a, b);
@@ -249,14 +262,17 @@ fn test_sdb_partition_too_many() {
 
 #[test]
 fn test_sdb_partition_zero() {
-    let a: SubstitutionDB<InMemoryHashMapSet<u64, u64>> = Database::new(32, 0);
+    let a: SubstitutionDB<u64, u64> = Database::new(32, 0);
     let b = SubstitutionDB {
+        value: PhantomData,
+        window: PhantomData,
         dimensions: 32,
         tolerance: 0,
         partition_count: 1,
         partitions: vec![
-            SubstitutionPartition::new(0, 32),
-        ]
+            Window{start_dimension:0, dimensions: 32},
+        ],
+        store: HashMapSet::new(),
     };
 
     assert_eq!(a, b);
@@ -264,14 +280,17 @@ fn test_sdb_partition_zero() {
 
 #[test]
 fn test_sdb_partition_with_no_bytes() {
-    let a: SubstitutionDB<InMemoryHashMapSet<u64, u64>> = Database::new(0, 0);
+    let a: SubstitutionDB<u64, u64> = Database::new(0, 0);
     let b = SubstitutionDB {
+        value: PhantomData,
+        window: PhantomData,
         dimensions: 0,
         tolerance: 0,
         partition_count: 1,
         partitions: vec![
-            SubstitutionPartition::new(0, 0),
-        ]
+            Window{start_dimension:0, dimensions: 0},
+        ],
+        store: HashMapSet::new(),
     };
 
     assert_eq!(a, b);
@@ -289,12 +308,11 @@ mod test {
     use self::rand::{thread_rng, sample, Rng};
 
     use db::*;
-    use db::hash_map_set::InMemoryHashMapSet;
     use db::substitution_db::*;
 
     #[test]
     fn find_missing_key() {
-        let p: SubstitutionDB<InMemoryHashMapSet<u64, u64>> = Database::new(8, 2);
+        let p: SubstitutionDB<u64, u64> = Database::new(8, 2);
         let a = 0b11111111u64;
         let keys = p.get(&a);
 
@@ -303,7 +321,7 @@ mod test {
 
     #[test]
     fn insert_first_key() {
-        let mut p: SubstitutionDB<InMemoryHashMapSet<u64, u64>> = Database::new(8, 2);
+        let mut p: SubstitutionDB<u64, u64> = Database::new(8, 2);
         let a = 0b11111111u64;
 
         assert!(p.insert(a.clone()));
@@ -311,7 +329,7 @@ mod test {
 
     #[test]
     fn insert_second_key() {
-        let mut p: SubstitutionDB<InMemoryHashMapSet<u64, u64>> = Database::new(8, 2);
+        let mut p: SubstitutionDB<u64, u64> = Database::new(8, 2);
         let a = 0b11111111u64;
 
         p.insert(a.clone());
@@ -321,7 +339,7 @@ mod test {
 
     #[test]
     fn find_inserted_key() {
-        let mut p: SubstitutionDB<InMemoryHashMapSet<u64, u64>> = Database::new(8, 2);
+        let mut p: SubstitutionDB<u64, u64> = Database::new(8, 2);
         let a = 0b11111111u64;
         let mut b: HashSet<u64> = HashSet::new();
         b.insert(a.clone());
@@ -335,7 +353,7 @@ mod test {
 
     #[test]
     fn find_permutations_of_inserted_key() {
-        let mut p: SubstitutionDB<InMemoryHashMapSet<u64, u64>> = Database::new(8, 2);
+        let mut p: SubstitutionDB<u64, u64> = Database::new(8, 2);
         let a = 0b00001111u64;
         let b = 0b00000111u64;
         let mut c = HashSet::new();
@@ -350,7 +368,7 @@ mod test {
 
     #[test]
     fn find_permutations_of_multiple_similar_keys() {
-        let mut p: SubstitutionDB<InMemoryHashMapSet<u64, u64>> = Database::new(8, 4);
+        let mut p: SubstitutionDB<u64, u64> = Database::new(8, 4);
         let a = 0b00000000u64;
         let b = 0b10000000u64;
         let c = 0b10000001u64;
@@ -382,7 +400,7 @@ mod test {
             .map(|i| sample(&mut rng2, 0..dimensions, i % max_hd));
 
         for start_dimensions in start_dimensions_seq.take(1000usize) {
-            let mut p: SubstitutionDB<InMemoryHashMapSet<u64, u64>> = Database::new(dimensions, max_hd);
+            let mut p: SubstitutionDB<u64, u64> = Database::new(dimensions, max_hd);
             let a = 0b11111111u64;
 
             let mut b = a.clone();
@@ -415,7 +433,7 @@ mod test {
             .filter(|start_dimensions| start_dimensions.len() > max_hd);
 
         for start_dimensions in start_dimensions_seq.take(1000) {
-            let mut p: SubstitutionDB<InMemoryHashMapSet<u64, u64>> = Database::new(dimensions, max_hd);
+            let mut p: SubstitutionDB<u64, u64> = Database::new(dimensions, max_hd);
             let a = 0b11111111u64;
 
             let mut b = a.clone();
@@ -436,7 +454,7 @@ mod test {
 
     #[test]
     fn remove_inserted_key() {
-        let mut p: SubstitutionDB<InMemoryHashMapSet<u64, u64>> = Database::new(8, 2);
+        let mut p: SubstitutionDB<u64, u64> = Database::new(8, 2);
         let a = 0b00001111u64;
 
         p.insert(a.clone());
@@ -450,7 +468,7 @@ mod test {
 
     #[test]
     fn remove_missing_key() {
-        let mut p: SubstitutionDB<InMemoryHashMapSet<u64, u64>> = Database::new(8, 2);
+        let mut p: SubstitutionDB<u64, u64> = Database::new(8, 2);
         let a = 0b00001111u64;
 
         assert!(!p.remove(&a));
@@ -526,7 +544,7 @@ mod test {
                 return quickcheck::TestResult::discard()
             }
 
-            let mut p: SubstitutionDB<InMemoryHashMapSet<u64, u64>> = Database::new(64, 4);
+            let mut p: SubstitutionDB<u64, u64> = Database::new(64, 4);
             p.insert(a.clone());
             p.insert(b.clone());
             p.insert(c.clone());
@@ -548,7 +566,7 @@ mod test {
                 return quickcheck::TestResult::discard()
             }
 
-            let mut p: SubstitutionDB<InMemoryHashMapSet<u64, u64>> = Database::new(64, 4);
+            let mut p: SubstitutionDB<u64, u64> = Database::new(64, 4);
             p.insert(a.clone());
             p.insert(b.clone());
             p.insert(c.clone());

@@ -87,7 +87,7 @@ impl Hamming for (u64, u8) {
 
 impl<T: Eq + Clone + Hash> Hamming for Vec<T> {
     // NOTE: Optimize the bound query
-    
+
     fn hamming_indices(&self, other: &Vec<T>) -> Vec<usize> {
         self.iter()
             .zip(other.iter())
@@ -104,7 +104,7 @@ mod test {
     use db::hamming::*;
 
     // Vec<u8> tests
-    
+
     #[test]
     fn test_hamming_zero_vec_u8() {
         let a = vec![0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8];

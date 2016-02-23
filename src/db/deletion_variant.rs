@@ -54,7 +54,7 @@ impl Iterator for DeletionVariantIter<u8> {
             None
         } else {
             let next_value = self.source.clone() | (1u8 << self.index);
-            
+
             self.index += 1;
             Some((next_value, self.index as u8))
         }
@@ -69,7 +69,7 @@ impl Iterator for DeletionVariantIter<usize> {
             None
         } else {
             let next_value = self.source.clone() | (1usize << self.index);
-            
+
             self.index += 1;
             Some((next_value, self.index as u8))
         }
@@ -84,7 +84,7 @@ impl Iterator for DeletionVariantIter<u64> {
             None
         } else {
             let next_value = self.source.clone() | (1u64 << self.index);
-            
+
             self.index += 1;
             Some((next_value, self.index as u8))
         }

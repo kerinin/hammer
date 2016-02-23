@@ -1,6 +1,12 @@
 // use std::u8;
 
-pub trait Window<T> {
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct Window {
+    pub start_dimension: usize,
+    pub dimensions: usize,
+}
+
+pub trait Windowable<T> {
     /// Subsample on a set of dimensions
     ///
     /// `start_dimension` the index of the 1st dimension to include in the slice, 
@@ -10,7 +16,7 @@ pub trait Window<T> {
     fn window(&self, start_dimension: usize, dimensions: usize) -> T;
 }
 
-impl Window<u8> for u8 {
+impl Windowable<u8> for u8 {
     fn window(&self, start_dimension: usize, dimensions: usize) -> u8 {
         //  2/4        11111111
         //              ^<--^
@@ -26,7 +32,7 @@ impl Window<u8> for u8 {
     }
 }
 
-impl Window<u64> for u64 {
+impl Windowable<u64> for u64 {
     fn window(&self, start_dimension: usize, dimensions: usize) -> u64 {
         let trim_high = 64 - (start_dimension + dimensions);
 
@@ -38,13 +44,13 @@ impl Window<u64> for u64 {
     }
 }
 
-impl Window<Vec<u8>> for Vec<u8> {
+impl Windowable<Vec<u8>> for Vec<u8> {
     fn window(&self, start_dimension: usize, dimensions: usize) -> Vec<u8> {
         self[start_dimension..(start_dimension + dimensions)].to_vec()
     }
 }
 
-impl Window<(u8, u8)> for (u8, u8) {
+impl Windowable<(u8, u8)> for (u8, u8) {
     fn window(&self, start_dimension: usize, dimensions: usize) -> (u8, u8) {
         let &(value, delete_bit) = self;
 
@@ -67,7 +73,7 @@ impl Window<(u8, u8)> for (u8, u8) {
     }
 }
 
-impl Window<(u64, u8)> for (u64, u8) {
+impl Windowable<(u64, u8)> for (u64, u8) {
     fn window(&self, start_dimension: usize, dimensions: usize) -> (u64, u8) {
         let &(value, delete_bit) = self;
 
