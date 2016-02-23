@@ -60,8 +60,7 @@
 //! ```
 //!
 
-pub mod deletion_db;
-pub mod deletion_variant;
+pub mod deletion;
 pub mod hamming;
 pub mod hashing;
 pub mod substitution_db;

@@ -21,7 +21,7 @@ pub type Key<T> = (Window, T);
 
 /// HmSearch Database using deletion variants
 ///
-pub struct DeletionDB<T, W, V, S = InMemoryHashMapSet<Key<V>, T>> {
+pub struct DeletionDB<T, W, V, S = InMemoryHash<Key<V>, T>> {
     value: PhantomData<T>,
     window: PhantomData<W>,
     variant: PhantomData<V>,
@@ -32,11 +32,10 @@ pub struct DeletionDB<T, W, V, S = InMemoryHashMapSet<Key<V>, T>> {
     store: S,
 }
 
-impl<T, W, V, S> DeletionDB<T, W, V, S> where
+impl<T, W, V> DeletionDB<T, W, V, InMemoryHash<Key<V>, T>> where
 T: Clone + Eq + Hash + Hamming + Windowable<W>,
 W: DeletionVariant<V>,
 V: Clone + Eq + Hash,
-S: MapSet<Key=Key<V>, Value=T>, 
 {
 
     /// Create a new DB with default backing store
@@ -44,10 +43,17 @@ S: MapSet<Key=Key<V>, Value=T>,
     /// Partitions the keyspace as evenly as possible - all partitions
     /// will have either N or N-1 dimensions
     ///
-    pub fn new(dimensions: usize, tolerance: usize) -> DeletionDB<T, W, V> {
-        DeletionDB::with_store(dimensions, tolerance, InMemoryHashMapSet::new())
+    pub fn new(dimensions: usize, tolerance: usize) -> DeletionDB<T, W, V, InMemoryHash<Key<V>, T>> {
+        DeletionDB::with_store(dimensions, tolerance, InMemoryHash::new())
     }
+}
 
+impl<T, W, V, S> DeletionDB<T, W, V, S> where
+T: Clone + Eq + Hash + Hamming + Windowable<W>,
+W: DeletionVariant<V>,
+V: Clone + Eq + Hash,
+S: MapSet<Key=Key<V>, Value=T>, 
+{
     /// Create a new DB with given backing store
     ///
     /// Partitions the keyspace as evenly as possible - all partitions
@@ -99,10 +105,11 @@ S: MapSet<Key=Key<V>, Value=T>,
     }
 }
 
-impl<T, W, V> Database for  DeletionDB<T, W, V> where
+impl<T, W, V, S> Database for  DeletionDB<T, W, V, S> where
 T: Clone + Eq + Hash + Hamming + Windowable<W>,
 W: DeletionVariant<V>,
 V: Clone + Eq + Hash,
+S: MapSet<Key=Key<V>, Value=T>, 
 {
     type Value = T;
 
@@ -213,7 +220,7 @@ V: Clone + Eq + Hash,
 // Internal tests
 #[test]
 fn test_ddb_partition_evenly() {
-    let a: DeletionDB<u64, u64, (u64, u8)> = Database::new(32, 5);
+    let a: DeletionDB<u64, u64, (u64, u8)> = DeletionDB::new(32, 5);
     let b = DeletionDB {
         value: PhantomData,
         window: PhantomData,
@@ -227,7 +234,7 @@ fn test_ddb_partition_evenly() {
             Window{start_dimension:16, dimensions: 8},
             Window{start_dimension:24, dimensions: 8}
         ],
-        store: InMemoryHashMapSet::new(),
+        store: InMemoryHash::new(),
     };
 
     assert_eq!(a, b);
@@ -235,7 +242,7 @@ fn test_ddb_partition_evenly() {
 
 #[test]
 fn test_ddb_partition_unevenly() {
-    let a: DeletionDB<u64, u64, (u64, u8)> = Database::new(32, 7);
+    let a: DeletionDB<u64, u64, (u64, u8)> = DeletionDB::new(32, 7);
     let b = DeletionDB {
         value: PhantomData,
         window: PhantomData,
@@ -250,7 +257,7 @@ fn test_ddb_partition_unevenly() {
             Window{start_dimension:20, dimensions: 6},
             Window{start_dimension:26, dimensions: 6},
         ],
-        store: InMemoryHashMapSet::new(),
+        store: InMemoryHash::new(),
     };
 
     assert_eq!(a, b);
@@ -258,7 +265,7 @@ fn test_ddb_partition_unevenly() {
 
 #[test]
 fn test_ddb_partition_too_many() {
-    let a: DeletionDB<u64, u64, (u64, u8)> = Database::new(4, 8);
+    let a: DeletionDB<u64, u64, (u64, u8)> = DeletionDB::new(4, 8);
     let b = DeletionDB {
         value: PhantomData,
         window: PhantomData,
@@ -271,7 +278,7 @@ fn test_ddb_partition_too_many() {
             Window{start_dimension:2, dimensions: 1},
             Window{start_dimension:3, dimensions: 1},
         ],
-        store: InMemoryHashMapSet::new(),
+        store: InMemoryHash::new(),
     };
 
     assert_eq!(a, b);
@@ -279,7 +286,7 @@ fn test_ddb_partition_too_many() {
 
 #[test]
 fn test_ddb_partition_zero() {
-    let a: DeletionDB<u64, u64, (u64, u8)> = Database::new(32, 0);
+    let a: DeletionDB<u64, u64, (u64, u8)> = DeletionDB::new(32, 0);
     let b = DeletionDB {
         value: PhantomData,
         window: PhantomData,
@@ -290,7 +297,7 @@ fn test_ddb_partition_zero() {
         partitions: vec![
             Window{start_dimension:0, dimensions: 32},
         ],
-        store: InMemoryHashMapSet::new(),
+        store: InMemoryHash::new(),
     };
 
     assert_eq!(a, b);
@@ -298,7 +305,7 @@ fn test_ddb_partition_zero() {
 
 #[test]
 fn test_ddb_partition_with_no_bytes() {
-    let a: DeletionDB<u64, u64, (u64, u8)> = Database::new(0, 0);
+    let a: DeletionDB<u64, u64, (u64, u8)> = DeletionDB::new(0, 0);
     let b = DeletionDB {
         value: PhantomData,
         window: PhantomData,
@@ -309,7 +316,7 @@ fn test_ddb_partition_with_no_bytes() {
         partitions: vec![
             Window{start_dimension:0, dimensions: 0},
         ],
-        store: InMemoryHashMapSet::new(),
+        store: InMemoryHash::new(),
     };
 
     assert_eq!(a, b);
@@ -330,7 +337,7 @@ mod test {
 
     #[test]
     fn find_missing_key() {
-        let p: DeletionDB<u64, u64, (u64, u8)> = Database::new(8, 2);
+        let p: DeletionDB<u64, u64, (u64, u8)> = DeletionDB::new(8, 2);
         let a = 0b11111111u64;
         let keys = p.get(&a);
 
@@ -339,7 +346,7 @@ mod test {
 
     #[test]
     fn insert_first_key() {
-        let mut p: DeletionDB<u64, u64, (u64, u8)> = Database::new(8, 2);
+        let mut p: DeletionDB<u64, u64, (u64, u8)> = DeletionDB::new(8, 2);
         let a = 0b11111111u64;
 
         assert!(p.insert(a.clone()));
@@ -347,7 +354,7 @@ mod test {
 
     #[test]
     fn insert_second_key() {
-        let mut p: DeletionDB<u64, u64, (u64, u8)> = Database::new(8, 2);
+        let mut p: DeletionDB<u64, u64, (u64, u8)> = DeletionDB::new(8, 2);
         let a = 0b11111111u64;
 
         p.insert(a.clone());
@@ -357,7 +364,7 @@ mod test {
 
     #[test]
     fn find_inserted_key() {
-        let mut p: DeletionDB<u64, u64, (u64, u8)> = Database::new(8, 2);
+        let mut p: DeletionDB<u64, u64, (u64, u8)> = DeletionDB::new(8, 2);
         let a = 0b11111111u64;
         let mut b = HashSet::new();
         b.insert(a.clone());
@@ -371,7 +378,7 @@ mod test {
 
     #[test]
     fn find_permutations_of_inserted_key() {
-        let mut p: DeletionDB<u64, u64, (u64, u8)> = Database::new(8, 2);
+        let mut p: DeletionDB<u64, u64, (u64, u8)> = DeletionDB::new(8, 2);
         let a = 0b00001111u64;
         let b = 0b00000111u64;
         let mut c = HashSet::new();
@@ -386,7 +393,7 @@ mod test {
 
     #[test]
     fn find_permutations_of_multiple_similar_keys() {
-        let mut p: DeletionDB<u64, u64, (u64, u8)> = Database::new(8, 4);
+        let mut p: DeletionDB<u64, u64, (u64, u8)> = DeletionDB::new(8, 4);
         let a = 0b00000000u64;
         let b = 0b10000000u64;
         let c = 0b10000001u64;
@@ -418,7 +425,7 @@ mod test {
             .map(|i| sample(&mut rng2, 0..dimensions, i % max_hd));
 
         for start_dimensions in start_dimensions_seq.take(1000) {
-            let mut p: DeletionDB<u64, u64, (u64, u8)> = Database::new(dimensions, max_hd);
+            let mut p: DeletionDB<u64, u64, (u64, u8)> = DeletionDB::new(dimensions, max_hd);
             let a = 0b11111111u64;
 
             let mut b = a.clone();
@@ -451,7 +458,7 @@ mod test {
             .filter(|start_dimensions| start_dimensions.len() > max_hd);
 
         for start_dimensions in start_dimensions_seq.take(1000) {
-            let mut p: DeletionDB<u64, u64, (u64, u8)> = Database::new(dimensions, max_hd);
+            let mut p: DeletionDB<u64, u64, (u64, u8)> = DeletionDB::new(dimensions, max_hd);
             let a = 0b11111111u64;
 
             let mut b = a.clone();
@@ -472,7 +479,7 @@ mod test {
 
     #[test]
     fn remove_inserted_key() {
-        let mut p: DeletionDB<u64, u64, (u64, u8)> = Database::new(8, 2);
+        let mut p: DeletionDB<u64, u64, (u64, u8)> = DeletionDB::new(8, 2);
         let a = 0b00001111u64;
 
         p.insert(a.clone());
@@ -486,7 +493,7 @@ mod test {
 
     #[test]
     fn remove_missing_key() {
-        let mut p: DeletionDB<u64, u64, (u64, u8)> = Database::new(8, 2);
+        let mut p: DeletionDB<u64, u64, (u64, u8)> = DeletionDB::new(8, 2);
         let a = 0b00001111u64;
 
         assert!(!p.remove(&a));
@@ -502,7 +509,7 @@ mod test {
         // NOTE: we need a better way of coercing values - right now we only support
         // Vec<u8> - would be much better to implement a generic so we could set 
         // values directly.  IE, we need to convert u16 to [u8] here, and that's annoying
-        let mut p: DeletionDB<u64, u64, (u64, u8)> = Database::new(16, 4);
+        let mut p: DeletionDB<u64, u64, (u64, u8)> = DeletionDB::new(16, 4);
 
         let mut expected_present = [false; 65536];
         let mut expected_absent = [false; 65536];
@@ -562,7 +569,7 @@ mod test {
                     return quickcheck::TestResult::discard()
                 }
 
-                let mut p: DeletionDB<u64, u64, (u64, u8)> = Database::new(64, 4);
+                let mut p: DeletionDB<u64, u64, (u64, u8)> = DeletionDB::new(64, 4);
                 p.insert(a.clone());
                 p.insert(b.clone());
                 p.insert(c.clone());
@@ -584,7 +591,7 @@ mod test {
                     return quickcheck::TestResult::discard()
                 }
 
-                let mut p: DeletionDB<u64, u64, (u64, u8)> = Database::new(64, 4);
+                let mut p: DeletionDB<u64, u64, (u64, u8)> = DeletionDB::new(64, 4);
                 p.insert(a.clone());
                 p.insert(b.clone());
                 p.insert(c.clone());
