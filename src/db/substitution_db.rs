@@ -10,7 +10,7 @@ use std::marker::PhantomData;
 use self::num::rational::Ratio;
 
 use db::*;
-use db::hash_map_set::*;
+use db::map_set::*;
 use db::result_accumulator::*;
 use db::substitution_variant::*;
 use db::hamming::*;
@@ -85,7 +85,7 @@ W: Clone + Eq + Hash + SubstitutionVariant,
             tolerance: tolerance,
             partition_count: partition_count,
             partitions: partitions,
-            store: HashMapSet::new(),
+            store: MapSet::new(),
         };
     }
 
@@ -185,14 +185,14 @@ W: Clone + Eq + Hash,
         return self.dimensions == other.dimensions &&
             self.tolerance == other.tolerance &&
             self.partition_count == other.partition_count;// &&
-            //self.partitions.eq(&other.partitions);
+        //self.partitions.eq(&other.partitions);
     }
 
     fn ne(&self, other: &SubstitutionDB<T, W>) -> bool {
         return self.dimensions != other.dimensions ||
             self.tolerance != other.tolerance ||
             self.partition_count != other.partition_count; // ||
-            //self.partitions.eq(&other.partitions);
+        //self.partitions.eq(&other.partitions);
     }
 }
 
@@ -212,7 +212,7 @@ fn test_sdb_partition_evenly() {
             Window{start_dimension: 16, dimensions: 8},
             Window{start_dimension: 24, dimensions: 8},
         ],
-        store: HashMapSet::new(),
+        store: MapSet::new(),
     };
 
     assert_eq!(a, b);
@@ -234,7 +234,7 @@ fn test_sdb_partition_unevenly() {
             Window{start_dimension:20, dimensions: 6},
             Window{start_dimension:26, dimensions: 6}
         ],
-        store: HashMapSet::new(),
+        store: MapSet::new(),
     };
 
     assert_eq!(a, b);
@@ -254,7 +254,7 @@ fn test_sdb_partition_too_many() {
             Window{start_dimension:2, dimensions: 1},
             Window{start_dimension:3, dimensions: 1},
         ],
-        store: HashMapSet::new(),
+        store: MapSet::new(),
     };
 
     assert_eq!(a, b);
@@ -272,7 +272,7 @@ fn test_sdb_partition_zero() {
         partitions: vec![
             Window{start_dimension:0, dimensions: 32},
         ],
-        store: HashMapSet::new(),
+        store: MapSet::new(),
     };
 
     assert_eq!(a, b);
@@ -290,7 +290,7 @@ fn test_sdb_partition_with_no_bytes() {
         partitions: vec![
             Window{start_dimension:0, dimensions: 0},
         ],
-        store: HashMapSet::new(),
+        store: MapSet::new(),
     };
 
     assert_eq!(a, b);
@@ -477,103 +477,103 @@ mod test {
     /*
      * We want to simulate adding & removing a ton of keys and then verify the
      * state is consistent.  
-    #[test]
-    #[should_panic]
-    fn stability_under_load() {
-        // NOTE: we need a better way of coercing values - right now we only support
-        // Vec<u8> - would be much better to implement a generic so we could set 
-        // values directly.  IE, we need to convert u16 to [u8] here, and that's annoying
-        let mut p: SubstitutionDB<InMemoryHashMapSet<u64, u64>> = Database::new(16, 4);
+     #[test]
+     #[should_panic]
+     fn stability_under_load() {
+// NOTE: we need a better way of coercing values - right now we only support
+// Vec<u8> - would be much better to implement a generic so we could set 
+// values directly.  IE, we need to convert u16 to [u8] here, and that's annoying
+let mut p: SubstitutionDB<InMemoryHashMapSet<u64, u64>> = Database::new(16, 4);
 
-        let mut expected_present = [false; 65536];
-        let mut expected_absent = [false; 65536];
+let mut expected_present = [false; 65536];
+let mut expected_absent = [false; 65536];
 
-        let mut rng = thread_rng();
-        let seq = rng.gen_iter::<u16>();
+let mut rng = thread_rng();
+let seq = rng.gen_iter::<u16>();
 
-        for i in seq.take(100000usize) {
-            if expected_present[i] {
-                p.remove(&(i as u64));
-                expected_present[i] = false;
-                expected_absent[i] = true;
-            } else {
-                p.insert(i as u64);
-                expected_present[i] = true;
-                expected_absent[i] = false;
-            }
+for i in seq.take(100000usize) {
+if expected_present[i] {
+p.remove(&(i as u64));
+expected_present[i] = false;
+expected_absent[i] = true;
+} else {
+p.insert(i as u64);
+expected_present[i] = true;
+expected_absent[i] = false;
+}
 
-            if i % 1000 == 0 {
-                //for i in 0..expected_present.len() {
-                for i in 0..256 {
-                    let mut found = false;
-                    match p.get(&i) {
-                        Some(set) => for key in set.iter() {
-                            if *key == i as u64 {
-                                found = true;
-                            };
-                        },
-                        None => (),
-                    }
+if i % 1000 == 0 {
+//for i in 0..expected_present.len() {
+for i in 0..256 {
+let mut found = false;
+match p.get(&i) {
+Some(set) => for key in set.iter() {
+if *key == i as u64 {
+found = true;
+};
+},
+None => (),
+}
 
-                    assert!(found)
-                }
+assert!(found)
+}
 
-                for i in 0usize..expected_absent.len() {
-                    let mut found = false;
-                    match p.get(&i) {
-                        Some(set) => for key in set.iter() {
-                            if *key == i as u64 {
-                                found = true;
-                            };
-                        },
-                        None => (),
-                    }
+for i in 0usize..expected_absent.len() {
+let mut found = false;
+match p.get(&i) {
+Some(set) => for key in set.iter() {
+if *key == i as u64 {
+found = true;
+};
+},
+None => (),
+}
 
-                    assert!(!found)
-                }
-            }
+assert!(!found)
+}
+}
+}
+}
+*/
+
+#[test]
+fn idempotent_read() {
+    fn prop(a: u64, b: u64, c: u64) -> quickcheck::TestResult {
+        if a == c {
+            // Removing C should also remove A, if they are the same
+            return quickcheck::TestResult::discard()
+        }
+
+        let mut p: SubstitutionDB<u64, u64> = Database::new(64, 4);
+        p.insert(a.clone());
+        p.insert(b.clone());
+        p.insert(c.clone());
+        p.remove(&c);
+
+        match p.get(&a) {
+            Some(results) => quickcheck::TestResult::from_bool(results.contains(&a)),
+            None => quickcheck::TestResult::failed(),
         }
     }
-     */
+    quickcheck(prop as fn(u64, u64, u64) -> quickcheck::TestResult);
+}
 
-    #[test]
-    fn idempotent_read() {
-        fn prop(a: u64, b: u64, c: u64) -> quickcheck::TestResult {
-            if a == c {
-                // Removing C should also remove A, if they are the same
-                return quickcheck::TestResult::discard()
-            }
-
-            let mut p: SubstitutionDB<u64, u64> = Database::new(64, 4);
-            p.insert(a.clone());
-            p.insert(b.clone());
-            p.insert(c.clone());
-            p.remove(&c);
-
-            match p.get(&a) {
-                Some(results) => quickcheck::TestResult::from_bool(results.contains(&a)),
-                None => quickcheck::TestResult::failed(),
-            }
+#[test]
+fn idempotent_delete() {
+    fn prop(a: u64, b: u64, c: u64) -> quickcheck::TestResult {
+        if a == c {
+            // Removing C should also remove A, if they are the same
+            return quickcheck::TestResult::discard()
         }
-        quickcheck(prop as fn(u64, u64, u64) -> quickcheck::TestResult);
+
+        let mut p: SubstitutionDB<u64, u64> = Database::new(64, 4);
+        p.insert(a.clone());
+        p.insert(b.clone());
+        p.insert(c.clone());
+        p.remove(&c);
+
+        quickcheck::TestResult::from_bool(p.remove(&a))
     }
-
-    #[test]
-    fn idempotent_delete() {
-        fn prop(a: u64, b: u64, c: u64) -> quickcheck::TestResult {
-            if a == c {
-                // Removing C should also remove A, if they are the same
-                return quickcheck::TestResult::discard()
-            }
-
-            let mut p: SubstitutionDB<u64, u64> = Database::new(64, 4);
-            p.insert(a.clone());
-            p.insert(b.clone());
-            p.insert(c.clone());
-            p.remove(&c);
-
-            quickcheck::TestResult::from_bool(p.remove(&a))
-        }
-        quickcheck(prop as fn(u64, u64, u64) -> quickcheck::TestResult);
-    }
+    quickcheck(prop as fn(u64, u64, u64) -> quickcheck::TestResult);
+}
 }

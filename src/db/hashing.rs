@@ -22,18 +22,18 @@ pub struct Hashed<T, H = SipHasher> {
 }
 
 /*
-impl<T, H> Hashed<T,H>
-where T: Hash, H: Hasher + Default 
-{
-    pub fn new(value: T) -> Hashed<T, H> {
-        let mut hashed = Hashed {hash_value: 0, value: value, marker: PhantomData};
-        let mut hasher: H = Default::default();
-        hashed.value.hash(&mut hasher);
-        hashed.hash_value = hasher.finish();
-        hashed
-    }
-}
-*/
+   impl<T, H> Hashed<T,H>
+   where T: Hash, H: Hasher + Default 
+   {
+   pub fn new(value: T) -> Hashed<T, H> {
+   let mut hashed = Hashed {hash_value: 0, value: value, marker: PhantomData};
+   let mut hasher: H = Default::default();
+   hashed.value.hash(&mut hasher);
+   hashed.hash_value = hasher.finish();
+   hashed
+   }
+   }
+   */
 
 impl<T,H> Hamming for Hashed<T,H>
 where T: Hamming 
@@ -47,7 +47,7 @@ where T: Hamming
 
 impl<T, H, W> Windowable<W> for Hashed<T, H>
 where T: Windowable<W> + Hash,
-    H: Hasher + Default,
+H: Hasher + Default,
 {
     fn window(&self, start_dimension: usize, dimensions: usize) -> W {
         let self_value: &T = &**self;

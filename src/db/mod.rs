@@ -67,7 +67,7 @@ pub mod hashing;
 pub mod substitution_db;
 pub mod substitution_variant;
 pub mod window;
-pub mod hash_map_set;
+pub mod map_set;
 
 mod result_accumulator;
 

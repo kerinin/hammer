@@ -1,14 +1,14 @@
 //! Map from values to sets
 //!
 //! `HashMap<K,V>` maps values of type `K` to values of type `V`.  `HashSet<V>`
-//! describes a set of values of type `V`.  `HashMapSet` is the combination of
+//! describes a set of values of type `V`.  `MapSet` is the combination of
 //! these two, providing insertion & removal methods with the same semantics as
 //! `HashSet` but keyed like `HashMap`.  
 //!
 //! # Examples
 //!
 //! ```ignore
-//! let mut sets: InMemoryHashMapSet<&'static str, &'static str> = HashMapSet::new();
+//! let mut sets: InMemoryHashMapSet<&'static str, &'static str> = MapSet::new();
 //!
 //! // Returns true if "value" has not been inserted into the set at "key"
 //! assert_eq!(sets.insert("key", "value"), true);
@@ -32,7 +32,7 @@ use std::hash;
 use std::collections::*;
 use std::collections::hash_map::Entry::{Vacant, Occupied};
 
-pub trait HashMapSet: Sized {
+pub trait MapSet: Sized {
     type Key: clone::Clone + cmp::Eq + hash::Hash;
     type Value: clone::Clone + cmp::Eq + hash::Hash;
 
@@ -50,7 +50,7 @@ where   K: clone::Clone + cmp::Eq + hash::Hash,
     data: HashMap<K, HashSet<V>>,
 }
 
-impl<K, V> HashMapSet for InMemoryHashMapSet<K, V>
+impl<K, V> MapSet for InMemoryHashMapSet<K, V>
 where   K: clone::Clone + cmp::Eq + hash::Hash, 
         V: clone::Clone + cmp::Eq + hash::Hash, 
 {
