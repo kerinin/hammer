@@ -34,7 +34,7 @@ mod in_memory_hash_map;
 mod rocks_db;
 
 pub use self::in_memory_hash_map::InMemoryHash;
-pub use self::rocks_db::RocksDB;
+pub use self::rocks_db::{RocksDB, TempRocksDB};
 
 pub trait MapSet: Sized {
     type Key: clone::Clone + cmp::Eq + hash::Hash;

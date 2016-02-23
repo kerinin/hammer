@@ -24,7 +24,7 @@ docopt = "*"
 rocksdb = "*"
 bincode = "*"
 libc = "*"
-tempfile = "*"
+uuid = "*"
 
 [dev-dependencies]
 quickcheck = "*"

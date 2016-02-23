@@ -1,6 +1,7 @@
 use std::clone;
 use std::cmp;
 use std::hash;
+use std::env;
 use std::marker::PhantomData;
 
 use std::collections::HashSet;
@@ -10,8 +11,34 @@ use rocksdb::{DB, Writable, Options, Direction, IteratorMode};
 use rustc_serialize::{Encodable, Decodable};
 use bincode::SizeLimit;
 use bincode::rustc_serialize::{encode, decode};
+use uuid::Uuid;
 
 use super::MapSet;
+
+pub type TempRocksDB<K, V> = RocksDB<K, V>;
+
+impl<K, V> TempRocksDB<K, V> {
+    pub fn temp_with_opts(opts: Options) -> TempRocksDB<K, V> {
+        let mut dir = env::temp_dir(); 
+        dir.push(&Uuid::new_v4().to_hyphenated_string());
+
+        let db = DB::open(&opts, dir.to_str().unwrap()).unwrap();
+
+        RocksDB{
+            key: PhantomData,
+            value: PhantomData,
+            db: db,
+        }
+    }
+
+    pub fn new_temp() -> TempRocksDB<K, V> {
+        let mut opts = Options::new();
+        opts.add_comparator("prefix comparator", prefix_compare);
+        opts.create_if_missing(true);
+
+        TempRocksDB::temp_with_opts(opts)
+    }
+}
 
 /// RocksDB uses RocksDB to store a mapping from keys to sets of values
 ///
@@ -38,10 +65,7 @@ fn prefix_compare(a: &[u8], b: &[u8]) -> c_int {
 }
 
 impl<K, V> RocksDB<K, V> {
-    pub fn new(path: &str) -> RocksDB<K, V> {
-        let mut opts = Options::new();
-        opts.add_comparator("prefix comparator", prefix_compare);
-
+    pub fn with_opts(path: &str, opts: Options) -> RocksDB<K, V> {
         let db = DB::open(&opts, path).unwrap();
 
         RocksDB{
@@ -49,6 +73,13 @@ impl<K, V> RocksDB<K, V> {
             value: PhantomData,
             db: db,
         }
+    }
+
+    pub fn new(path: &str) -> RocksDB<K, V> {
+        let mut opts = Options::new();
+        opts.add_comparator("prefix comparator", prefix_compare);
+
+        RocksDB::with_opts(path, opts)
     }
 }
 
@@ -110,18 +141,15 @@ V: clone::Clone + cmp::Eq + hash::Hash + Encodable + Decodable,
 #[cfg(test)] 
 mod test {
     extern crate quickcheck;
-    extern crate tempfile;
 
     use self::quickcheck::quickcheck;
-    use self::tempfile::NamedTempFile;
 
     use db::map_set::{MapSet, RocksDB};
 
     #[test]
     fn inserted_exists() {
         fn prop(a: u64, b: u64, c: u64) -> quickcheck::TestResult {
-            let tf = NamedTempFile::new().unwrap();
-            let mut db = RocksDB::new(tf.path().to_str().unwrap());
+            let mut db = RocksDB::new_temp();
             db.insert(a.clone(), b.clone());
             db.insert(b.clone(), c.clone());
 
