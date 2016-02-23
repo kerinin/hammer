@@ -105,3 +105,31 @@ V: clone::Clone + cmp::Eq + hash::Hash + Encodable + Decodable,
         }
     }
 }
+
+
+#[cfg(test)] 
+mod test {
+    extern crate quickcheck;
+    extern crate tempfile;
+
+    use self::quickcheck::quickcheck;
+    use self::tempfile::NamedTempFile;
+
+    use db::map_set::{MapSet, RocksDB};
+
+    #[test]
+    fn inserted_exists() {
+        fn prop(a: u64, b: u64, c: u64) -> quickcheck::TestResult {
+            let tf = NamedTempFile::new().unwrap();
+            let mut db = RocksDB::new(tf.path().to_str().unwrap());
+            db.insert(a.clone(), b.clone());
+            db.insert(b.clone(), c.clone());
+
+            match db.get(&a) {
+                Some(results) => quickcheck::TestResult::from_bool(results.contains(&b)),
+                None => quickcheck::TestResult::failed(),
+            }
+        }
+        quickcheck(prop as fn(u64, u64, u64) -> quickcheck::TestResult);
+    }
+}
