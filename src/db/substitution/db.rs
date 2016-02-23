@@ -12,11 +12,10 @@ use self::num::rational::Ratio;
 use db::*;
 use db::map_set::*;
 use db::result_accumulator::*;
-use db::substitution_variant::*;
 use db::hamming::*;
 use db::window::*;
 
-use super::Key;
+use super::{Key, SubstitutionVariant};
 
 /// HmSearch Database using substitution variants
 ///

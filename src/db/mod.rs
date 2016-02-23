@@ -63,8 +63,6 @@
 pub mod deletion;
 pub mod hamming;
 pub mod hashing;
-pub mod substitution_db;
-pub mod substitution_variant;
 pub mod substitution;
 pub mod window;
 pub mod map_set;
