@@ -32,25 +32,28 @@ pub struct DeletionDB<T, W, V, S = InMemoryHashMapSet<Key<V>, T>> {
     store: S,
 }
 
-// Value must be windowable
-// windoed value must be variant-able
-// variants must be the same type as key
-//
-// T is a store mapping deletion variants to values
-// W is a partitioned window over values
-impl<T, W, V> Database for  DeletionDB<T, W, V> where
+impl<T, W, V, S> DeletionDB<T, W, V, S> where
 T: Clone + Eq + Hash + Hamming + Windowable<W>,
 W: DeletionVariant<V>,
 V: Clone + Eq + Hash,
+S: MapSet<Key=Key<V>, Value=T>, 
 {
-    type Value = T;
 
-    /// Create a new DB
+    /// Create a new DB with default backing store
     ///
     /// Partitions the keyspace as evenly as possible - all partitions
     /// will have either N or N-1 dimensions
     ///
-    fn new(dimensions: usize, tolerance: usize) -> DeletionDB<T, W, V> {
+    pub fn new(dimensions: usize, tolerance: usize) -> DeletionDB<T, W, V> {
+        DeletionDB::with_store(dimensions, tolerance, InMemoryHashMapSet::new())
+    }
+
+    /// Create a new DB with given backing store
+    ///
+    /// Partitions the keyspace as evenly as possible - all partitions
+    /// will have either N or N-1 dimensions
+    ///
+    pub fn with_store(dimensions: usize, tolerance: usize, store: S) -> DeletionDB<T, W, V, S> {
 
         // Determine number of partitions
         let partition_count = if tolerance == 0 {
@@ -91,9 +94,17 @@ V: Clone + Eq + Hash,
             tolerance: tolerance,
             partition_count: partition_count,
             partitions: partitions,
-            store: InMemoryHashMapSet::new(),
+            store: store,
         };
     }
+}
+
+impl<T, W, V> Database for  DeletionDB<T, W, V> where
+T: Clone + Eq + Hash + Hamming + Windowable<W>,
+W: DeletionVariant<V>,
+V: Clone + Eq + Hash,
+{
+    type Value = T;
 
     /// Get all indexed values within `self.tolerance` hamming distance of `key`
     ///

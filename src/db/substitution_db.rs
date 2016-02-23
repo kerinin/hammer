@@ -34,18 +34,27 @@ pub struct SubstitutionDB<T, W, S = InMemoryHashMapSet<Key<W>, T>> {
     store: S,
 }
 
-impl<T, W> Database for SubstitutionDB<T, W> where
+impl<T, W, S> SubstitutionDB<T, W, S> where
 T: Clone + Eq + Hash + Hamming + Windowable<W>,
 W: Clone + Eq + Hash + SubstitutionVariant,
+S: MapSet<Key=Key<W>, Value=T>, 
 {
-    type Value = T;
 
-    /// Create a new DB
+    /// Create a new DB with default backing store
     ///
     /// Partitions the keyspace as evenly as possible - all partitions
     /// will have either N or N-1 dimensions
     ///
-    fn new(dimensions: usize, tolerance: usize) -> SubstitutionDB<T, W> {
+    pub fn new(dimensions: usize, tolerance: usize) -> SubstitutionDB<T, W> {
+        SubstitutionDB::with_store(dimensions, tolerance, InMemoryHashMapSet::new())
+    }
+
+    /// Create a new DB with given backing store
+    ///
+    /// Partitions the keyspace as evenly as possible - all partitions
+    /// will have either N or N-1 dimensions
+    ///
+    pub fn with_store(dimensions: usize, tolerance: usize, store: S) -> SubstitutionDB<T, W, S> {
 
         // Determine number of partitions
         let partition_count = if tolerance == 0 {
@@ -85,10 +94,16 @@ W: Clone + Eq + Hash + SubstitutionVariant,
             tolerance: tolerance,
             partition_count: partition_count,
             partitions: partitions,
-            store: InMemoryHashMapSet::new(),
+            store: store,
         };
     }
+}
 
+impl<T, W> Database for SubstitutionDB<T, W> where
+T: Clone + Eq + Hash + Hamming + Windowable<W>,
+W: Clone + Eq + Hash + SubstitutionVariant,
+{
+    type Value = T;
     /// Get all indexed values within `self.tolerance` hammind distance of `key`
     ///
     fn get(&self, key: &T) -> Option<HashSet<T>> {

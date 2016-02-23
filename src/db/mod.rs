@@ -80,7 +80,6 @@ use std::collections::HashSet;
 pub trait Database {
     type Value;
 
-    fn new(dimensions: usize, tolerance: usize) -> Self;
     fn get(&self, key: &Self::Value) -> Option<HashSet<Self::Value>>;
     fn insert(&mut self, key: Self::Value) -> bool;
     fn remove(&mut self, key: &Self::Value) -> bool;
