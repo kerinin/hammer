@@ -21,8 +21,9 @@ persistent = "*"
 bodyparser = "*"
 rustc-serialize = "*"
 docopt = "*"
-# docopt_macros = "*"
-# rustc-serialize = "*"
+rocksdb = "*"
+bincode = "*"
+libc = "*"
 
 [dev-dependencies]
 quickcheck = "*"
