@@ -73,6 +73,20 @@ mod result_accumulator;
 
 use std::collections::HashSet;
 
+pub trait IDMap<ID, T> {
+    fn get(&self, id: ID) -> T;
+    fn insert(&mut self, id: ID, value: T);
+    fn remove(&mut self, id: &ID);
+}
+
+pub trait ToID<T> {
+    fn to_id(self) -> T;
+}
+
+impl<T> ToID<T> for T {
+    fn to_id(self) -> T { self }
+}
+
 /// Abstract interface for Hamming distance databases
 ///
 pub trait Database {

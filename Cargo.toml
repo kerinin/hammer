@@ -8,7 +8,7 @@ name = "hammer"
 path = "src/lib.rs"
 
 [[bin]]
-name = "hammer"
+name = "hammerhttp"
 path = "src/bin.rs"
 
 [dependencies]
