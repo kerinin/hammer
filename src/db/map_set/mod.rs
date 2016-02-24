@@ -30,10 +30,10 @@ use std::cmp;
 use std::hash;
 use std::collections::HashSet;
 
-mod in_memory_hash_map;
+mod in_memory_hash;
 mod rocks_db;
 
-pub use self::in_memory_hash_map::InMemoryHash;
+pub use self::in_memory_hash::InMemoryHash;
 pub use self::rocks_db::{RocksDB, TempRocksDB};
 
 pub trait MapSet<K, V>: Sized where 
