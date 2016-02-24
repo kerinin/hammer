@@ -20,6 +20,30 @@ use super::{Key, DeletionVariant};
 
 /// HmSearch Database using deletion variants
 ///
+///
+/// T: The data type veing indexed - Database::Value
+/// W: The type of windows over T - T: Window<W>.  Window types must be large
+///   enough to store dimensions/tolerance  dimensions of T (ideally not larger)
+/// V: The type of variants computed over windows - W: DeletionVariant<V>.
+///   Generally should be (T, u8) unless you're using very large T.
+/// ID: Value identifier - balances memory use with collision probability given
+///   the cardinality of the data being indexed
+/// ST: The value sture - maps ID -> T
+/// SV: The variant store - maps V -> ID
+///
+/// Pseudo-code Index(T):
+/// 1. Build windows [W] from T
+/// 2. Generate ID, store T -> ST[ID]
+/// 3. (foreach W) generate variants [V]
+/// 4. (foreach W, V) Add ID to ST[V]
+///
+/// Pseudo-code Query(Tq) -> [Tr]:
+/// 1. Build windows [W] from Tq
+/// 2. (foreach W) generate variants [V]
+/// 3. (foreach W, V) Fetch ST[V] -> IDv
+/// 4. Filter [IDv] -> [IDr]
+/// 5. (foreach IDr) Fetch SV[IDr] -> Tr
+///
 pub struct DB<T, W, V, S = InMemoryHash<Key<V>, T>> {
     value: PhantomData<T>,
     window: PhantomData<W>,
