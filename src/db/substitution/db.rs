@@ -47,7 +47,7 @@ W: Clone + Eq + Hash + SubstitutionVariant,
 impl<T, W, S> DB<T, W, S> where
 T: Clone + Eq + Hash + Hamming + Windowable<W>,
 W: Clone + Eq + Hash + SubstitutionVariant,
-S: MapSet<Key=Key<W>, Value=T>, 
+S: MapSet<Key<W>, T>, 
 {
 
     /// Create a new DB with given backing store
@@ -103,7 +103,7 @@ S: MapSet<Key=Key<W>, Value=T>,
 impl<T, W, S> Database for DB<T, W, S> where
 T: Clone + Eq + Hash + Hamming + Windowable<W>,
 W: Clone + Eq + Hash + SubstitutionVariant,
-S: MapSet<Key=Key<W>, Value=T>, 
+S: MapSet<Key<W>, T>, 
 {
     type Value = T;
     /// Get all indexed values within `self.tolerance` hammind distance of `key`

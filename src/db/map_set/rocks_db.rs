@@ -52,13 +52,10 @@ impl<K, V> Drop for TempRocksDB<K, V> {
     }
 }
 
-impl<K, V> MapSet for TempRocksDB<K, V>
+impl<K, V> MapSet<K, V> for TempRocksDB<K, V>
 where   K: Debug + Clone + Eq + Hash + Encodable + Decodable,
 V: Debug + Clone + Eq + Hash + Encodable + Decodable,
 {
-    type Key = K;
-    type Value = V;
-
     fn insert(&mut self, key: K, value: V) -> bool {
         self.db.insert(key, value)
     }
@@ -107,13 +104,10 @@ impl<K, V> RocksDB<K, V> {
 }
 
 
-impl<K, V> MapSet for RocksDB<K, V>
+impl<K, V> MapSet<K, V> for RocksDB<K, V>
 where   K: Debug + Clone + Eq + Hash + Encodable + Decodable,
 V: Debug + Clone + Eq + Hash + Encodable + Decodable,
 {
-    type Key = K;
-    type Value = V;
-
     fn insert(&mut self, key: K, value: V) -> bool {
         let encoded_key: Vec<u8> = encode(&(key.clone(), value.clone()), SizeLimit::Infinite).unwrap();
 

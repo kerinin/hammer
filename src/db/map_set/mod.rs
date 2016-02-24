@@ -36,11 +36,12 @@ mod rocks_db;
 pub use self::in_memory_hash_map::InMemoryHash;
 pub use self::rocks_db::{RocksDB, TempRocksDB};
 
-pub trait MapSet: Sized {
-    type Key: clone::Clone + cmp::Eq + hash::Hash;
-    type Value: clone::Clone + cmp::Eq + hash::Hash;
+pub trait MapSet<K, V>: Sized where 
+K: clone::Clone + cmp::Eq + hash::Hash,
+V: clone::Clone + cmp::Eq + hash::Hash,
+{
 
-    fn insert(&mut self, key: Self::Key, value: Self::Value) -> bool;
-    fn get(&self, key: &Self::Key) -> Option<HashSet<Self::Value>>;
-    fn remove(&mut self, key: &Self::Key, value: &Self::Value) -> bool;
+    fn insert(&mut self, key: K, value: V) -> bool;
+    fn get(&self, key: &K) -> Option<HashSet<V>>;
+    fn remove(&mut self, key: &K, value: &V) -> bool;
 }

@@ -24,13 +24,10 @@ where   K: clone::Clone + cmp::Eq + hash::Hash,
     }
 }
 
-impl<K, V> MapSet for InMemoryHash<K, V>
+impl<K, V> MapSet<K, V> for InMemoryHash<K, V>
 where   K: clone::Clone + cmp::Eq + hash::Hash, 
         V: clone::Clone + cmp::Eq + hash::Hash, 
 {
-    type Key = K;
-    type Value = V;
-
     fn insert(&mut self, key: K, value: V) -> bool {
         match self.data.entry(key) {
             Vacant(entry) => {

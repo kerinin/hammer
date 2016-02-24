@@ -51,7 +51,7 @@ impl<T, W, V, S> DB<T, W, V, S> where
 T: Clone + Eq + Hash + Hamming + Windowable<W>,
 W: DeletionVariant<V>,
 V: Clone + Eq + Hash,
-S: MapSet<Key=Key<V>, Value=T>, 
+S: MapSet<Key<V>, T>, 
 {
     /// Create a new DB with given backing store
     ///
@@ -108,7 +108,7 @@ impl<T, W, V, S> Database for  DB<T, W, V, S> where
 T: Clone + Eq + Hash + Hamming + Windowable<W>,
 W: DeletionVariant<V>,
 V: Clone + Eq + Hash,
-S: MapSet<Key=Key<V>, Value=T>, 
+S: MapSet<Key<V>, T>, 
 {
     type Value = T;
 
