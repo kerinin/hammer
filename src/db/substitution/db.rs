@@ -19,10 +19,9 @@ use super::{Key, SubstitutionVariant};
 
 /// HmSearch Database using substitution variants
 ///
-pub struct DB<'a, T: 'a, W, S = InMemoryHash<'a, Key<W>, T>> {
+pub struct DB<T, W, S = InMemoryHash<Key<W>, T>> {
     value: PhantomData<T>,
     window: PhantomData<W>,
-    lifetime: PhantomData<&'a T>,
     dimensions: usize,
     tolerance: usize,
     partition_count: usize,
@@ -30,7 +29,7 @@ pub struct DB<'a, T: 'a, W, S = InMemoryHash<'a, Key<W>, T>> {
     store: S,
 }
 
-impl<'a, T, W> DB<'a, T, W, InMemoryHash<'a, Key<W>, T>> where
+impl<T, W> DB<T, W, InMemoryHash<Key<W>, T>> where
 T: Clone + Eq + Hash + Hamming + Windowable<W>,
 W: Clone + Eq + Hash + SubstitutionVariant,
 {
@@ -40,15 +39,15 @@ W: Clone + Eq + Hash + SubstitutionVariant,
     /// Partitions the keyspace as evenly as possible - all partitions
     /// will have either N or N-1 dimensions
     ///
-    pub fn new(dimensions: usize, tolerance: usize) -> DB<'a, T, W, InMemoryHash<'a, Key<W>, T>> {
+    pub fn new(dimensions: usize, tolerance: usize) -> DB<T, W, InMemoryHash<Key<W>, T>> {
         DB::with_store(dimensions, tolerance, InMemoryHash::new())
     }
 }
 
-impl<'a, T, W, S> DB<'a, T, W, S> where
+impl<T, W, S> DB<T, W, S> where
 T: Clone + Eq + Hash + Hamming + Windowable<W>,
 W: Clone + Eq + Hash + SubstitutionVariant,
-S: MapSet<'a, Key<W>, T>, 
+S: MapSet<Key<W>, T>, 
 {
 
     /// Create a new DB with given backing store
@@ -56,7 +55,7 @@ S: MapSet<'a, Key<W>, T>,
     /// Partitions the keyspace as evenly as possible - all partitions
     /// will have either N or N-1 dimensions
     ///
-    pub fn with_store(dimensions: usize, tolerance: usize, store: S) -> DB<'a, T, W, S> {
+    pub fn with_store(dimensions: usize, tolerance: usize, store: S) -> DB<T, W, S> {
 
         // Determine number of partitions
         let partition_count = if tolerance == 0 {
@@ -92,7 +91,6 @@ S: MapSet<'a, Key<W>, T>,
         return DB {
             value: PhantomData,
             window: PhantomData,
-            lifetime: PhantomData,
             dimensions: dimensions,
             tolerance: tolerance,
             partition_count: partition_count,
@@ -102,15 +100,15 @@ S: MapSet<'a, Key<W>, T>,
     }
 }
 
-impl<'a, T, W, S> Database<'a> for DB<'a, T, W, S> where
+impl<T, W, S> Database for DB<T, W, S> where
 T: Clone + Eq + Hash + Hamming + Windowable<W>,
 W: Clone + Eq + Hash + SubstitutionVariant,
-S: MapSet<'a, Key<W>, T>, 
+S: MapSet<Key<W>, T>, 
 {
     type Value = T;
     /// Get all indexed values within `self.tolerance` hammind distance of `key`
     ///
-    fn get(&'a self, key: &T) -> Option<HashSet<T>> {
+    fn get(&self, key: &T) -> Option<HashSet<T>> {
         let mut results = ResultAccumulator::new(self.tolerance, key.clone());
 
         // Split across tasks?
@@ -120,8 +118,8 @@ S: MapSet<'a, Key<W>, T>,
 
             match self.store.get(&Key::Zero(window.clone(), transformed_key.clone())) {
                 Some(keys) => {
-                    for k in keys {
-                        results.insert_zero_variant(&k)
+                    for k in keys.iter() {
+                        results.insert_zero_variant(k)
                     }
                 },
                 None => {},
@@ -129,8 +127,8 @@ S: MapSet<'a, Key<W>, T>,
 
             match self.store.get(&Key::One(window.clone(), transformed_key.clone())) {
                 Some(keys) => {
-                    for k in keys {
-                        results.insert_one_variant(&k)
+                    for k in keys.iter() {
+                        results.insert_one_variant(k)
                     }
                 },
                 None => {},
@@ -187,7 +185,7 @@ S: MapSet<'a, Key<W>, T>,
     }
 }
 
-impl<'a, T, W, S> fmt::Debug for DB<'a, T, W, S> where
+impl<T, W, S> fmt::Debug for DB<T, W, S> where
 T: Clone + Eq + Hash,
 W: Clone + Eq + Hash,
 {
@@ -196,18 +194,18 @@ W: Clone + Eq + Hash,
     }
 }
 
-impl<'a, T, W, S> PartialEq for DB<'a, T, W, S> where
+impl<T, W, S> PartialEq for DB<T, W, S> where
 T: Clone + Eq + Hash,
 W: Clone + Eq + Hash,
 {
-    fn eq(&self, other: &DB<'a, T, W, S>) -> bool {
+    fn eq(&self, other: &DB<T, W, S>) -> bool {
         return self.dimensions == other.dimensions &&
             self.tolerance == other.tolerance &&
             self.partition_count == other.partition_count;// &&
         //self.partitions.eq(&other.partitions);
     }
 
-    fn ne(&self, other: &DB<'a, T, W, S>) -> bool {
+    fn ne(&self, other: &DB<T, W, S>) -> bool {
         return self.dimensions != other.dimensions ||
             self.tolerance != other.tolerance ||
             self.partition_count != other.partition_count; // ||
@@ -222,7 +220,6 @@ fn test_sdb_partition_evenly() {
     let b = DB {
         value: PhantomData,
         window: PhantomData,
-        lifetime: PhantomData,
         dimensions: 32,
         tolerance: 5,
         partition_count: 4,
@@ -244,7 +241,6 @@ fn test_sdb_partition_unevenly() {
     let b = DB {
         value: PhantomData,
         window: PhantomData,
-        lifetime: PhantomData,
         dimensions: 32,
         tolerance: 7,
         partition_count: 5,
@@ -267,7 +263,6 @@ fn test_sdb_partition_too_many() {
     let b = DB {
         value: PhantomData,
         window: PhantomData,
-        lifetime: PhantomData,
         dimensions: 4,
         tolerance: 8,
         partition_count: 3,
@@ -288,7 +283,6 @@ fn test_sdb_partition_zero() {
     let b = DB {
         value: PhantomData,
         window: PhantomData,
-        lifetime: PhantomData,
         dimensions: 32,
         tolerance: 0,
         partition_count: 1,
@@ -307,7 +301,6 @@ fn test_sdb_partition_with_no_bytes() {
     let b = DB {
         value: PhantomData,
         window: PhantomData,
-        lifetime: PhantomData,
         dimensions: 0,
         tolerance: 0,
         partition_count: 1,

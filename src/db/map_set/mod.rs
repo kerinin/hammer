@@ -28,6 +28,7 @@
 use std::clone;
 use std::cmp;
 use std::hash;
+use std::collections::HashSet;
 
 mod in_memory_hash_map;
 mod rocks_db;
@@ -35,13 +36,12 @@ mod rocks_db;
 pub use self::in_memory_hash_map::InMemoryHash;
 pub use self::rocks_db::{RocksDB, TempRocksDB};
 
-pub trait MapSet<'a, K, V>: Sized where 
+pub trait MapSet<K, V>: Sized where 
 K: clone::Clone + cmp::Eq + hash::Hash,
 V: clone::Clone + cmp::Eq + hash::Hash,
 {
-    type Iter: Iterator<Item=V>;
 
     fn insert(&mut self, key: K, value: V) -> bool;
-    fn get(&'a self, key: &K) -> Option<Self::Iter>;
+    fn get(&self, key: &K) -> Option<HashSet<V>>;
     fn remove(&mut self, key: &K, value: &V) -> bool;
 }

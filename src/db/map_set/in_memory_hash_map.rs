@@ -1,39 +1,33 @@
 use std::clone;
 use std::cmp;
 use std::hash;
-use std::marker::PhantomData;
 
-use std::collections::hash_set;
 use std::collections::{HashMap, HashSet};
 use std::collections::hash_map::Entry::{Vacant, Occupied};
 
 use super::MapSet;
 
 #[derive(Debug)]
-pub struct InMemoryHash<'a, K, V: 'a>
+pub struct InMemoryHash<K, V>
 where   K: clone::Clone + cmp::Eq + hash::Hash, 
         V: clone::Clone + cmp::Eq + hash::Hash, 
 {
-    lifetime: PhantomData<&'a V>,
     data: HashMap<K, HashSet<V>>,
 }
 
-impl<'a, K, V> InMemoryHash<'a, K, V>
+impl<K, V> InMemoryHash<K, V>
 where   K: clone::Clone + cmp::Eq + hash::Hash, 
         V: clone::Clone + cmp::Eq + hash::Hash, 
 {
-    pub fn new() -> InMemoryHash<'a, K, V> {
-        InMemoryHash {lifetime: PhantomData, data: HashMap::new()}
+    pub fn new() -> InMemoryHash<K, V> {
+        InMemoryHash {data: HashMap::new()}
     }
 }
 
-impl<'a, K, V> MapSet<'a, K, V> for InMemoryHash<'a, K, V>
+impl<K, V> MapSet<K, V> for InMemoryHash<K, V>
 where   K: clone::Clone + cmp::Eq + hash::Hash, 
         V: clone::Clone + cmp::Eq + hash::Hash, 
 {
-    // type Iter = hash_set::Drain<'a, V>;
-    type Iter = hash_set::IntoIter<V>;
-
     fn insert(&mut self, key: K, value: V) -> bool {
         match self.data.entry(key) {
             Vacant(entry) => {
@@ -48,9 +42,9 @@ where   K: clone::Clone + cmp::Eq + hash::Hash,
         }
     }
 
-    fn get(&'a self, key: &K) -> Option<hash_set::IntoIter<V>> {
+    fn get(&self, key: &K) -> Option<HashSet<V>> {
         match self.data.get(key) {
-            Some(h) => Some(h.clone().into_iter()),
+            Some(h) => Some(h.clone()),
             None => None,
         }
     }
@@ -93,7 +87,7 @@ mod test {
             db.insert(k.clone(), v.clone());
 
             match db.get(&k) {
-                Some(mut results) => quickcheck::TestResult::from_bool(results.any(|e| e == v)),
+                Some(results) => quickcheck::TestResult::from_bool(results.contains(&v)),
                 None => quickcheck::TestResult::failed(),
             }
         }
@@ -111,7 +105,7 @@ mod test {
             db.insert(k.clone(), v1.clone());
 
             match db.get(&k) {
-                Some(mut results) => quickcheck::TestResult::from_bool(!results.any(|e| e == v2)),
+                Some(results) => quickcheck::TestResult::from_bool(!results.contains(&v2)),
                 None => quickcheck::TestResult::failed(),
             }
         }
@@ -149,7 +143,7 @@ mod test {
             db.remove(&k, &v1);
 
             match db.get(&k) {
-                Some(mut results) => quickcheck::TestResult::from_bool(!results.any(|e| e == v1)),
+                Some(results) => quickcheck::TestResult::from_bool(!results.contains(&v1)),
                 None => quickcheck::TestResult::failed(),
             }
         }
@@ -169,7 +163,7 @@ mod test {
             db.remove(&k, &v1);
 
             match db.get(&k) {
-                Some(mut results) => quickcheck::TestResult::from_bool(results.any(|e| e == v2)),
+                Some(results) => quickcheck::TestResult::from_bool(results.contains(&v2)),
                 None => quickcheck::TestResult::failed(),
             }
         }
