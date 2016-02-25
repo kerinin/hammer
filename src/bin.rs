@@ -1,14 +1,10 @@
 extern crate docopt;
-extern crate rocksdb;
-extern crate bincode;
-extern crate uuid;
 extern crate iron;
 extern crate router;
 extern crate persistent;
 extern crate rustc_serialize;
-extern crate num;
+extern crate hammer;
 
-mod db;
 mod http;
 
 use std::path::PathBuf;

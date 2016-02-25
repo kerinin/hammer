@@ -8,10 +8,10 @@ use router::Router;
 use persistent::State;
 use rustc_serialize::json;
 
-use db::Database;
-use db::id_map::{IDMap, Echo};
-use db::map_set::{MapSet, RocksDB, TempRocksDB};
-use db::substitution::{DB, Key};
+use hammer::db::Database;
+use hammer::db::id_map::{IDMap, Echo};
+use hammer::db::map_set::{MapSet, RocksDB, TempRocksDB};
+use hammer::db::substitution::{DB, Key};
 
 use super::add;
 use super::query;
