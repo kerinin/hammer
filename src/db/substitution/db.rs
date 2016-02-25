@@ -1,5 +1,3 @@
-extern crate num;
-
 use std::fmt;
 use std::cmp::{Eq, PartialEq};
 use std::clone::Clone;
@@ -7,31 +5,59 @@ use std::hash::Hash;
 use std::collections::HashSet;
 use std::marker::PhantomData;
 
-use self::num::rational::Ratio;
+use num::rational::Ratio;
 
-use db::*;
-use db::map_set::*;
-use db::result_accumulator::*;
-use db::hamming::*;
-use db::window::*;
-
-use super::{Key, SubstitutionVariant};
+use db::Database;
+use db::map_set::{MapSet, InMemoryHash};
+use db::result_accumulator::ResultAccumulator;
+use db::hamming::Hamming;
+use db::window::{Window, Windowable};
+use db::id_map::{ToID, IDMap, Echo};
+use db::substitution::{Key, SubstitutionVariant};
 
 /// HmSearch Database using substitution variants
 ///
-pub struct DB<T, W, S = InMemoryHash<Key<W>, T>> {
+/// T: The data type being indexed - Database::Value
+/// W: The type of windows over T - T: Window<W>.  Window types must be large
+///   enough to store dimensions/tolerance  dimensions of T (ideally not larger)
+/// V: The type of variants computed over windows - W: SubstitutionVariant<V>.
+///   Generally should be (T, u8) unless you're working with large dimensions.
+/// ID: Value identifier - balances memory use with collision probability given
+///   the cardinality of the data being indexed
+/// ST: The value sture - maps ID -> T
+/// SV: The variant store - maps V -> ID
+///
+/// Pseudo-code Index(T):
+/// 1. Build windows [W] from T
+/// 2. Generate ID, store T -> ST[ID]
+/// 3. (foreach W) generate null-variant V0 and variants [V]
+/// 4. (foreach W, V) Add ID to ST[V]
+///
+/// Pseudo-code Query(Tq) -> [Tr]:
+/// 1. Build windows [W] from Tq
+/// 2. (foreach W) generate null-variant V0
+/// 3. (foreach W+V0) Fetch ST[V0] -> IDv
+/// 4. Filter [IDv] -> [IDr]
+/// 5. (foreach IDr) Fetch SV[IDr] -> Tr
+///
+pub struct DB<T, W, V = W, ID = T, ST = Echo<T>, SV = InMemoryHash<Key<W>, T>> {
     value: PhantomData<T>,
     window: PhantomData<W>,
+    variant: PhantomData<V>,
+    id: PhantomData<ID>,
+
     dimensions: usize,
     tolerance: usize,
     partition_count: usize,
     partitions: Vec<Window>,
-    store: S,
+
+    value_store: ST,
+    variant_store: SV,
 }
 
-impl<T, W> DB<T, W, InMemoryHash<Key<W>, T>> where
+impl<T, W> DB<T, W, W, T, Echo<T>, InMemoryHash<Key<W>, T>> where
 T: Clone + Eq + Hash + Hamming + Windowable<W>,
-W: Clone + Eq + Hash + SubstitutionVariant,
+W: Clone + Eq + Hash + SubstitutionVariant<W>,
 {
 
     /// Create a new DB with default backing store
@@ -39,15 +65,18 @@ W: Clone + Eq + Hash + SubstitutionVariant,
     /// Partitions the keyspace as evenly as possible - all partitions
     /// will have either N or N-1 dimensions
     ///
-    pub fn new(dimensions: usize, tolerance: usize) -> DB<T, W, InMemoryHash<Key<W>, T>> {
-        DB::with_store(dimensions, tolerance, InMemoryHash::new())
+    pub fn new(dimensions: usize, tolerance: usize) -> DB<T, W, W, T, Echo<T>, InMemoryHash<Key<W>, T>> {
+        DB::with_stores(dimensions, tolerance, Echo::new(), InMemoryHash::new())
     }
 }
 
-impl<T, W, S> DB<T, W, S> where
-T: Clone + Eq + Hash + Hamming + Windowable<W>,
-W: Clone + Eq + Hash + SubstitutionVariant,
-S: MapSet<Key<W>, T>, 
+impl<T, W, V, ID, ST, SV> DB<T, W, V, ID, ST, SV> where
+T: Clone + Eq + Hash + Hamming + Windowable<W> +ToID<ID>,
+W: Clone + Eq + Hash + SubstitutionVariant<V>,
+V: Clone + Eq + Hash,
+ID: Clone + Eq + Hash,
+ST: IDMap<ID, T>,
+SV: MapSet<Key<V>, ID>, 
 {
 
     /// Create a new DB with given backing store
@@ -55,7 +84,7 @@ S: MapSet<Key<W>, T>,
     /// Partitions the keyspace as evenly as possible - all partitions
     /// will have either N or N-1 dimensions
     ///
-    pub fn with_store(dimensions: usize, tolerance: usize, store: S) -> DB<T, W, S> {
+    pub fn with_stores(dimensions: usize, tolerance: usize, value_store: ST, variant_store: SV) -> DB<T, W, V, ID, ST, SV> {
 
         // Determine number of partitions
         let partition_count = if tolerance == 0 {
@@ -91,21 +120,28 @@ S: MapSet<Key<W>, T>,
         return DB {
             value: PhantomData,
             window: PhantomData,
+            variant: PhantomData,
+            id: PhantomData,
             dimensions: dimensions,
             tolerance: tolerance,
             partition_count: partition_count,
             partitions: partitions,
-            store: store,
+            value_store: value_store,
+            variant_store: variant_store,
         };
     }
 }
 
-impl<T, W, S> Database for DB<T, W, S> where
-T: Clone + Eq + Hash + Hamming + Windowable<W>,
-W: Clone + Eq + Hash + SubstitutionVariant,
-S: MapSet<Key<W>, T>, 
+impl<T, W, V, ID, ST, SV> Database for DB<T, W, V, ID, ST, SV> where
+T: Clone + Eq + Hash + Hamming + Windowable<W> +ToID<ID>,
+W: Clone + Eq + Hash + SubstitutionVariant<V>,
+V: Clone + Eq + Hash,
+ID: Clone + Eq + Hash,
+ST: IDMap<ID, T>,
+SV: MapSet<Key<V>, ID>, 
 {
     type Value = T;
+
     /// Get all indexed values within `self.tolerance` hammind distance of `key`
     ///
     fn get(&self, key: &T) -> Option<HashSet<T>> {
@@ -113,22 +149,21 @@ S: MapSet<Key<W>, T>,
 
         // Split across tasks?
         for window in self.partitions.iter() {
-
             let transformed_key = &key.window(window.start_dimension, window.dimensions);
 
-            match self.store.get(&Key::Zero(window.clone(), transformed_key.clone())) {
-                Some(keys) => {
-                    for k in keys.iter() {
-                        results.insert_zero_variant(k)
+            match self.variant_store.get(&Key::Zero(window.clone(), transformed_key.null_variant())) {
+                Some(ids) => {
+                    for id in ids.iter() {
+                        results.insert_zero_variant(&self.value_store.get(id.clone()))
                     }
                 },
                 None => {},
             }
 
-            match self.store.get(&Key::One(window.clone(), transformed_key.clone())) {
-                Some(keys) => {
-                    for k in keys.iter() {
-                        results.insert_one_variant(k)
+            match self.variant_store.get(&Key::One(window.clone(), transformed_key.null_variant())) {
+                Some(ids) => {
+                    for id in ids.iter() {
+                        results.insert_one_variant(&self.value_store.get(id.clone()))
                     }
                 },
                 None => {},
@@ -143,15 +178,16 @@ S: MapSet<Key<W>, T>,
     /// Returns true if key was added to ANY index
     ///
     fn insert(&mut self, key: T) -> bool {
+        let id = key.clone().to_id();
+        self.value_store.insert(id.clone(), key.clone());
 
         // Split across tasks?
         self.partitions.clone().into_iter().map(|window| {
-
             let transformed_key = key.window(window.start_dimension, window.dimensions);
 
-            if self.store.insert(Key::Zero(window.clone(), transformed_key.clone()), key.clone()) {
+            if self.variant_store.insert(Key::Zero(window.clone(), transformed_key.null_variant()), id.clone()) {
                 for k in transformed_key.substitution_variants(window.dimensions) {
-                    self.store.insert(Key::One(window.clone(), k.clone()), key.clone());
+                    self.variant_store.insert(Key::One(window.clone(), k.clone()), id.clone());
                 }
                 true
             } else {
@@ -167,13 +203,16 @@ S: MapSet<Key<W>, T>,
     /// Returns true if key was removed from ANY index
     ///
     fn remove(&mut self, key: &T) -> bool {
+        let id = key.clone().to_id();
+        self.value_store.remove(&id);
+
         // Split across tasks?
         self.partitions.clone().into_iter().map(|window| {
             let transformed_key = &key.window(window.start_dimension, window.dimensions);
 
-            if self.store.remove(&Key::Zero(window.clone(), transformed_key.clone()), key) {
+            if self.variant_store.remove(&Key::Zero(window.clone(), transformed_key.null_variant()), &id) {
                 for ref k in transformed_key.substitution_variants(window.dimensions) {
-                    self.store.remove(&Key::Zero(window.clone(), k.clone()), key);
+                    self.variant_store.remove(&Key::Zero(window.clone(), k.clone()), &id);
                 }
                 true
             } else {
@@ -217,100 +256,70 @@ W: Clone + Eq + Hash,
 #[test]
 fn test_sdb_partition_evenly() {
     let a: DB<u64, u64> = DB::new(32, 5);
-    let b = DB {
-        value: PhantomData,
-        window: PhantomData,
-        dimensions: 32,
-        tolerance: 5,
-        partition_count: 4,
-        partitions: vec![
-            Window{start_dimension: 0, dimensions: 8},
-            Window{start_dimension: 8, dimensions: 8},
-            Window{start_dimension: 16, dimensions: 8},
-            Window{start_dimension: 24, dimensions: 8},
-        ],
-        store: InMemoryHash::new(),
-    };
 
-    assert_eq!(a, b);
+    assert_eq!(a.dimensions, 32);
+    assert_eq!(a.tolerance, 5);
+    assert_eq!(a.partition_count, 4);
+    assert_eq!(a.partitions, vec![
+               Window{start_dimension:0, dimensions: 8},
+               Window{start_dimension:8, dimensions: 8},
+               Window{start_dimension:16, dimensions: 8},
+               Window{start_dimension:24, dimensions: 8}
+    ]);
 }
 
 #[test]
 fn test_sdb_partition_unevenly() {
     let a: DB<u64, u64> = DB::new(32, 7);
-    let b = DB {
-        value: PhantomData,
-        window: PhantomData,
-        dimensions: 32,
-        tolerance: 7,
-        partition_count: 5,
-        partitions: vec![
-            Window{start_dimension:0, dimensions: 7},
-            Window{start_dimension:7, dimensions: 7},
-            Window{start_dimension:14, dimensions: 6},
-            Window{start_dimension:20, dimensions: 6},
-            Window{start_dimension:26, dimensions: 6}
-        ],
-        store: InMemoryHash::new(),
-    };
 
-    assert_eq!(a, b);
+    assert_eq!(a.dimensions, 32);
+    assert_eq!(a.tolerance, 7);
+    assert_eq!(a.partition_count, 5);
+    assert_eq!(a.partitions, vec![
+               Window{start_dimension:0, dimensions: 7},
+               Window{start_dimension:7, dimensions: 7},
+               Window{start_dimension:14, dimensions: 6},
+               Window{start_dimension:20, dimensions: 6},
+               Window{start_dimension:26, dimensions: 6},
+    ]);
 }
 
 #[test]
 fn test_sdb_partition_too_many() {
     let a: DB<u64, u64> = DB::new(4, 8);
-    let b = DB {
-        value: PhantomData,
-        window: PhantomData,
-        dimensions: 4,
-        tolerance: 8,
-        partition_count: 3,
-        partitions: vec![
-            Window{start_dimension:0, dimensions: 2},
-            Window{start_dimension:2, dimensions: 1},
-            Window{start_dimension:3, dimensions: 1},
-        ],
-        store: InMemoryHash::new(),
-    };
 
-    assert_eq!(a, b);
+    assert_eq!(a.dimensions, 4);
+    assert_eq!(a.tolerance, 8);
+    assert_eq!(a.partition_count, 3);
+    assert_eq!(a.partitions, vec![
+               Window{start_dimension:0, dimensions: 2},
+               Window{start_dimension:2, dimensions: 1},
+               Window{start_dimension:3, dimensions: 1},
+    ]);
 }
 
 #[test]
 fn test_sdb_partition_zero() {
     let a: DB<u64, u64> = DB::new(32, 0);
-    let b = DB {
-        value: PhantomData,
-        window: PhantomData,
-        dimensions: 32,
-        tolerance: 0,
-        partition_count: 1,
-        partitions: vec![
-            Window{start_dimension:0, dimensions: 32},
-        ],
-        store: InMemoryHash::new(),
-    };
 
-    assert_eq!(a, b);
+    assert_eq!(a.dimensions, 32);
+    assert_eq!(a.tolerance, 0);
+    assert_eq!(a.partition_count, 1);
+    assert_eq!(a.partitions, vec![
+               Window{start_dimension:0, dimensions: 32},
+    ]);
 }
 
 #[test]
 fn test_sdb_partition_with_no_bytes() {
     let a: DB<u64, u64> = DB::new(0, 0);
-    let b = DB {
-        value: PhantomData,
-        window: PhantomData,
-        dimensions: 0,
-        tolerance: 0,
-        partition_count: 1,
-        partitions: vec![
-            Window{start_dimension:0, dimensions: 0},
-        ],
-        store: InMemoryHash::new(),
-    };
 
-    assert_eq!(a, b);
+    assert_eq!(a.dimensions, 0);
+    assert_eq!(a.tolerance, 0);
+    assert_eq!(a.partition_count, 1);
+    assert_eq!(a.partitions, vec![
+               Window{start_dimension:0, dimensions: 0},
+    ]);
 }
 
 

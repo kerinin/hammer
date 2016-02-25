@@ -63,6 +63,7 @@
 pub mod deletion;
 pub mod hamming;
 pub mod hashing;
+pub mod id_map;
 pub mod substitution;
 pub mod window;
 pub mod map_set;
@@ -72,20 +73,6 @@ mod result_accumulator;
 // mod bench; // Uncomment to get benchmarks to run
 
 use std::collections::HashSet;
-
-pub trait IDMap<ID, T> {
-    fn get(&self, id: ID) -> T;
-    fn insert(&mut self, id: ID, value: T);
-    fn remove(&mut self, id: &ID);
-}
-
-pub trait ToID<T> {
-    fn to_id(self) -> T;
-}
-
-impl<T> ToID<T> for T {
-    fn to_id(self) -> T { self }
-}
 
 /// Abstract interface for Hamming distance databases
 ///

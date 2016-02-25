@@ -1,5 +1,3 @@
-extern crate num;
-
 use std::fmt;
 use std::cmp::*;
 use std::clone::*;
@@ -8,25 +6,16 @@ use std::collections::*;
 use std::collections::hash_map::Entry::*;
 use std::marker::PhantomData;
 
-use self::num::rational::Ratio;
+use num::rational::Ratio;
 
-use db::*;
-use db::result_accumulator::*;
-use db::map_set::*;
-use db::hamming::*;
-use db::window::*;
+use db::Database;
+use db::result_accumulator::ResultAccumulator;
+use db::map_set::{MapSet, InMemoryHash};
+use db::hamming::Hamming;
+use db::window::{Window, Windowable};
+use db::id_map::{ToID, IDMap, Echo};
 
 use super::{Key, DeletionVariant};
-
-pub struct Echo<T> {
-    t: PhantomData<T>,
-}
-
-impl<T> IDMap<T, T> for Echo<T> {
-    fn get(&self, id: T) -> T { id }
-    fn insert(&mut self, _: T, _: T) {}
-    fn remove(&mut self, _: &T) {}
-}
 
 /// HmSearch Database using deletion variants
 ///
@@ -49,7 +38,7 @@ impl<T> IDMap<T, T> for Echo<T> {
 /// Pseudo-code Query(Tq) -> [Tr]:
 /// 1. Build windows [W] from Tq
 /// 2. (foreach W) generate variants [V]
-/// 3. (foreach W, V) Fetch ST[V] -> IDv
+/// 3. (foreach W+V) Fetch ST[V] -> IDv
 /// 4. Filter [IDv] -> [IDr]
 /// 5. (foreach IDr) Fetch SV[IDr] -> Tr
 ///
@@ -80,7 +69,7 @@ V: Clone + Eq + Hash,
     /// will have either N or N-1 dimensions
     ///
     pub fn new(dimensions: usize, tolerance: usize) -> DB<T, W, V, T, Echo<T>, InMemoryHash<Key<V>, T>> {
-        DB::with_stores(dimensions, tolerance, Echo{t: PhantomData}, InMemoryHash::new())
+        DB::with_stores(dimensions, tolerance, Echo::new(), InMemoryHash::new())
     }
 }
 
@@ -169,11 +158,11 @@ SV: MapSet<Key<V>, ID>,
 
             for variant in transformed_key.deletion_variants(window.dimensions) {
                 match self.variant_store.get(&(window.clone(), variant)) {
-                    Some(found_ids) => {
+                    Some(ids) => {
                         // Iterate through the values found in the deletion variant's set
-                        for found_id in found_ids.iter() {
+                        for id in ids.iter() {
                             // Increment the key's count (this is sort of cumberson in Rust...)
-                            match counts.entry(found_id.clone()) {
+                            match counts.entry(id.clone()) {
                                 Occupied(mut entry) => { *entry.get_mut() += 1; },
                                 Vacant(entry) => { entry.insert(1); },
                             }
@@ -183,13 +172,11 @@ SV: MapSet<Key<V>, ID>,
                 }
             }
 
-            for (found_id, count) in counts {
-                // NOTE: resolving ID->T could be done at the very end, but
-                // that would require building another hashset.  Optimize later...
+            for (id, count) in counts {
                 if count > 2 {
-                    results.insert_zero_variant(&self.value_store.get(found_id))
+                    results.insert_zero_variant(&self.value_store.get(id))
                 } else {
-                    results.insert_one_variant(&self.value_store.get(found_id))
+                    results.insert_one_variant(&self.value_store.get(id))
                 }
             }
         }

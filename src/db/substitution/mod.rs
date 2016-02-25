@@ -19,8 +19,14 @@ pub enum Key<T> {
 
 /// Return a set of single-dimensional permutation variants
 ///
-pub trait SubstitutionVariant: Sized {
-    type Iter: Iterator<Item = Self>;
+pub trait SubstitutionVariant<V>: Sized {
+    type Iter: Iterator<Item = V>;
+
+    /// Returns a non-permuted version of `self` with type `<self as Iterator>::Item`
+    ///
+    /// This method exists to support compact variants
+    ///
+    fn null_variant(&self) -> V;
 
     /// Substitution variants
     ///
@@ -28,14 +34,18 @@ pub trait SubstitutionVariant: Sized {
     /// Alternately, returns the set of values with Hamming distance `1` from 
     /// `self`
     ///
-    fn substitution_variants(&self, dimensions: usize) -> <Self as SubstitutionVariant>::Iter;
+    fn substitution_variants(&self, dimensions: usize) -> <Self as SubstitutionVariant<V>>::Iter;
 }
 
-impl<T> SubstitutionVariant for T where
+impl<T> SubstitutionVariant<T> for T where
 T: Clone,
 BinaryIter<T>: Iterator<Item = T>,
 {
     type Iter = BinaryIter<T>;
+
+    fn null_variant(&self) -> T {
+        self.clone()
+    }
 
     fn substitution_variants(&self, dimensions: usize) -> BinaryIter<T> {
         BinaryIter::new(self.clone(), dimensions)
