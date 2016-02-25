@@ -1,6 +1,6 @@
 extern crate rocksdb;
-extern crate rustc_serialize;
 extern crate bincode;
+extern crate rustc_serialize;
 extern crate uuid;
 extern crate num;
 

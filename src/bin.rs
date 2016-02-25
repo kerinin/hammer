@@ -1,10 +1,13 @@
-/*
 extern crate docopt;
+extern crate rocksdb;
+extern crate bincode;
+extern crate uuid;
 extern crate iron;
 extern crate router;
 extern crate bodyparser;
 extern crate persistent;
 extern crate rustc_serialize;
+extern crate num;
 
 mod db;
 mod http;
@@ -45,5 +48,3 @@ pub fn main() {
 
     s.serve()
 }
-*/
-fn main() {}

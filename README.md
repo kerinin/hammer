@@ -13,7 +13,7 @@ Hamming distance search platform
 cargo build && target/build/hammer --bind localhost:3000 --bits 64 --tolerance 5
 
 # Add some keys
-curl -X POST -d '{scalars": [1,2,3,10012093810923]}' localhost:3000/add
+curl -X POST -d '{"scalars": [1,2,3,10012093810923]}' localhost:3000/add
 # {
 #   "scalars":[
 #     {"scalar":1,"added":true},
