@@ -8,8 +8,10 @@ use router::Router;
 use persistent::State;
 use rustc_serialize::json;
 
+use hammer::db::id_map;
+use hammer::db::map_set;
 use hammer::db::Database;
-use hammer::db::id_map::{IDMap, Echo};
+use hammer::db::id_map::IDMap;
 use hammer::db::map_set::{MapSet, RocksDB, TempRocksDB};
 use hammer::db::substitution::{DB, Key};
 
@@ -32,20 +34,24 @@ impl Server {
     pub fn serve(self) {
         println!("Serving with options: {:?}", self);
 
-        let id_map: Box<IDMap<u64, u64>> = Box::new(Echo::new());
-        // let id_map: Box<IDMap<u64, u64>> = match self.data_dir {
-        //     Some(ref dir) => { Box::new(Echo::new()) },
-        //     None => { Box::new(Echo::new()) },
-        // };
+        let id_map: Box<IDMap<u64, u64>> = match self.data_dir {
+            Some(ref dir) => {
+                let mut value_store_path = dir.clone();
+                value_store_path.push("s_var_value");
+
+                Box::new(id_map::RocksDB::new(value_store_path.to_str().unwrap())) 
+            },
+            None => { Box::new(id_map::TempRocksDB::new()) },
+        };
 
         let map_set: Box<MapSet<Key<u64>, u64>> = match self.data_dir {
             Some(ref dir) => { 
                 let mut variant_store_path = dir.clone();
                 variant_store_path.push("s_var_mapset");
 
-                Box::new(RocksDB::new(variant_store_path.to_str().unwrap())) 
+                Box::new(map_set::RocksDB::new(variant_store_path.to_str().unwrap())) 
             },
-            None => { Box::new(TempRocksDB::new()) },
+            None => { Box::new(map_set::TempRocksDB::new()) },
         };
 
         let db: Box<Database<Value=u64>> = Box::new(DB::with_stores(self.bits, self.tolerance, id_map, map_set));

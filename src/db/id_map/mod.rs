@@ -1,7 +1,12 @@
-extern crate num;
+mod echo;
+mod hash_map;
+mod rocks_db;
 
 use std::ops::{Deref, DerefMut};
-use std::marker::PhantomData;
+
+pub use self::echo::Echo;
+pub use self::hash_map::HashMap;
+pub use self::rocks_db::{RocksDB, TempRocksDB};
 
 pub trait IDMap<ID, T>: Sync + Send {
     fn get(&self, id: ID) -> T;
@@ -9,7 +14,8 @@ pub trait IDMap<ID, T>: Sync + Send {
     fn remove(&mut self, id: &ID);
 }
 
-impl<T, ID, D: Sync + Send + Deref + DerefMut> IDMap<ID, T> for D where 
+impl<T, ID, D: Deref + DerefMut> IDMap<ID, T> for D where 
+D: Sync + Send,
 <D as Deref>::Target: IDMap<ID, T>,
 {
     fn get(&self, id: ID) -> T {
@@ -33,18 +39,3 @@ impl<T> ToID<T> for T {
     fn to_id(self) -> T { self }
 }
 
-pub struct Echo<T> {
-    t: PhantomData<T>,
-}
-
-impl<T> Echo<T> {
-    pub fn new() -> Echo<T> {
-        Echo{t: PhantomData}
-    }
-}
-
-impl<T: Sync + Send> IDMap<T, T> for Echo<T> {
-    fn get(&self, id: T) -> T { id }
-    fn insert(&mut self, _: T, _: T) {}
-    fn remove(&mut self, _: &T) {}
-}
