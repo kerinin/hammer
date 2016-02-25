@@ -1,7 +1,7 @@
 use std::io::Read;
 use std::collections::HashSet;
+use std::path::PathBuf;
 
-use bodyparser;
 use iron::prelude::*;
 use iron::{status, typemap};
 use router::Router;
@@ -9,25 +9,48 @@ use persistent::State;
 use rustc_serialize::json;
 
 use db::Database;
-use db::substitution::DB;
+use db::id_map::{IDMap, Echo};
+use db::map_set::{MapSet, RocksDB, TempRocksDB};
+use db::substitution::{DB, Key};
 
 use super::add;
 use super::query;
 use super::delete;
 
+#[derive(Debug)]
 pub struct Server {
+    pub data_dir: Option<PathBuf>,
     pub bind: String,
     pub bits: usize,
     pub tolerance: usize,
 }
 
 struct DBKey;
-impl typemap::Key for DBKey { type Value = DB<u64, u64>; }
+impl typemap::Key for DBKey { type Value = Box<Database<Value=u64>>; }
 
 impl Server {
     pub fn serve(self) {
+        println!("Serving with options: {:?}", self);
+
+        let id_map: Box<IDMap<u64, u64>> = Box::new(Echo::new());
+        // let id_map: Box<IDMap<u64, u64>> = match self.data_dir {
+        //     Some(ref dir) => { Box::new(Echo::new()) },
+        //     None => { Box::new(Echo::new()) },
+        // };
+
+        let map_set: Box<MapSet<Key<u64>, u64>> = match self.data_dir {
+            Some(ref dir) => { 
+                let mut variant_store_path = dir.clone();
+                variant_store_path.push("s_var_mapset");
+
+                Box::new(RocksDB::new(variant_store_path.to_str().unwrap())) 
+            },
+            None => { Box::new(TempRocksDB::new()) },
+        };
+
+        let db: Box<Database<Value=u64>> = Box::new(DB::with_stores(self.bits, self.tolerance, id_map, map_set));
+
         let mut router = Router::new();
-        let db: DB<u64, u64> = DB::new(self.bits, self.tolerance);
 
         router.post("/add", handle_add);
         router.post("/query", handle_query);

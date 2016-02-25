@@ -1,6 +1,6 @@
 // use std::u8;
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, RustcDecodable, RustcEncodable)]
 pub struct Window {
     pub start_dimension: usize,
     pub dimensions: usize,

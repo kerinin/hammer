@@ -1,6 +1,6 @@
-use std::clone;
-use std::cmp;
-use std::hash;
+use std::clone::Clone;
+use std::cmp::Eq;
+use std::hash::Hash;
 
 use std::collections::{HashMap, HashSet};
 use std::collections::hash_map::Entry::{Vacant, Occupied};
@@ -9,15 +9,15 @@ use super::MapSet;
 
 #[derive(Debug)]
 pub struct InMemoryHash<K, V>
-where   K: clone::Clone + cmp::Eq + hash::Hash, 
-        V: clone::Clone + cmp::Eq + hash::Hash, 
+where   K: Sync + Send + Clone + Eq + Hash, 
+        V: Sync + Send + Clone + Eq + Hash, 
 {
     data: HashMap<K, HashSet<V>>,
 }
 
 impl<K, V> InMemoryHash<K, V>
-where   K: clone::Clone + cmp::Eq + hash::Hash, 
-        V: clone::Clone + cmp::Eq + hash::Hash, 
+where   K: Sync + Send + Clone + Eq + Hash, 
+        V: Sync + Send + Clone + Eq + Hash, 
 {
     pub fn new() -> InMemoryHash<K, V> {
         InMemoryHash {data: HashMap::new()}
@@ -25,8 +25,8 @@ where   K: clone::Clone + cmp::Eq + hash::Hash,
 }
 
 impl<K, V> MapSet<K, V> for InMemoryHash<K, V>
-where   K: clone::Clone + cmp::Eq + hash::Hash, 
-        V: clone::Clone + cmp::Eq + hash::Hash, 
+where   K: Sync + Send + Clone + Eq + Hash, 
+        V: Sync + Send + Clone + Eq + Hash, 
 {
     fn insert(&mut self, key: K, value: V) -> bool {
         match self.data.entry(key) {

@@ -4,7 +4,6 @@ use std::clone::Clone;
 use std::cmp::Eq;
 use std::hash::Hash;
 use std::ops::Drop;
-use std::fmt::Debug;
 use std::path::PathBuf;
 use std::marker::PhantomData;
 
@@ -53,8 +52,8 @@ impl<K, V> Drop for TempRocksDB<K, V> {
 }
 
 impl<K, V> MapSet<K, V> for TempRocksDB<K, V>
-where   K: Debug + Clone + Eq + Hash + Encodable + Decodable,
-V: Debug + Clone + Eq + Hash + Encodable + Decodable,
+where   K: Sync + Send + Clone + Eq + Hash + Encodable + Decodable,
+V: Sync + Send + Clone + Eq + Hash + Encodable + Decodable,
 {
     fn insert(&mut self, key: K, value: V) -> bool {
         self.db.insert(key, value)
@@ -105,8 +104,8 @@ impl<K, V> RocksDB<K, V> {
 
 
 impl<K, V> MapSet<K, V> for RocksDB<K, V>
-where   K: Debug + Clone + Eq + Hash + Encodable + Decodable,
-V: Debug + Clone + Eq + Hash + Encodable + Decodable,
+where   K: Sync + Send + Clone + Eq + Hash + Encodable + Decodable,
+V: Sync + Send + Clone + Eq + Hash + Encodable + Decodable,
 {
     fn insert(&mut self, key: K, value: V) -> bool {
         let encoded_key: Vec<u8> = encode(&(key.clone(), value.clone()), SizeLimit::Infinite).unwrap();

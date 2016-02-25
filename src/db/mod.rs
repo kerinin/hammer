@@ -60,7 +60,7 @@
 //! ```
 //!
 
-pub mod deletion;
+// pub mod deletion;
 pub mod hamming;
 pub mod hashing;
 pub mod id_map;
@@ -76,7 +76,7 @@ use std::collections::HashSet;
 
 /// Abstract interface for Hamming distance databases
 ///
-pub trait Database {
+pub trait Database: Sync + Send {
     type Value;
 
     fn get(&self, key: &Self::Value) -> Option<HashSet<Self::Value>>;

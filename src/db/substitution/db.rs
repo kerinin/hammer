@@ -56,8 +56,8 @@ pub struct DB<T, W, V = W, ID = T, ST = Echo<T>, SV = InMemoryHash<Key<W>, T>> {
 }
 
 impl<T, W> DB<T, W, W, T, Echo<T>, InMemoryHash<Key<W>, T>> where
-T: Clone + Eq + Hash + Hamming + Windowable<W>,
-W: Clone + Eq + Hash + SubstitutionVariant<W>,
+T: Sync + Send + Clone + Eq + Hash + Hamming + Windowable<W>,
+W: Sync + Send + Clone + Eq + Hash + SubstitutionVariant<W>,
 {
 
     /// Create a new DB with default backing store
@@ -133,10 +133,10 @@ SV: MapSet<Key<V>, ID>,
 }
 
 impl<T, W, V, ID, ST, SV> Database for DB<T, W, V, ID, ST, SV> where
-T: Clone + Eq + Hash + Hamming + Windowable<W> +ToID<ID>,
-W: Clone + Eq + Hash + SubstitutionVariant<V>,
-V: Clone + Eq + Hash,
-ID: Clone + Eq + Hash,
+T: Sync + Send + Clone + Eq + Hash + Hamming + Windowable<W> +ToID<ID>,
+W: Sync + Send + Clone + Eq + Hash + SubstitutionVariant<V>,
+V: Sync + Send + Clone + Eq + Hash,
+ID: Sync + Send + Clone + Eq + Hash,
 ST: IDMap<ID, T>,
 SV: MapSet<Key<V>, ID>, 
 {
@@ -225,8 +225,8 @@ SV: MapSet<Key<V>, ID>,
 }
 
 impl<T, W, S> fmt::Debug for DB<T, W, S> where
-T: Clone + Eq + Hash,
-W: Clone + Eq + Hash,
+T: Sync + Send + Clone + Eq + Hash,
+W: Sync + Send + Clone + Eq + Hash,
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         write!(f, "({}:{}:{})", self.dimensions, self.tolerance, self.partition_count)
@@ -234,8 +234,8 @@ W: Clone + Eq + Hash,
 }
 
 impl<T, W, S> PartialEq for DB<T, W, S> where
-T: Clone + Eq + Hash,
-W: Clone + Eq + Hash,
+T: Sync + Send + Clone + Eq + Hash,
+W: Sync + Send + Clone + Eq + Hash,
 {
     fn eq(&self, other: &DB<T, W, S>) -> bool {
         return self.dimensions == other.dimensions &&

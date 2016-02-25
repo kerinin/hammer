@@ -11,7 +11,7 @@ mod binary_iter;
 pub use self::db::DB;
 pub use self::binary_iter::BinaryIter;
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, RustcDecodable, RustcEncodable)]
 pub enum Key<T> {
     One(Window, T),
     Zero(Window, T),
