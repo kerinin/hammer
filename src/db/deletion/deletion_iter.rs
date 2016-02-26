@@ -1,6 +1,8 @@
 use std::clone::*;
 use std::iter::*;
 
+use db::deletion::{Du8, Du64};
+
 pub struct DeletionIter<T> {
     // The original value, which shouldn't be modified
     source: T,
@@ -21,9 +23,9 @@ impl<T> DeletionIter<T> {
 }
 
 impl Iterator for DeletionIter<u8> {
-    type Item = (u8, u8);
+    type Item = Du8;
 
-    fn next(&mut self) -> Option<(u8, u8)> {
+    fn next(&mut self) -> Option<Du8> {
         if self.index >= self.dimensions {
             None
         } else {
@@ -35,25 +37,10 @@ impl Iterator for DeletionIter<u8> {
     }
 }
 
-impl Iterator for DeletionIter<usize> {
-    type Item = (usize, u8);
-
-    fn next(&mut self) -> Option<(usize, u8)> {
-        if self.index >= self.dimensions {
-            None
-        } else {
-            let next_value = self.source.clone() | (1usize << self.index);
-
-            self.index += 1;
-            Some((next_value, self.index as u8))
-        }
-    }
-}
-
 impl Iterator for DeletionIter<u64> {
-    type Item = (u64, u8);
+    type Item = Du64;
 
-    fn next(&mut self) -> Option<(u64, u8)> {
+    fn next(&mut self) -> Option<Du64> {
         if self.index >= self.dimensions {
             None
         } else {
@@ -169,18 +156,5 @@ mod test {
         ];
 
         assert_eq!(a.deletion_variants(4).collect::<Vec<(u8, u8)>>(), expected);
-    }
-
-    #[test]
-    fn test_deletion_variants_usize() {
-        let a = 0b00000000usize;
-        let expected = vec![
-            (0b00000001usize, 1u8),
-            (0b00000010usize, 2u8),
-            (0b00000100usize, 3u8),
-            (0b00001000usize, 4u8),
-        ];
-
-        assert_eq!(a.deletion_variants(4).collect::<Vec<(usize, u8)>>(), expected);
     }
 }

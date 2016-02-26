@@ -50,47 +50,49 @@ impl Windowable<Vec<u8>> for Vec<u8> {
     }
 }
 
-impl Windowable<(u8, u8)> for (u8, u8) {
-    fn window(&self, start_dimension: usize, dimensions: usize) -> (u8, u8) {
-        let &(value, delete_bit) = self;
+/*
+   impl Windowable<(u8, u8)> for (u8, u8) {
+   fn window(&self, start_dimension: usize, dimensions: usize) -> (u8, u8) {
+   let &(value, delete_bit) = self;
 
-        //  2/4        11111111
-        //              ^<--^
-        //  << 1       11111110
-        //  >> 1+2     00011111
-        let trim_high = 8 - (start_dimension + dimensions);
+//  2/4        11111111
+//              ^<--^
+//  << 1       11111110
+//  >> 1+2     00011111
+let trim_high = 8 - (start_dimension + dimensions);
 
-        let mut new_delete_bit = delete_bit.clone();
-        if start_dimension < (delete_bit as usize) && (start_dimension + dimensions) <= (delete_bit as usize) {
-            new_delete_bit = 0;
-        }
+let mut new_delete_bit = delete_bit.clone();
+if start_dimension < (delete_bit as usize) && (start_dimension + dimensions) <= (delete_bit as usize) {
+new_delete_bit = 0;
+}
 
-        if trim_high >= 8 {
-            (0u8, new_delete_bit)
-        } else {
-            ((value << trim_high) >> (trim_high + start_dimension), new_delete_bit)
-        }
-    }
+if trim_high >= 8 {
+(0u8, new_delete_bit)
+} else {
+((value << trim_high) >> (trim_high + start_dimension), new_delete_bit)
+}
+}
 }
 
 impl Windowable<(u64, u8)> for (u64, u8) {
-    fn window(&self, start_dimension: usize, dimensions: usize) -> (u64, u8) {
-        let &(value, delete_bit) = self;
+fn window(&self, start_dimension: usize, dimensions: usize) -> (u64, u8) {
+let &(value, delete_bit) = self;
 
-        let trim_high = 64 - (start_dimension + dimensions);
+let trim_high = 64 - (start_dimension + dimensions);
 
-        let mut new_delete_bit = delete_bit.clone();
-        if start_dimension < (delete_bit as usize) && (start_dimension + dimensions) <= (delete_bit as usize) {
-            new_delete_bit = 0;
-        }
-
-        if trim_high >= 64 {
-            (0, new_delete_bit)
-        } else {
-            ((value << trim_high) >> (trim_high + start_dimension), new_delete_bit)
-        }
-    }
+let mut new_delete_bit = delete_bit.clone();
+if start_dimension < (delete_bit as usize) && (start_dimension + dimensions) <= (delete_bit as usize) {
+new_delete_bit = 0;
 }
+
+if trim_high >= 64 {
+(0, new_delete_bit)
+} else {
+((value << trim_high) >> (trim_high + start_dimension), new_delete_bit)
+}
+}
+}
+*/
 
 #[cfg(test)] 
 mod test {

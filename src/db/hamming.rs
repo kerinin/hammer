@@ -5,6 +5,8 @@ use std::cmp::*;
 use std::clone::*;
 use std::hash::*;
 
+use db::deletion::{Du8, Du64};
+
 /// HmSearch-indexable value
 ///
 pub trait Hamming {
@@ -56,14 +58,14 @@ impl Hamming for u64 {
 }
 
 // Ignoring the deletion index for now
-impl Hamming for (u8, u8) {
-    fn hamming(&self, other: &(u8, u8)) -> usize {
+impl Hamming for Du8 {
+    fn hamming(&self, other: &Du8) -> usize {
         let &(self_value, _) = self;
         let &(ref other_value, _) = other;
         self_value.hamming(other_value)
     }
 
-    fn hamming_indices(&self, other: &(u8, u8)) -> Vec<usize> {
+    fn hamming_indices(&self, other: &Du8) -> Vec<usize> {
         let &(self_value, _) = self;
         let &(ref other_value, _) = other;
         self_value.hamming_indices(other_value)
@@ -71,14 +73,14 @@ impl Hamming for (u8, u8) {
 }
 
 // Ignoring the deletion index for now
-impl Hamming for (u64, u8) {
-    fn hamming(&self, other: &(u64, u8)) -> usize {
+impl Hamming for Du64 {
+    fn hamming(&self, other: &Du64) -> usize {
         let &(self_value, _) = self;
         let &(ref other_value, _) = other;
         self_value.hamming(other_value)
     }
 
-    fn hamming_indices(&self, other: &(u64, u8)) -> Vec<usize> {
+    fn hamming_indices(&self, other: &Du64) -> Vec<usize> {
         let &(self_value, _) = self;
         let &(ref other_value, _) = other;
         self_value.hamming_indices(other_value)

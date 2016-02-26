@@ -60,7 +60,7 @@
 //! ```
 //!
 
-// pub mod deletion;
+pub mod deletion;
 pub mod hamming;
 pub mod hashing;
 pub mod id_map;

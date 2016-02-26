@@ -3,6 +3,8 @@ use std::iter::*;
 use std::hash::*;
 use std::default::*;
 
+use db::deletion::{Dvec};
+
 /// XORIter is an optimization for vectors
 ///
 /// Typical deletion variants are created by cloning the base value, setting
@@ -70,9 +72,9 @@ Vec<T>: Clone,
 }
 
 impl Iterator for XORIter<Vec<u8>> {
-    type Item = u64;
+    type Item = Dvec;
 
-    fn next(&mut self) -> Option<u64> {
+    fn next(&mut self) -> Option<Dvec> {
         if self.index > self.dimensions {
             None
         } else {
