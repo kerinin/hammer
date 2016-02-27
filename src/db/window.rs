@@ -1,4 +1,5 @@
-// use std::u8;
+use std;
+use std::mem::size_of;
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, RustcDecodable, RustcEncodable)]
 pub struct Window {
@@ -16,33 +17,38 @@ pub trait Windowable<T> {
     fn window(&self, start_dimension: usize, dimensions: usize) -> T;
 }
 
-impl Windowable<u8> for u8 {
-    fn window(&self, start_dimension: usize, dimensions: usize) -> u8 {
-        //  2/4        11111111
-        //              ^<--^
-        //  << 1       11111110
-        //  >> 1+2     00011111
-        let trim_high = 8 - (start_dimension + dimensions);
+macro_rules! window_uint_to_uint {
+    ($elem:ident, $out:ident) => {
+        impl Windowable<$out> for $elem {
+            fn window(&self, start_dimension: usize, dimensions: usize) -> $out {
+                // source start in range
+                assert!(start_dimension < (8 * size_of::<$elem>()));                  
+                // source end in range
+                assert!(start_dimension + dimensions <= (8 * size_of::<$elem>()));    
+                // dimensions in range
+                assert!(dimensions <= (8 * size_of::<$out>()));                      
 
-        if trim_high >= 8 {
-            0u8
-        } else {
-            (self << trim_high) >> (trim_high + start_dimension)
+                //  2/5        11111111
+                //              ^<--^
+                //  << 1       11111110
+                //  >> 1+2     00011111
+                let trim_high = (8 * size_of::<$elem>()) - (start_dimension + dimensions);
+
+                ((self << trim_high) >> (trim_high + start_dimension)) as $out
+            }
         }
     }
 }
-
-impl Windowable<u64> for u64 {
-    fn window(&self, start_dimension: usize, dimensions: usize) -> u64 {
-        let trim_high = 64 - (start_dimension + dimensions);
-
-        if trim_high >= 64 {
-            0
-        } else {
-            (self << trim_high) >> (trim_high + start_dimension)
-        }
-    }
-}
+window_uint_to_uint!(u64, u64);
+window_uint_to_uint!(u64, u32);
+window_uint_to_uint!(u64, u16);
+window_uint_to_uint!(u64, u8);
+window_uint_to_uint!(u32, u32);
+window_uint_to_uint!(u32, u16);
+window_uint_to_uint!(u32, u8);
+window_uint_to_uint!(u16, u16);
+window_uint_to_uint!(u16, u8);
+window_uint_to_uint!(u8, u8);
 
 impl Windowable<Vec<u8>> for Vec<u8> {
     fn window(&self, start_dimension: usize, dimensions: usize) -> Vec<u8> {
@@ -50,204 +56,163 @@ impl Windowable<Vec<u8>> for Vec<u8> {
     }
 }
 
+pub const ONES_U16: u16 = std::u16::MAX;
+pub const EVEN_U16: u16 = 0b1010101010101010u16;
+pub const ODD_U16: u16 = 0b0101010101010101u16;
+pub const ONES_U8: u8 = std::u8::MAX;
+pub const EVEN_U8: u8 = 0b10101010u8;
+pub const ODD_U8: u8 = 0b01010101u8;
+
+// Implements Windowable<$out> for [$elem; $elems]
+//
+// Usage notes:
+// $elem: the type of the array element, generally u64
+// $elems: the number of elements in the array
+// $out: the output type. NOTE: size_of<$out>() should be <= size_of<$elem>()
+macro_rules! window_fixed_to_uint {
+    ([$elem:ident; $elems:expr], $out:ident) => {
+
+        impl Windowable<$out> for [$elem; $elems] {
+            fn window(&self, start_dimension: usize, dimensions: usize) -> $out {
+                // source start in range
+                assert!(start_dimension < (8 * $elems * size_of::<$elem>()));                  
+                // source end in range
+                assert!(start_dimension + dimensions <= (8 * $elems * size_of::<$elem>()));    
+                // dimensions in range
+                assert!(dimensions <= (8 * size_of::<$out>()));                      
+
+                // Contruct the output mask
+                let mut out = if dimensions == (8 * size_of::<$out>()) {
+                    std::$out::MAX
+                } else {
+                    std::$out::MAX ^ (std::$out::MAX << dimensions)
+                };
+
+                let offset = $elems - 1 - (start_dimension / (8 * size_of::<$elem>()));
+                let shift = start_dimension % (8 * size_of::<$elem>());
+
+                // AND the shifted bits into the mask
+                if shift == 0 {
+                    out &= self[offset] as $out
+                } else if offset == 0 {
+                    out &= (self[offset] >> shift) as $out
+                } else {
+                    out &= ((self[offset] >> shift) | (self[offset-1] << ((8 * size_of::<$elem>())-shift))) as $out
+                }
+
+                return out
+            }
+        }
+    }
+}
+window_fixed_to_uint!([u64; 4], u64);
+window_fixed_to_uint!([u64; 4], u32);
+window_fixed_to_uint!([u64; 4], u16);
+window_fixed_to_uint!([u64; 4], u8);
+window_fixed_to_uint!([u64; 3], u64);
+window_fixed_to_uint!([u64; 3], u32);
+window_fixed_to_uint!([u64; 3], u16);
+window_fixed_to_uint!([u64; 3], u8);
+window_fixed_to_uint!([u64; 2], u64);
+window_fixed_to_uint!([u64; 2], u32);
+window_fixed_to_uint!([u64; 2], u16);
+window_fixed_to_uint!([u64; 2], u8);
+
+// This is mostly implemented for testing
+window_fixed_to_uint!([u16; 4], u8);
+
 /*
-   impl Windowable<(u8, u8)> for (u8, u8) {
-   fn window(&self, start_dimension: usize, dimensions: usize) -> (u8, u8) {
-   let &(value, delete_bit) = self;
+#[cfg(test)]
+mod bench {
+extern crate test;
+extern crate rand;
 
-//  2/4        11111111
-//              ^<--^
-//  << 1       11111110
-//  >> 1+2     00011111
-let trim_high = 8 - (start_dimension + dimensions);
+use self::test::Bencher;
+use self::rand::*;
 
-let mut new_delete_bit = delete_bit.clone();
-if start_dimension < (delete_bit as usize) && (start_dimension + dimensions) <= (delete_bit as usize) {
-new_delete_bit = 0;
-}
+use db::window::*;
 
-if trim_high >= 8 {
-(0u8, new_delete_bit)
-} else {
-((value << trim_high) >> (trim_high + start_dimension), new_delete_bit)
-}
-}
-}
+#[bench]
+fn u64x4_to_u64(b: &mut Bencher) {
+let mut rng = thread_rng();
+let mut v = [0u64; 4];
 
-impl Windowable<(u64, u8)> for (u64, u8) {
-fn window(&self, start_dimension: usize, dimensions: usize) -> (u64, u8) {
-let &(value, delete_bit) = self;
-
-let trim_high = 64 - (start_dimension + dimensions);
-
-let mut new_delete_bit = delete_bit.clone();
-if start_dimension < (delete_bit as usize) && (start_dimension + dimensions) <= (delete_bit as usize) {
-new_delete_bit = 0;
-}
-
-if trim_high >= 64 {
-(0, new_delete_bit)
-} else {
-((value << trim_high) >> (trim_high + start_dimension), new_delete_bit)
-}
+b.iter(|| -> u64 {
+// RNG overhead is around 240 ns/iter (+/- 24)
+v = [rng.gen(), rng.gen(), rng.gen(), rng.gen()];
+let start = rng.gen::<usize>() % 192;
+let dims = 1 + rng.gen::<usize>() % 64;
+v.window(start, dims)
+})
 }
 }
 */
 
 #[cfg(test)] 
 mod test {
+    extern crate rand;
+    extern crate quickcheck;
+
+    use self::quickcheck::quickcheck;
+
     use db::window::*;
 
-    // Vec<u8> tests
-    /* I don't think this is a valid test...
-       #[test]
-       fn test_window_min_start_and_finish_vec_u8() {
-       let a = vec![1u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 1u8];
-       let b = vec![];
-
-       assert_eq!(a.window(0,0), b);
-       }
-       */
-
     #[test]
-    fn test_window_max_start_vec_u8() {
-        let a = vec![1u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 1u8];
-        let b = vec![1u8];
+    fn quick_u16_u8() {
+        fn prop(x: usize, y: usize) -> quickcheck::TestResult {
+            let start_dimension = x % 16;
+            let dimensions = y % 8;
+            if start_dimension + dimensions > 16 || start_dimension == 16 || dimensions == 0 || dimensions > 8 {
+                return quickcheck::TestResult::discard()
+            }
 
-        assert_eq!(a.window(7,1), b);
+            let start = EVEN_U16;
+            let actual: u8 = start.window(start_dimension, dimensions);
+            let fill = if start_dimension % 2 == 0 { EVEN_U8 } else { ODD_U8 };
+            let expected = match dimensions / 8 {
+                0 => fill & (ONES_U8 ^ (ONES_U8 << dimensions)),
+                1 => fill,
+                _ => panic!("wtf"),
+            };
+
+            /*
+               println!(
+               "[{:016b},{:016b},{:016b},{:016b}].window({:2},{:2}) -> {:08b} (exp {:08b})", 
+               start[0], start[1], start[2], start[3],
+               start_dimension, dimensions, actual, expected,
+               );
+               */
+            quickcheck::TestResult::from_bool(actual == expected)
+        }
+        quickcheck(prop as fn(usize, usize) -> quickcheck::TestResult);
     }
 
     #[test]
-    fn test_window_min_start_and_max_finish_vec_u8() {
-        let a = vec![1u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 1u8];
-        let b = vec![1u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 1u8];
+    fn quick_u16x4_u8() {
+        fn prop(start_dimension: usize, dimensions: usize) -> quickcheck::TestResult {
+            if start_dimension + dimensions > 64 || start_dimension == 64 || dimensions == 0 || dimensions > 8 {
+                return quickcheck::TestResult::discard()
+            }
 
-        assert_eq!(a.window(0,8), b);
-    }
 
-    #[test]
-    fn test_window_n_start_and_max_finish_vec_u8() {
-        let a = vec![1u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 1u8];
-        let b = vec![0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 1u8];
+            let start = [EVEN_U16, EVEN_U16, EVEN_U16, EVEN_U16];
+            let actual: u8 = start.window(start_dimension, dimensions);
+            let fill = if start_dimension % 2 == 0 { EVEN_U8 } else { ODD_U8 };
+            let expected = match dimensions / 8 {
+                0 => fill & (ONES_U8 ^ (ONES_U8 << dimensions)),
+                1 => fill,
+                _ => panic!("wtf"),
+            };
 
-        assert_eq!(a.window(1,7), b);
-    }
-
-    #[test]
-    fn test_window_min_start_and_n_finish_vec_u8() {
-        let a = vec![0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 1u8];
-        let b = vec![0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8];
-
-        assert_eq!(a.window(0,7), b);
-    }
-
-    #[test]
-    fn test_window_n_start_and_n_finish_vec_u8() {
-        let a = vec![0u8, 0u8, 0u8, 1u8, 1u8, 0u8, 0u8, 0u8];
-        let b = vec![1u8, 1u8];
-
-        assert_eq!(a.window(3,2), b);
-    }
-
-    // u8 tests
-    /* I don't think this is a valid test...
-       #[test]
-       #[should_panic]
-       fn test_window_min_start_and_finish_u8() {
-       let a = 0b10000001u8;
-       let b = 0b00000000u8;
-
-       assert_eq!(a.window(0,0), b);
-       }
-       */
-
-    #[test]
-    fn test_window_max_start_u8() {
-        let a = 0b10000001u8;
-        let b = 0b00000001u8;
-
-        assert_eq!(a.window(7,1), b);
-    }
-
-    #[test]
-    fn test_window_min_start_and_max_finish_u8() {
-        let a = 0b10000001u8;
-        let b = 0b10000001u8;
-
-        assert_eq!(a.window(0,8), b);
-    }
-
-    #[test]
-    fn test_window_n_start_and_max_finish_u8() {
-        let a = 0b11000011u8;
-        let b = 0b01100001u8;
-
-        assert_eq!(a.window(1,7), b);
-    }
-
-    #[test]
-    fn test_window_min_start_and_n_finish_u8() {
-        let a = 0b11000011u8;
-        let b = 0b01000011u8;
-
-        assert_eq!(a.window(0,7), b);
-    }
-
-    #[test]
-    fn test_window_n_start_and_n_finish_u8() {
-        let a = 0b11111000u8;
-        let b = 0b00000011u8;
-
-        assert_eq!(a.window(3,2), b);
-    }
-
-    // u64 tests
-
-    #[test]
-    fn test_window_min_start_and_finish_u64() {
-        let a = 0b10000001u64;
-        let b = 0b00000001u64;
-
-        assert_eq!(a.window(0,1), b);
-    }
-
-    #[test]
-    fn test_window_max_start_u64() {
-        let a = 0b10000001u64;
-        let b = 0b00000001u64;
-
-        assert_eq!(a.window(7,1), b);
-    }
-
-    #[test]
-    fn test_window_min_start_and_max_finish_u64() {
-        let a = 0b10000001u64;
-        let b = 0b10000001u64;
-
-        assert_eq!(a.window(0,8), b);
-    }
-
-    #[test]
-    fn test_window_n_start_and_max_finish_u64() {
-        let a = 0b11000011u64;
-        let b = 0b01100001u64;
-
-        assert_eq!(a.window(1,7), b);
-    }
-
-    #[test]
-    fn test_window_min_start_and_n_finish_u64() {
-        let a = 0b11000011u64;
-        let b = 0b01000011u64;
-
-        assert_eq!(a.window(0,7), b);
-    }
-
-    #[test]
-    fn test_window_n_start_and_n_finish_u64() {
-        let a = 0b11111000u64;
-        let b = 0b00000011u64;
-
-        assert_eq!(a.window(3,2), b);
+            /*
+               println!(
+               "[{:016b},{:016b},{:016b},{:016b}].window({:2},{:2}) -> {:08b} (exp {:08b})", 
+               start[0], start[1], start[2], start[3],
+               start_dimension, dimensions, actual, expected,
+               );
+               */
+            quickcheck::TestResult::from_bool(actual == expected)
+        }
+        quickcheck(prop as fn(usize, usize) -> quickcheck::TestResult);
     }
 }

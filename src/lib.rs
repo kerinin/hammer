@@ -1,3 +1,4 @@
+// #![feature(test)]
 extern crate rocksdb;
 extern crate bincode;
 extern crate rustc_serialize;

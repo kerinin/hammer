@@ -144,6 +144,7 @@ ST: IDMap<ID, T>,
 SV: MapSet<Key<V>, ID>, 
 {
     type Value = T;
+    type Window = W;
 
     /// Get all indexed values within `self.tolerance` hamming distance of `key`
     ///

@@ -24,33 +24,27 @@ where T: Clone,
     }
 }
 
-impl Iterator for BinaryIter<u8> {
-    type Item = u8;
+macro_rules! binary_iterator {
+    ($elem:ident) => {
+        impl Iterator for BinaryIter<$elem> {
+            type Item = $elem;
 
-    fn next(&mut self) -> Option<u8> {
-        if self.index >= self.dimensions {
-            None
-        } else {
-            let next_value = self.source.clone() ^ (1u8 << self.index);
-            self.index += 1;
-            Some(next_value)
+            fn next(&mut self) -> Option<$elem> {
+                if self.index >= self.dimensions {
+                    None
+                } else {
+                    let next_value = self.source.clone() ^ (1 << self.index);
+                    self.index += 1;
+                    Some(next_value)
+                }
+            }
         }
     }
 }
-
-impl Iterator for BinaryIter<u64> {
-    type Item = u64;
-
-    fn next(&mut self) -> Option<u64> {
-        if self.index >= self.dimensions {
-            None
-        } else {
-            let next_value = self.source.clone() ^ (1u64 << self.index);
-            self.index += 1;
-            Some(next_value)
-        }
-    }
-}
+binary_iterator!(u8);
+binary_iterator!(u16);
+binary_iterator!(u32);
+binary_iterator!(u64);
 
 #[cfg(test)] 
 mod test {

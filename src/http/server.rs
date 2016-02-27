@@ -28,7 +28,7 @@ pub struct Server {
 }
 
 struct DBKey;
-impl typemap::Key for DBKey { type Value = Box<Database<Value=u64>>; }
+impl typemap::Key for DBKey { type Value = Box<Database<Value=u64, Window=u64>>; }
 
 impl Server {
     pub fn serve(self) {
@@ -54,7 +54,7 @@ impl Server {
             None => { Box::new(map_set::TempRocksDB::new()) },
         };
 
-        let db: Box<Database<Value=u64>> = Box::new(DB::with_stores(self.bits, self.tolerance, id_map, map_set));
+        let db: Box<Database<Value=u64, Window=u64>> = Box::new(DB::with_stores(self.bits, self.tolerance, id_map, map_set));
 
         let mut router = Router::new();
 

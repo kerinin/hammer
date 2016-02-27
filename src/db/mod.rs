@@ -78,6 +78,7 @@ use std::collections::HashSet;
 ///
 pub trait Database: Sync + Send {
     type Value;
+    type Window;
 
     fn get(&self, key: &Self::Value) -> Option<HashSet<Self::Value>>;
     fn insert(&mut self, key: Self::Value) -> bool;
