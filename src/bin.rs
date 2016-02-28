@@ -1,6 +1,7 @@
 extern crate docopt;
 #[macro_use]
 extern crate iron;
+extern crate bincode;
 extern crate router;
 extern crate persistent;
 extern crate rustc_serialize;

@@ -1,14 +1,16 @@
 use std::io::Read;
-use std::collections::HashSet;
 use std::path::PathBuf;
 use std::collections::{HashMap, BTreeMap};
 use std::sync::{Arc, RwLock};
 
+use bincode;
 use iron::prelude::*;
 use iron::{status, typemap};
 use router::Router;
 use persistent::State;
 use rustc_serialize::json;
+use rustc_serialize::base64;
+use rustc_serialize::base64::{FromBase64, ToBase64};
 use rustc_serialize::{Decodable};
 
 use hammer::db::id_map;
@@ -17,6 +19,13 @@ use hammer::db::Database;
 use hammer::db::id_map::IDMap;
 use hammer::db::map_set::{MapSet, RocksDB, TempRocksDB};
 use hammer::db::substitution::{DB, Key};
+
+const BASE64_CONFIG: base64::Config = base64::Config{
+    char_set: base64::CharacterSet::Standard,
+    newline: base64::Newline::CRLF,
+    pad: true,
+    line_length: None,
+};
 
 #[derive(Debug, Clone)]
 pub struct Config {
@@ -46,7 +55,7 @@ pub fn serve(config: Config) {
     Iron::new(chain).http(&*config.bind).unwrap();
 }
 
-fn decode<T>(req: &mut Request) -> Result<T, IronError> where
+fn decode_body<T>(req: &mut Request) -> Result<T, IronError> where
 T: Decodable
 {
     let mut payload = String::new();
@@ -63,7 +72,7 @@ T: Decodable
 }
 
 fn handle_add(req: &mut Request) -> IronResult<Response> {
-    let req_body = try!(decode::<Vec<u64>>(req));
+    let req_body = try!(decode_body::<Vec<String>>(req));
     let tolerance = req.extensions.get::<Router>().unwrap().find("tolerance").unwrap_or("0").parse::<usize>().unwrap();
     let namespace = req.extensions.get::<Router>().unwrap().find("namespace").unwrap_or("*").to_string();
     let dbmap_mx = req.get::<State<B64w32>>().unwrap();
@@ -94,8 +103,18 @@ fn handle_add(req: &mut Request) -> IronResult<Response> {
         let db_mx = dbmap.get(&(tolerance, namespace)).unwrap();
         let mut db = db_mx.write().unwrap();
 
-        for scalar in req_body.into_iter() {
-            results.insert(scalar, db.insert(scalar.clone()));
+        for value_b64 in req_body.into_iter() {
+            let value_bytes = match value_b64.from_base64() {
+                Ok(v) => v,
+                Err(e) => { return Ok(Response::with((status::BadRequest, format!("unable to decode base-64: {:?}", e)))) },
+            };
+
+            let value: u64 = match bincode::rustc_serialize::decode(&value_bytes) {
+                Ok(v) => v,
+                Err(e) => { return Ok(Response::with((status::BadRequest, format!("unable to convert {} bytes into u64: {:?}", value_bytes.len(), e)))) },
+            };
+
+            results.insert(value_b64, db.insert(value.clone()));
         }
 
         break
@@ -106,7 +125,7 @@ fn handle_add(req: &mut Request) -> IronResult<Response> {
 }
 
 fn handle_query(req: &mut Request) -> IronResult<Response> {
-    let req_body = try!(decode::<Vec<u64>>(req));
+    let req_body = try!(decode_body::<Vec<String>>(req));
     let tolerance = req.extensions.get::<Router>().unwrap().find("tolerance").unwrap_or("0").parse::<usize>().unwrap();
     let namespace = req.extensions.get::<Router>().unwrap().find("namespace").unwrap_or("*").to_string();
     let dbmap_mx = req.get::<State<B64w32>>().unwrap();
@@ -118,13 +137,22 @@ fn handle_query(req: &mut Request) -> IronResult<Response> {
         Some(db_mx) => {
             let db = db_mx.read().unwrap();
 
-            for scalar in req_body.into_iter() {
-                match db.get(&scalar) {
+            for value_b64 in req_body.into_iter() {
+                let value_bytes = itry!(value_b64.from_base64());
+                let value: u64 = itry!(bincode::rustc_serialize::decode(&value_bytes));
+
+                match db.get(&value) {
                     Some(found) => {
-                        results.insert(scalar, found);
+                        let found_b64s = found.iter().map(|v| {
+                            let found_bytes = bincode::rustc_serialize::encode(v, bincode::SizeLimit::Infinite).unwrap();
+
+                            found_bytes.to_base64(BASE64_CONFIG)
+                        }).collect();
+
+                        results.insert(value_b64, found_b64s);
                     },
                     None => {
-                        results.insert(scalar, HashSet::new());
+                        results.insert(value_b64, Vec::new());
                     },
                 }
             }
@@ -136,7 +164,7 @@ fn handle_query(req: &mut Request) -> IronResult<Response> {
 }
 
 fn handle_delete(req: &mut Request) -> IronResult<Response> {
-    let req_body = try!(decode::<Vec<u64>>(req));
+    let req_body = try!(decode_body::<Vec<String>>(req));
     let tolerance = req.extensions.get::<Router>().unwrap().find("tolerance").unwrap_or("0").parse::<usize>().unwrap();
     let namespace = req.extensions.get::<Router>().unwrap().find("namespace").unwrap_or("*").to_string();
     let dbmap_mx = req.get::<State<B64w32>>().unwrap();
@@ -145,15 +173,18 @@ fn handle_delete(req: &mut Request) -> IronResult<Response> {
 
     match { dbmap_mx.read().unwrap().get(&(tolerance.clone(), namespace.clone())) } {
         None => {
-            for scalar in req_body.into_iter() {
-                results.insert(scalar, false);
+            for value in req_body.into_iter() {
+                results.insert(value, false);
             }
         },
         Some(db_mx) => {
             let mut db = db_mx.write().unwrap();
 
-            for scalar in req_body.into_iter() {
-                results.insert(scalar, db.remove(&scalar));
+            for value_b64 in req_body.into_iter() {
+                let value_bytes = itry!(value_b64.from_base64());
+                let value: u64 = itry!(bincode::rustc_serialize::decode(&value_bytes));
+
+                results.insert(value_b64, db.remove(&value));
             }
         }
     }
