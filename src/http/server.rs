@@ -53,27 +53,25 @@ impl typemap::Key for B64w16 { type Value = HashMap<(usize, String), Arc<RwLock<
 struct B64w8;
 impl typemap::Key for B64w8 { type Value = HashMap<(usize, String), Arc<RwLock<Box<Database<u64, ID=u64, Window=u8, Variant=u8>>>>>; }
 
-/*
-   NOTE: Need to implement hamming for all these, and then window + hamming
-   for things windowing to more than 64 bits
-   struct B128w64;
-   impl typemap::Key for B128w64 { type Value = HashMap<(usize, String), Arc<RwLock<Box<Database<[u64; 2], ID=u64, Window=u64, Variant=u64>>>>>; }
-   struct B128w32;
-   impl typemap::Key for B128w32 { type Value = HashMap<(usize, String), Arc<RwLock<Box<Database<[u64; 2], ID=u64, Window=u32, Variant=u32>>>>>; }
-   struct B128w16;
-   impl typemap::Key for B128w16 { type Value = HashMap<(usize, String), Arc<RwLock<Box<Database<[u64; 2], ID=u64, Window=u16, Variant=u16>>>>>; }
-   struct B128w8;
-   impl typemap::Key for B128w8 { type Value = HashMap<(usize, String), Arc<RwLock<Box<Database<[u64; 2], ID=u64, Window=u8, Variant=u8>>>>>; }
+// NOTE: Need to implement hamming for all these, and then window + hamming
+// for things windowing to more than 64 bits
+struct B128w64;
+impl typemap::Key for B128w64 { type Value = HashMap<(usize, String), Arc<RwLock<Box<Database<[u64; 2], ID=u64, Window=u64, Variant=u64>>>>>; }
+struct B128w32;
+impl typemap::Key for B128w32 { type Value = HashMap<(usize, String), Arc<RwLock<Box<Database<[u64; 2], ID=u64, Window=u32, Variant=u32>>>>>; }
+struct B128w16;
+impl typemap::Key for B128w16 { type Value = HashMap<(usize, String), Arc<RwLock<Box<Database<[u64; 2], ID=u64, Window=u16, Variant=u16>>>>>; }
+struct B128w8;
+impl typemap::Key for B128w8 { type Value = HashMap<(usize, String), Arc<RwLock<Box<Database<[u64; 2], ID=u64, Window=u8, Variant=u8>>>>>; }
 
-   struct B256w64;
-   impl typemap::Key for B256w64 { type Value = HashMap<(usize, String), Arc<RwLock<Box<Database<[u64; 4], ID=u64, Window=u64, Variant=u64>>>>>; }
-   struct B256w32;
-   impl typemap::Key for B256w32 { type Value = HashMap<(usize, String), Arc<RwLock<Box<Database<[u64; 4], ID=u64, Window=u32, Variant=u32>>>>>; }
-   struct B256w16;
-   impl typemap::Key for B256w16 { type Value = HashMap<(usize, String), Arc<RwLock<Box<Database<[u64; 4], ID=u64, Window=u16, Variant=u16>>>>>; }
-   struct B256w8;
-   impl typemap::Key for B256w8 { type Value = HashMap<(usize, String), Arc<RwLock<Box<Database<[u64; 4], ID=u64, Window=u8, Variant=u8>>>>>; }
-   */
+struct B256w64;
+impl typemap::Key for B256w64 { type Value = HashMap<(usize, String), Arc<RwLock<Box<Database<[u64; 4], ID=u64, Window=u64, Variant=u64>>>>>; }
+struct B256w32;
+impl typemap::Key for B256w32 { type Value = HashMap<(usize, String), Arc<RwLock<Box<Database<[u64; 4], ID=u64, Window=u32, Variant=u32>>>>>; }
+struct B256w16;
+impl typemap::Key for B256w16 { type Value = HashMap<(usize, String), Arc<RwLock<Box<Database<[u64; 4], ID=u64, Window=u16, Variant=u16>>>>>; }
+struct B256w8;
+impl typemap::Key for B256w8 { type Value = HashMap<(usize, String), Arc<RwLock<Box<Database<[u64; 4], ID=u64, Window=u8, Variant=u8>>>>>; }
 
 pub fn serve(config: Config) {
     println!("Serving with config: {:?}", config);
@@ -86,17 +84,16 @@ pub fn serve(config: Config) {
     let mut chain = Chain::new(router);
     chain.link_before(State::<ConfigKey>::one(config.clone()));
 
-    /*
-       chain.link_before(State::<B256w64>::one(HashMap::new()));
-       chain.link_before(State::<B256w32>::one(HashMap::new()));
-       chain.link_before(State::<B256w16>::one(HashMap::new()));
-       chain.link_before(State::<B256w8>::one(HashMap::new()));
+    chain.link_before(State::<B256w64>::one(HashMap::new()));
+    chain.link_before(State::<B256w32>::one(HashMap::new()));
+    chain.link_before(State::<B256w16>::one(HashMap::new()));
+    chain.link_before(State::<B256w8>::one(HashMap::new()));
 
-       chain.link_before(State::<B128w64>::one(HashMap::new()));
-       chain.link_before(State::<B128w32>::one(HashMap::new()));
-       chain.link_before(State::<B128w16>::one(HashMap::new()));
-       chain.link_before(State::<B128w8>::one(HashMap::new()));
-       */
+    chain.link_before(State::<B128w64>::one(HashMap::new()));
+    chain.link_before(State::<B128w32>::one(HashMap::new()));
+    chain.link_before(State::<B128w16>::one(HashMap::new()));
+    chain.link_before(State::<B128w8>::one(HashMap::new()));
+
     chain.link_before(State::<B64w64>::one(HashMap::new()));
     chain.link_before(State::<B64w32>::one(HashMap::new()));
     chain.link_before(State::<B64w16>::one(HashMap::new()));
@@ -187,11 +184,11 @@ fn handle_add(req: &mut Request) -> IronResult<Response> {
             let dbmap_mx = req.get::<State<B64w32>>().unwrap();
             add(req_body, tolerance, namespace, config_mx, dbmap_mx)
         },
+        (128, t) if 0 < t && t <= 4 => {
+            let dbmap_mx = req.get::<State<B128w64>>().unwrap();
+            add(req_body, tolerance, namespace, config_mx, dbmap_mx)
+        },
         /*
-           (128, t) if 0 < t && t <= 4 => {
-           let dbmap_mx = req.get::<State<B128w64>>().unwrap();
-           add(req_body, tolerance, namespace, config_mx, dbmap_mx)
-           },
            (256, t) if 0 < t && t <= 4 => {
            let dbmap_mx = req.get::<State<B256w128>>().unwrap();
            add(req_body, tolerance, namespace, config_mx, dbmap_mx)
@@ -201,52 +198,46 @@ fn handle_add(req: &mut Request) -> IronResult<Response> {
             let dbmap_mx = req.get::<State<B64w16>>().unwrap();
             add(req_body, tolerance, namespace, config_mx, dbmap_mx)
         },
-        /*
-           (128, t) if 4 < t && t <= 12 => {
-           let dbmap_mx = req.get::<State<B128w32>>().unwrap();
-           add(req_body, tolerance, namespace, config_mx, dbmap_mx)
-           },
-           (256, t) if 4 < t && t <= 12 => {
-           let dbmap_mx = req.get::<State<B256w64>>().unwrap();
-           add(req_body, tolerance, namespace, config_mx, dbmap_mx)
-           },
-           */
+        (128, t) if 4 < t && t <= 12 => {
+            let dbmap_mx = req.get::<State<B128w32>>().unwrap();
+            add(req_body, tolerance, namespace, config_mx, dbmap_mx)
+        },
+        (256, t) if 4 < t && t <= 12 => {
+            let dbmap_mx = req.get::<State<B256w64>>().unwrap();
+            add(req_body, tolerance, namespace, config_mx, dbmap_mx)
+        },
         (64, t) if 12 < t && t <= 28 => {
             let dbmap_mx = req.get::<State<B64w8>>().unwrap();
             add(req_body, tolerance, namespace, config_mx, dbmap_mx)
         },
-        /*
-           (128, t) if 12 < t && t <= 28 => {
-           let dbmap_mx = req.get::<State<B128w16>>().unwrap();
-           add(req_body, tolerance, namespace, config_mx, dbmap_mx)
-           },
-           (256, t) if 12 < t && t <= 28 => {
-           let dbmap_mx = req.get::<State<B256w32>>().unwrap();
-           add(req_body, tolerance, namespace, config_mx, dbmap_mx)
-           },
-           (128, t) if 28 < t && t <= 60 => {
-           let dbmap_mx = req.get::<State<B128w8>>().unwrap();
-           add(req_body, tolerance, namespace, config_mx, dbmap_mx)
-           },
-           (256, t) if 28 < t && t <= 60 => {
-           let dbmap_mx = req.get::<State<B256w16>>().unwrap();
-           add(req_body, tolerance, namespace, config_mx, dbmap_mx)
-           },
-           */
+        (128, t) if 12 < t && t <= 28 => {
+            let dbmap_mx = req.get::<State<B128w16>>().unwrap();
+            add(req_body, tolerance, namespace, config_mx, dbmap_mx)
+        },
+        (256, t) if 12 < t && t <= 28 => {
+            let dbmap_mx = req.get::<State<B256w32>>().unwrap();
+            add(req_body, tolerance, namespace, config_mx, dbmap_mx)
+        },
+        (128, t) if 28 < t && t <= 60 => {
+            let dbmap_mx = req.get::<State<B128w8>>().unwrap();
+            add(req_body, tolerance, namespace, config_mx, dbmap_mx)
+        },
+        (256, t) if 28 < t && t <= 60 => {
+            let dbmap_mx = req.get::<State<B256w16>>().unwrap();
+            add(req_body, tolerance, namespace, config_mx, dbmap_mx)
+        },
         (64, _) => {
             let dbmap_mx = req.get::<State<B64w8>>().unwrap();
             add(req_body, tolerance, namespace, config_mx, dbmap_mx)
         },
-        /*
-           (128, _) => {
-           let dbmap_mx = req.get::<State<B128w8>>().unwrap();
-           add(req_body, tolerance, namespace, config_mx, dbmap_mx)
-           },
-           (256, t) => {
-           let dbmap_mx = req.get::<State<B256w8>>().unwrap();
-           add(req_body, tolerance, namespace, config_mx, dbmap_mx)
-           },
-           */
+        (128, _) => {
+            let dbmap_mx = req.get::<State<B128w8>>().unwrap();
+            add(req_body, tolerance, namespace, config_mx, dbmap_mx)
+        },
+        (256, _) => {
+            let dbmap_mx = req.get::<State<B256w8>>().unwrap();
+            add(req_body, tolerance, namespace, config_mx, dbmap_mx)
+        },
         _ => Ok(Response::with((status::BadRequest, "Unsuported bitsize or tolerance"))),
     }
 }

@@ -51,6 +51,31 @@ intrinsic_hamming!(u16);
 intrinsic_hamming!(u32);
 intrinsic_hamming!(u64);
 
+macro_rules! array_hamming {
+    ($elem:ty) => {
+        impl Hamming for $elem {
+            // `count_ones` should be faster than iterating over vectors as would happen
+            // with the default implementation
+            //
+            fn hamming(&self, other: &$elem) -> usize {
+                self.iter().zip(other.iter()).fold(0, |h, (&a, &b)| { h + a.hamming(&b) })
+            }
+            fn hamming_indices(&self, other: &$elem) -> Vec<usize> {
+                let len = self.len();
+
+                self.iter().zip(other.iter()).enumerate().fold(Vec::new(), |mut h, (i, (a, b))| {
+                    let offset = i * len;
+                    let mut pair_indices = a.hamming_indices(b).iter().map(|idx| idx + offset).collect();
+                    h.append(&mut pair_indices);
+                    h
+                })
+            }
+        }
+    }
+}
+array_hamming!([u64; 2]);
+array_hamming!([u64; 4]);
+
 macro_rules! intrinsic_deletion_hamming {
     ($elem:ident) => {
         // Ignoring the deletion index for now

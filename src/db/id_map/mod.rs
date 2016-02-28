@@ -2,7 +2,10 @@ mod echo;
 mod hash_map;
 mod rocks_db;
 
+use std::hash::{Hash, Hasher};
 use std::ops::{Deref, DerefMut};
+
+use fnv::FnvHasher;
 
 pub use self::echo::Echo;
 pub use self::hash_map::HashMap;
@@ -39,3 +42,16 @@ impl<T> ToID<T> for T {
     fn to_id(self) -> T { self }
 }
 
+macro_rules! to_id_hash_fnv {
+    ($elem:ty) => {
+        impl ToID<u64> for $elem {
+            fn to_id(self) -> u64 {
+                let mut s = FnvHasher::default();
+                self.hash(&mut s);
+                s.finish()
+            }
+        }
+    }
+}
+to_id_hash_fnv!([u64; 2]);
+to_id_hash_fnv!([u64; 4]);

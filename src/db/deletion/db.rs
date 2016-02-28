@@ -14,7 +14,7 @@ use db::map_set::{MapSet, InMemoryHash};
 use db::hamming::Hamming;
 use db::window::{Window, Windowable};
 use db::id_map::{ToID, IDMap, Echo};
-use db::deletion::{Key, DeletionVariant};
+use db::deletion::{Key, DeletionVariant, Du64};
 
 /// HmSearch Database using deletion variants
 ///
