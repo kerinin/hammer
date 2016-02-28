@@ -1,4 +1,5 @@
 extern crate docopt;
+#[macro_use]
 extern crate iron;
 extern crate router;
 extern crate persistent;
