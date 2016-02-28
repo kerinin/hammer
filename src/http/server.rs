@@ -1,6 +1,8 @@
 use std::io::Read;
 use std::collections::HashSet;
 use std::path::PathBuf;
+use std::collections::HashMap;
+use std::sync::{Arc, RwLock};
 
 use iron::prelude::*;
 use iron::{status, typemap};
@@ -19,56 +21,60 @@ use super::add;
 use super::query;
 use super::delete;
 
-#[derive(Debug)]
-pub struct Server {
+#[derive(Debug, Clone)]
+pub struct Config {
     pub data_dir: Option<PathBuf>,
     pub bind: String,
     pub bits: usize,
     pub tolerance: usize,
 }
 
-struct DBKey;
-impl typemap::Key for DBKey { type Value = Box<Database<Value=u64, Window=u64>>; }
+struct ConfigKey;
+impl typemap::Key for ConfigKey { type Value = Config; }
 
-impl Server {
-    pub fn serve(self) {
-        println!("Serving with options: {:?}", self);
+struct DB64w32;
+impl typemap::Key for DB64w32 { type Value = HashMap<(usize, String), Arc<RwLock<Box<Database<u64, ID=u64, Window=u32, Variant=u32>>>>>; }
 
-        let id_map: Box<IDMap<u64, u64>> = match self.data_dir {
-            Some(ref dir) => {
-                let mut value_store_path = dir.clone();
-                value_store_path.push("s_var_value");
+pub fn serve(config: Config) {
+    println!("Serving with config: {:?}", config);
 
-                Box::new(id_map::RocksDB::new(value_store_path.to_str().unwrap())) 
-            },
-            None => { Box::new(id_map::TempRocksDB::new()) },
-        };
+    let mut router = Router::new();
+    router.post("/add/b64/:tolerance/:namespace", handle_add_b64);
+    router.post("/query", handle_query);
+    router.post("/delete", handle_delete);
 
-        let map_set: Box<MapSet<Key<u64>, u64>> = match self.data_dir {
-            Some(ref dir) => { 
-                let mut variant_store_path = dir.clone();
-                variant_store_path.push("s_var_mapset");
-
-                Box::new(map_set::RocksDB::new(variant_store_path.to_str().unwrap())) 
-            },
-            None => { Box::new(map_set::TempRocksDB::new()) },
-        };
-
-        let db: Box<Database<Value=u64, Window=u64>> = Box::new(DB::with_stores(self.bits, self.tolerance, id_map, map_set));
-
-        let mut router = Router::new();
-
-        router.post("/add", handle_add);
-        router.post("/query", handle_query);
-        router.post("/delete", handle_delete);
-
-        let mut chain = Chain::new(router);
-        chain.link_before(State::<DBKey>::one(db));
-        Iron::new(chain).http(&*self.bind).unwrap();
-    }
+    let mut chain = Chain::new(router);
+    chain.link_before(State::<ConfigKey>::one(config.clone()));
+    chain.link_before(State::<DB64w32>::one(HashMap::new()));
+    Iron::new(chain).http(&*config.bind).unwrap();
 }
 
-fn handle_add(req: &mut Request) -> IronResult<Response> {
+fn make_db(config: Config, namespace: String, bits: usize, tolerance: usize) -> Box<Database<u64, ID=u64, Window=u32, Variant=u32>> {
+    let id_map: Box<IDMap<u64, u64>> = match config.data_dir {
+        Some(ref dir) => {
+            let mut value_store_path = dir.clone();
+            value_store_path.push("s_var_value");
+
+            Box::new(id_map::RocksDB::new(value_store_path.to_str().unwrap())) 
+        },
+        None => { Box::new(id_map::TempRocksDB::new()) },
+    };
+
+    let map_set: Box<MapSet<Key<u32>, u64>> = match config.data_dir {
+        Some(ref dir) => { 
+            let mut variant_store_path = dir.clone();
+            variant_store_path.push("s_var_mapset");
+
+            Box::new(map_set::RocksDB::new(variant_store_path.to_str().unwrap())) 
+        },
+        None => { Box::new(map_set::TempRocksDB::new()) },
+    };
+
+    let db: Box<DB<u64, u32, u32, u64, Box<IDMap<u64, u64>>, Box<MapSet<Key<u32>, u64>>>> = Box::new(DB::with_stores(bits, tolerance, id_map, map_set));
+    return db
+}
+
+fn handle_add_b64(req: &mut Request) -> IronResult<Response> {
     let mut payload = String::new();
 
     match req.body.read_to_string(&mut payload) {
@@ -80,15 +86,43 @@ fn handle_add(req: &mut Request) -> IronResult<Response> {
 
     match json::decode::<add::Request>(&payload) {
         Ok(req_body) => {
-            let mx = req.get::<State<DBKey>>().unwrap();
+            let tolerance = req.extensions.get::<Router>().unwrap().find("tolerance").unwrap_or("0").parse::<usize>().unwrap();
+            let namespace = req.extensions.get::<Router>().unwrap().find("namespace").unwrap_or("*").to_string();
+            let dbmap_mx = req.get::<State<DB64w32>>().unwrap();
 
             let mut scalar_results = Vec::with_capacity(req_body.scalars.len());
-            let mut db = mx.write().unwrap();
 
-            for scalar in req_body.scalars.into_iter() {
-                let added = db.insert(scalar.clone());
-                let scalar_result = add::ScalarResult {scalar: scalar, added: added};
-                scalar_results.push(scalar_result);
+            // this is a little contorted, but the idea is to optimize for the
+            // frequent case where the DB being inserted into exists and only
+            // incur an additional mutex lock/release when it doesn't
+            let mut db_exists = true;
+            loop {
+                if !db_exists {
+                    let config_mx = req.get::<State<ConfigKey>>().unwrap();
+                    let config = config_mx.read().unwrap().clone();
+                    let db = make_db(config, namespace.clone(), 64, tolerance);
+
+                    let mut dbmap = dbmap_mx.write().unwrap();
+                    dbmap.insert((tolerance.clone(), namespace.clone()), Arc::new(RwLock::new(db)));
+                }
+
+                let dbmap = dbmap_mx.read().unwrap();
+
+                if !dbmap.contains_key(&(tolerance, namespace.clone())) {
+                    db_exists = false;
+                    continue
+                }
+
+                let db_mx = dbmap.get(&(tolerance, namespace)).unwrap();
+                let mut db = db_mx.write().unwrap();
+
+                for scalar in req_body.scalars.into_iter() {
+                    let added = db.insert(scalar.clone());
+                    let scalar_result = add::ScalarResult {scalar: scalar, added: added};
+                    scalar_results.push(scalar_result);
+                }
+
+                break
             }
 
             Ok(Response::with((status::Ok, json::encode(&add::Response {scalars: scalar_results}).unwrap())))
@@ -112,23 +146,25 @@ fn handle_query(req: &mut Request) -> IronResult<Response> {
 
     match json::decode::<query::Request>(&payload) {
         Ok(req_body) => {
-            let mx = req.get::<State<DBKey>>().unwrap();
+            let mx = req.get::<State<DB64w32>>().unwrap();
 
             let mut scalar_results = Vec::with_capacity(req_body.scalars.len());
             let db = mx.write().unwrap();
 
-            for scalar in req_body.scalars.into_iter() {
-                match db.get(&scalar) {
-                    Some(found) => {
-                        let scalar_result = query::ScalarResult {scalar: scalar, found: found};
-                        scalar_results.push(scalar_result);
-                    },
-                    None => {
-                        let scalar_result = query::ScalarResult {scalar: scalar, found: HashSet::new()};
-                        scalar_results.push(scalar_result);
-                    },
-                }
-            }
+            /*
+               for scalar in req_body.scalars.into_iter() {
+               match db.get(&scalar) {
+               Some(found) => {
+               let scalar_result = query::ScalarResult {scalar: scalar, found: found};
+               scalar_results.push(scalar_result);
+               },
+               None => {
+               let scalar_result = query::ScalarResult {scalar: scalar, found: HashSet::new()};
+               scalar_results.push(scalar_result);
+               },
+               }
+               }
+               */
 
             Ok(Response::with((status::Ok, json::encode(&query::Response {scalars: scalar_results}).unwrap())))
         },
@@ -151,16 +187,18 @@ fn handle_delete(req: &mut Request) -> IronResult<Response> {
 
     match json::decode::<delete::Request>(&payload) {
         Ok(req_body) => {
-            let mx = req.get::<State<DBKey>>().unwrap();
+            let mx = req.get::<State<DB64w32>>().unwrap();
 
             let mut scalar_results = Vec::with_capacity(req_body.scalars.len());
             let mut db = mx.write().unwrap();
 
-            for scalar in req_body.scalars.into_iter() {
-                let deleted = db.remove(&scalar);
-                let scalar_result = delete::ScalarResult {scalar: scalar, deleted: deleted};
-                scalar_results.push(scalar_result);
-            }
+            /*
+               for scalar in req_body.scalars.into_iter() {
+               let deleted = db.remove(&scalar);
+               let scalar_result = delete::ScalarResult {scalar: scalar, deleted: deleted};
+               scalar_results.push(scalar_result);
+               }
+               */
 
             Ok(Response::with((status::Ok, json::encode(&delete::Response {scalars: scalar_results}).unwrap())))
         },

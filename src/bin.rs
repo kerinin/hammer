@@ -40,12 +40,12 @@ pub fn main() {
         .and_then(|d| d.decode())
         .unwrap_or_else(|e| e.exit());
 
-    let s = http::server::Server{
+    let config = http::server::Config{
         data_dir: args.flag_data_dir.map(|d| PathBuf::from(d)),
         bind: args.flag_bind,
         bits: args.flag_bits,
         tolerance: args.flag_tolerance,
     };
 
-    s.serve()
+    http::server::serve(config)
 }

@@ -76,11 +76,12 @@ use std::collections::HashSet;
 
 /// Abstract interface for Hamming distance databases
 ///
-pub trait Database: Sync + Send {
-    type Value;
+pub trait Database<T>: Sync + Send {
+    type ID;
     type Window;
+    type Variant;
 
-    fn get(&self, key: &Self::Value) -> Option<HashSet<Self::Value>>;
-    fn insert(&mut self, key: Self::Value) -> bool;
-    fn remove(&mut self, key: &Self::Value) -> bool;
+    fn get(&self, key: &T) -> Option<HashSet<T>>;
+    fn insert(&mut self, key: T) -> bool;
+    fn remove(&mut self, key: &T) -> bool;
 }

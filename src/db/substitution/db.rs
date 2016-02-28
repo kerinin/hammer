@@ -132,7 +132,7 @@ SV: MapSet<Key<V>, ID>,
     }
 }
 
-impl<T, W, V, ID, ST, SV> Database for DB<T, W, V, ID, ST, SV> where
+impl<T, W, V, ID, ST, SV> Database<T> for DB<T, W, V, ID, ST, SV> where
 T: Sync + Send + Clone + Eq + Hash + Hamming + Windowable<W> +ToID<ID>,
 W: Sync + Send + Clone + Eq + Hash + SubstitutionVariant<V>,
 V: Sync + Send + Clone + Eq + Hash,
@@ -140,8 +140,9 @@ ID: Sync + Send + Clone + Eq + Hash,
 ST: IDMap<ID, T>,
 SV: MapSet<Key<V>, ID>, 
 {
-    type Value = T;
+    type ID = ID;
     type Window = W;
+    type Variant = V;
 
     /// Get all indexed values within `self.tolerance` hammind distance of `key`
     ///
