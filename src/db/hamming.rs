@@ -5,7 +5,7 @@ use std::cmp::*;
 use std::clone::*;
 use std::hash::*;
 
-use db::deletion::{Du8, Du64};
+use db::deletion::{Du8, Du16, Du32, Du64};
 
 /// HmSearch-indexable value
 ///
@@ -29,63 +29,50 @@ pub trait Hamming {
     fn hamming_indices(&self, rhs: &Self) -> Vec<usize>;
 }
 
-impl Hamming for u8 {
-    // `count_ones` should be faster than iterating over vectors as would happen
-    // with the default implementation
-    //
-    fn hamming(&self, other: &u8) -> usize {
-        (*self ^ *other).count_ones() as usize // bitxor
-    }
-    fn hamming_indices(&self, other: &u8) -> Vec<usize> {
-        let different = *self ^ *other;
+macro_rules! intrinsic_hamming {
+    ($elem:ident) => {
+        impl Hamming for $elem {
+            // `count_ones` should be faster than iterating over vectors as would happen
+            // with the default implementation
+            //
+            fn hamming(&self, other: &$elem) -> usize {
+                (*self ^ *other).count_ones() as usize // bitxor
+            }
+            fn hamming_indices(&self, other: &$elem) -> Vec<usize> {
+                let different = *self ^ *other;
 
-        (0..8).filter(|i| 0u8 != 1u8 << i & different ).collect()
+                (0..8).filter(|i| (0 as $elem) != (1 as $elem) << i & different ).collect()
+            }
+        }
     }
 }
+intrinsic_hamming!(u8);
+intrinsic_hamming!(u16);
+intrinsic_hamming!(u32);
+intrinsic_hamming!(u64);
 
-impl Hamming for u64 {
-    // `count_ones` should be faster than iterating over vectors as would happen
-    // with the default implementation
-    //
-    fn hamming(&self, other: &u64) -> usize {
-        (*self ^ *other).count_ones() as usize // bitxor
-    }
-    fn hamming_indices(&self, other: &u64) -> Vec<usize> {
-        let different = *self ^ *other;
+macro_rules! intrinsic_deletion_hamming {
+    ($elem:ident) => {
+        // Ignoring the deletion index for now
+        impl Hamming for $elem {
+            fn hamming(&self, other: &$elem) -> usize {
+                let &(self_value, _) = self;
+                let &(ref other_value, _) = other;
+                self_value.hamming(other_value)
+            }
 
-        (0..64).filter(|i| 0u64 != 1u64 << i & different ).collect()
-    }
-}
-
-// Ignoring the deletion index for now
-impl Hamming for Du8 {
-    fn hamming(&self, other: &Du8) -> usize {
-        let &(self_value, _) = self;
-        let &(ref other_value, _) = other;
-        self_value.hamming(other_value)
-    }
-
-    fn hamming_indices(&self, other: &Du8) -> Vec<usize> {
-        let &(self_value, _) = self;
-        let &(ref other_value, _) = other;
-        self_value.hamming_indices(other_value)
+            fn hamming_indices(&self, other: &$elem) -> Vec<usize> {
+                let &(self_value, _) = self;
+                let &(ref other_value, _) = other;
+                self_value.hamming_indices(other_value)
+            }
+        }
     }
 }
-
-// Ignoring the deletion index for now
-impl Hamming for Du64 {
-    fn hamming(&self, other: &Du64) -> usize {
-        let &(self_value, _) = self;
-        let &(ref other_value, _) = other;
-        self_value.hamming(other_value)
-    }
-
-    fn hamming_indices(&self, other: &Du64) -> Vec<usize> {
-        let &(self_value, _) = self;
-        let &(ref other_value, _) = other;
-        self_value.hamming_indices(other_value)
-    }
-}
+intrinsic_deletion_hamming!(Du8);
+intrinsic_deletion_hamming!(Du16);
+intrinsic_deletion_hamming!(Du32);
+intrinsic_deletion_hamming!(Du64);
 
 impl<T: Eq + Clone + Hash> Hamming for Vec<T> {
     // NOTE: Optimize the bound query

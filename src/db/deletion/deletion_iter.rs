@@ -1,7 +1,7 @@
 use std::clone::*;
 use std::iter::*;
 
-use db::deletion::{Du8, Du64};
+use db::deletion::{Du8, Du16, Du32, Du64};
 
 pub struct DeletionIter<T> {
     // The original value, which shouldn't be modified
@@ -22,35 +22,28 @@ impl<T> DeletionIter<T> {
     }
 }
 
-impl Iterator for DeletionIter<u8> {
-    type Item = Du8;
+macro_rules! iterator {
+    ($del_elem:ident, $elem:ident) => {
+        impl Iterator for DeletionIter<$elem> {
+            type Item = $del_elem;
 
-    fn next(&mut self) -> Option<Du8> {
-        if self.index >= self.dimensions {
-            None
-        } else {
-            let next_value = self.source.clone() | (1u8 << self.index);
+            fn next(&mut self) -> Option<$del_elem> {
+                if self.index >= self.dimensions {
+                    None
+                } else {
+                    let next_value = self.source.clone() | ((1 as $elem) << self.index);
 
-            self.index += 1;
-            Some((next_value, self.index as u8))
+                    self.index += 1;
+                    Some((next_value, self.index as u8))
+                }
+            }
         }
     }
 }
-
-impl Iterator for DeletionIter<u64> {
-    type Item = Du64;
-
-    fn next(&mut self) -> Option<Du64> {
-        if self.index >= self.dimensions {
-            None
-        } else {
-            let next_value = self.source.clone() | (1u64 << self.index);
-
-            self.index += 1;
-            Some((next_value, self.index as u8))
-        }
-    }
-}
+iterator!(Du8, u8);
+iterator!(Du16, u16);
+iterator!(Du32, u32);
+iterator!(Du64, u64);
 
 #[cfg(test)] 
 mod test {

@@ -14,6 +14,7 @@ pub use self::xor_iter::XORIter;
 use db::window::Window;
 
 pub type Du8 = (u8, u8);
+pub type Du16 = (u16, u8);
 pub type Du32 = (u32, u8);
 pub type Du64 = (u64, u8);
 pub type Du64x2 = ([u64; 2], u8);
