@@ -71,10 +71,10 @@ W: Sync + Send + Clone + Eq + Hash + SubstitutionVariant<W>,
 }
 
 impl<T, W, V, ID, ST, SV> DB<T, W, V, ID, ST, SV> where
-T: Clone + Eq + Hash + Hamming + Windowable<W> +ToID<ID>,
-W: Clone + Eq + Hash + SubstitutionVariant<V>,
-V: Clone + Eq + Hash,
-ID: Clone + Eq + Hash,
+T: Sync + Send + Clone + Eq + Hash + Hamming + Windowable<W> +ToID<ID>,
+W: Sync + Send + Clone + Eq + Hash + SubstitutionVariant<V>,
+V: Sync + Send + Clone + Eq + Hash,
+ID: Sync + Send + Clone + Eq + Hash,
 ST: IDMap<ID, T>,
 SV: MapSet<Key<V>, ID>, 
 {
@@ -140,10 +140,6 @@ ID: Sync + Send + Clone + Eq + Hash,
 ST: IDMap<ID, T>,
 SV: MapSet<Key<V>, ID>, 
 {
-    type ID = ID;
-    type Window = W;
-    type Variant = V;
-
     /// Get all indexed values within `self.tolerance` hammind distance of `key`
     ///
     fn get(&self, key: &T) -> Option<HashSet<T>> {

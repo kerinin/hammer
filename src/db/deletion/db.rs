@@ -143,10 +143,6 @@ ID: Sync + Send + Clone + Eq + Hash,
 ST: IDMap<ID, T>,
 SV: MapSet<Key<V>, ID>, 
 {
-    type ID = ID;
-    type Window = W;
-    type Variant = V;
-
     /// Get all indexed values within `self.tolerance` hamming distance of `key`
     ///
     fn get(&self, key: &T) -> Option<HashSet<T>> {

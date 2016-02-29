@@ -34,18 +34,18 @@ sizes:
 cargo build && target/build/hammer --bind localhost:3000 --bits 64 --tolerance 5
 
 # Add some keys
-curl -X POST -d '["AAAAAAAAAAA=","AAAAAAAAAAE=","AAAAAAAAAAI=","AADZvdpG3MA="]' localhost:3000/add/b64/8/foo
+curl -X POST -d '["AAAAAAAAAAA=","AAAAAAAAAAE=","AAAAAAAAAAI=","AADZvdpG3MA="]' localhost:3000/add/b/64/8/foo
 # {"AAAAAAAAAAA=":true,"AAAAAAAAAAE=":true,"AAAAAAAAAAI=":true,"AADZvdpG3MA=":true}
 
 # Query for some keys
-curl -X POST -d '["AAAAAAAAAAA=","AADZvdpG3MA="]' localhost:3000/query/b64/8/foo
+curl -X POST -d '["AAAAAAAAAAA=","AADZvdpG3MA="]' localhost:3000/query/b/64/8/foo
 # {
 #   "AAAAAAAAAAA=":["AAAAAAAAAAI=","AAAAAAAAAAE=","AAAAAAAAAAA="],
 #   "AADZvdpG3MA=":["AADZvdpG3MA="]
 # }
 
 # Delete keys
-curl -X POST -d '["AAAAAAAAAAA="]' localhost:3000/delete/b64/8/foo
+curl -X POST -d '["AAAAAAAAAAA="]' localhost:3000/delete/b/64/8/foo
 # {"AAAAAAAAAAA=":true}
 ```
 
