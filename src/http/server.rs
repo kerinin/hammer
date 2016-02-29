@@ -16,7 +16,7 @@ use rustc_serialize::base64;
 use rustc_serialize::base64::{FromBase64, ToBase64};
 use rustc_serialize::{Encodable, Decodable};
 
-use hammer::db::{Factory, StorageBackend};
+use hammer::db::{BinaryFactory, StorageBackend};
 use hammer::db::Database;
 use hammer::db::id_map::IDMap;
 use hammer::db::map_set::MapSet;
@@ -126,7 +126,7 @@ fn handle_add(req: &mut Request) -> IronResult<Response> {
 }
 
 fn add<T>(req_body: Vec<String>, bits: usize, tolerance: usize, namespace: String, config_mx: Arc<RwLock<Config>>, dbmap_mx: Arc<RwLock<HashMap<(usize, String), Arc<RwLock<Box<Database<T>>>>>>>) -> IronResult<Response> where
-T: Clone + Factory + Decodable,
+T: Clone + BinaryFactory + Decodable,
 {
     let mut results = BTreeMap::new();
 
@@ -150,7 +150,7 @@ T: Clone + Factory + Decodable,
                 None => StorageBackend::InMemory
             };
 
-            let db = Factory::build(tolerance, backend);
+            let db = BinaryFactory::build(tolerance, backend);
 
             let mut dbmap = dbmap_mx.write().unwrap();
             dbmap.insert((tolerance.clone(), namespace.clone()), Arc::new(RwLock::new(db)));
@@ -227,7 +227,7 @@ fn handle_query(req: &mut Request) -> IronResult<Response> {
 }
 
 fn query<T>(req_body: Vec<String>, tolerance: usize, namespace: String, dbmap_mx: Arc<RwLock<HashMap<(usize, String), Arc<RwLock<Box<Database<T>>>>>>>) -> IronResult<Response> where
-T: Eq + Hash + Clone + Factory + Encodable + Decodable,
+T: Eq + Hash + Clone + BinaryFactory + Encodable + Decodable,
 {
     let mut results = BTreeMap::new();
 
@@ -302,7 +302,7 @@ fn handle_delete(req: &mut Request) -> IronResult<Response> {
 }
 
 fn delete<T>(req_body: Vec<String>, tolerance: usize, namespace: String, dbmap_mx: Arc<RwLock<HashMap<(usize, String), Arc<RwLock<Box<Database<T>>>>>>>) -> IronResult<Response> where
-T: Eq + Hash + Clone + Factory + Encodable + Decodable,
+T: Eq + Hash + Clone + BinaryFactory + Encodable + Decodable,
 {
     let mut results = BTreeMap::new();
 

@@ -95,14 +95,72 @@ pub enum StorageBackend {
     RocksDB(String),
 }
 
-pub trait Factory {
+pub trait BinaryFactory {
     fn build(tolerance: usize, storage: StorageBackend) -> Box<Database<Self>>;
 }
+pub trait VectorFactory {
+    fn build(dimensions: usize, tolerance: usize, storage: StorageBackend) -> Box<Database<Vec<Self>>>;
+}
 
-macro_rules! echo_factory {
+impl VectorFactory for u8 {
+    fn build(dimensions: usize, tolerance: usize, storage: StorageBackend) -> Box<Database<Vec<u8>>> {
+
+        match storage {
+            StorageBackend::InMemory => {
+                let id_map = id_map::HashMap::new();
+                let map_set = map_set::InMemoryHash::new();
+                let db: deletion::DB<
+                    Vec<u8>,
+                    Vec<u8>,
+                    u64,
+                    u64,
+                    id_map::HashMap<u64, Vec<u8>>,
+                    map_set::InMemoryHash<deletion::Key<u64>, u64>,
+                    > = deletion::DB::with_stores(dimensions, tolerance, id_map, map_set);
+
+                return Box::new(db)
+            },
+            StorageBackend::TempRocksDB => {
+                let id_map = id_map::TempRocksDB::new();
+                let map_set = map_set::TempRocksDB::new();
+                let db: deletion::DB<
+                    Vec<u8>,
+                    Vec<u8>,
+                    u64,
+                    u64,
+                    id_map::TempRocksDB<u64, Vec<u8>>,
+                    map_set::TempRocksDB<deletion::Key<u64>, u64>,
+                    > = deletion::DB::with_stores(dimensions, tolerance, id_map, map_set);
+
+                return Box::new(db)
+            },
+            StorageBackend::RocksDB(ref path) => {
+                let mut id_map_path = PathBuf::from(path);
+                id_map_path.push("id_map");
+                let mut map_set_path = PathBuf::from(path);
+                map_set_path.push("map_set");
+
+                let id_map = id_map::RocksDB::new(id_map_path.to_str().unwrap());
+                let map_set = map_set::RocksDB::new(map_set_path.to_str().unwrap());
+                let db: deletion::DB<
+                    Vec<u8>,
+                    Vec<u8>,
+                    u64,
+                    u64,
+                    id_map::RocksDB<u64, Vec<u8>>,
+                    map_set::RocksDB<deletion::Key<u64>, u64>,
+                    > = deletion::DB::with_stores(dimensions, tolerance, id_map, map_set);
+
+                return Box::new(db)
+            },
+        }
+    }
+}
+
+macro_rules! echo_binary {
     ($elem:ty, $dims:expr, $([$v:ty, $b:expr]),*) => {
 
-        impl Factory for $elem {
+        impl BinaryFactory for $elem {
             fn build(tolerance: usize, storage: StorageBackend) -> Box<Database<$elem>> {
 
                 let dimensions = $dims;
@@ -139,15 +197,15 @@ macro_rules! echo_factory {
         }
     }
 }
-echo_factory!(u64, 64, [u8, 8], [u16, 16], [u32, 32], [u64, 64]);
-echo_factory!(u32, 32, [u8, 8], [u16, 16], [u32, 32]);
-echo_factory!(u16, 16, [u8, 8], [u16, 16]);
-echo_factory!(u8, 8, [u8, 8]);
+echo_binary!(u64, 64, [u8, 8], [u16, 16], [u32, 32], [u64, 64]);
+echo_binary!(u32, 32, [u8, 8], [u16, 16], [u32, 32]);
+echo_binary!(u16, 16, [u8, 8], [u16, 16]);
+echo_binary!(u8, 8, [u8, 8]);
 
-macro_rules! map_factory {
+macro_rules! map_binary {
     ($elem:ty, $dims:expr, $([$v:ty, $b:expr]),*) => {
 
-        impl Factory for $elem {
+        impl BinaryFactory for $elem {
             fn build(tolerance: usize, storage: StorageBackend) -> Box<Database<$elem>> {
 
                 let dimensions = $dims;
@@ -189,6 +247,6 @@ macro_rules! map_factory {
         }
     }
 }
-map_factory!([u64; 4], 256, [u8, 8], [u16, 16], [u32, 32], [u64, 64], [[u64; 2], 128], [[u64; 4], 256]);
-map_factory!([u64; 2], 128, [u8, 8], [u16, 16], [u32, 32], [u64, 64], [[u64; 2], 128]);
+map_binary!([u64; 4], 256, [u8, 8], [u16, 16], [u32, 32], [u64, 64], [[u64; 2], 128], [[u64; 4], 256]);
+map_binary!([u64; 2], 128, [u8, 8], [u16, 16], [u32, 32], [u64, 64], [[u64; 2], 128]);
 

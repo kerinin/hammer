@@ -13,19 +13,19 @@ size of the values they index, their tolerance (the maximum hamming distance of
 returned values from a query) and an arbitrary namespace value.  Supported value
 sizes:
 
-* `b64/:tolerance/:namespace`: Substitution-variant DB indexing 64-bit binary values
-* `b128/:tolerance/:namespace`: Substitution-variant DB indexing 128-bit binary values
-* `b256/:tolerance/:namespace`: Substitution-variant DB indexing 256-bit binary values
+* `b/64/:tolerance/:namespace`: Substitution-variant DB indexing 64-bit binary values
+* `b/128/:tolerance/:namespace`: Substitution-variant DB indexing 128-bit binary values
+* `b/256/:tolerance/:namespace`: Substitution-variant DB indexing 256-bit binary values
 * `bN/:bits/:tolerance/:namespace`: Substitution-variant DB indexing binary
-  values of length `:bits`
-* `v64/:length/:tolerance/:namespace`: Deletion-variant DB indexing vectors of
+  values of length `:bits` (multiples of 8)
+* `v/64/:length/:tolerance/:namespace`: Deletion-variant DB indexing vectors of
    64-bit values of length `:length`
-* `v128/:length/:tolerance/:namespace`: Deletion-variant DB indexing vectors of
+* `v/128/:length/:tolerance/:namespace`: Deletion-variant DB indexing vectors of
    128-bit values of length `:length`
-* `v256/:length/:tolerance/:namespace`: Deletion-variant DB indexing vectors of
+* `v/256/:length/:tolerance/:namespace`: Deletion-variant DB indexing vectors of
    256-bit values of length `:length`
 * `vN/:length/:tolerance/:namespace`: Deletion-variant DB indexing vectors of
-   `:bits`-bit values of length `:length`
+   `:bits`-bit values of length `:length` (multiples of 8)
 
 
 ```sh

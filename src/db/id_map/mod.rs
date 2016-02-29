@@ -55,3 +55,6 @@ macro_rules! to_id_hash_fnv {
 }
 to_id_hash_fnv!([u64; 2]);
 to_id_hash_fnv!([u64; 4]);
+
+// NOTE: Make this a generic impl on T: Hash
+to_id_hash_fnv!(Vec<u8>);
