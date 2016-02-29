@@ -121,6 +121,63 @@ window_fixed_to_uint!([u64; 2], u8);
 // This is mostly implemented for testing
 window_fixed_to_uint!([u16; 4], u8);
 
+
+macro_rules! window_fixed_to_fixed {
+    ([$elem:ident; $elems:expr], [$out:ident; $outs:expr]) => {
+
+        impl Windowable<[$out; $outs]> for [$elem; $elems] {
+            fn window(&self, start_dimension: usize, dimensions: usize) -> [$out; $outs] {
+                // source start in range
+                assert!(start_dimension < (8 * $elems * size_of::<$elem>()));                  
+                // source end in range
+                assert!(start_dimension + dimensions <= (8 * $elems * size_of::<$elem>()));    
+                // dimensions in range
+                assert!(dimensions <= (8 * $outs * size_of::<$out>()));                      
+
+                let mut out = [0; $outs];
+
+                // NOTE: Might look at inlining these, idk
+                let to_full_elements = dimensions / (8 * size_of::<$out>());
+                let to_remainder = dimensions % (8 * size_of::<$out>());
+                let to_elements = if to_remainder == 0 { to_full_elements } else { to_full_elements + 1 };
+                let from_offset = start_dimension / (8 * size_of::<$elem>());
+                let from_shift = start_dimension % (8 * size_of::<$elem>());
+
+                // Contruct the output mask
+                for i in 0..to_full_elements {
+                    out[i] = std::$out::MAX
+                }
+                if to_full_elements != to_elements {
+                    out[to_full_elements] = std::$out::MAX ^ (std::$out::MAX << (dimensions % (8 * size_of::<$out>())))
+                }
+
+                // AND the shifted bits into the mask
+                if from_shift == 0 {
+                    for (to, from) in (from_offset..(from_offset+to_elements)).enumerate() {
+                        out[to] &= self[from] as $out
+                    }
+                } else {
+                    for (to, from) in (from_offset..(from_offset+to_elements)).enumerate() {
+                        if from == ($elems - 1) {
+                            out[to] &= self[from] >> from_shift
+                        } else {
+                            out[to] &= (self[from] >> from_shift) | (self[from+1] << ((8 * size_of::<$elem>())-from_shift))
+                        }
+                    }
+                }
+
+                return out
+            }
+        }
+    }
+}
+window_fixed_to_fixed!([u64; 4], [u64; 4]);
+window_fixed_to_fixed!([u64; 4], [u64; 2]);
+window_fixed_to_fixed!([u64; 2], [u64; 2]);
+
+// Mostly for testing...
+window_fixed_to_fixed!([u16; 4], [u16; 2]);
+
 /*
 #[cfg(test)]
 mod bench {
@@ -209,6 +266,41 @@ mod test {
                "[{:016b},{:016b},{:016b},{:016b}].window({:2},{:2}) -> {:08b} (exp {:08b})", 
                start[0], start[1], start[2], start[3],
                start_dimension, dimensions, actual, expected,
+               );
+               */
+            quickcheck::TestResult::from_bool(actual == expected)
+        }
+        quickcheck(prop as fn(usize, usize) -> quickcheck::TestResult);
+    }
+
+    #[test]
+    fn quick_u16x4_u16x2() {
+        fn prop(x: usize, y: usize) -> quickcheck::TestResult {
+            let start_dimension = x % 64;
+            let dimensions = 1 + (y % 32);
+            if start_dimension + dimensions > 64 {
+                return quickcheck::TestResult::discard()
+            }
+
+            let start = [EVEN_U16, EVEN_U16, EVEN_U16, EVEN_U16];
+            let actual: [u16; 2] = start.window(start_dimension, dimensions);
+            let fill = if start_dimension % 2 == 0 { EVEN_U16 } else { ODD_U16 };
+            let expected: [u16; 2] = match (dimensions / 16, dimensions % 16) {
+                (2, 0) => [fill, fill],
+                (1, 0) => [fill, 0],
+                (1, d) => [fill, fill & (ONES_U16 ^ (ONES_U16 << d))],
+                (0, 0) => panic!("wtf"),
+                (0, d) => [fill & (ONES_U16 ^ (ONES_U16 << d)), 0],
+                _ => panic!("wtf"),
+            };
+
+            /*
+               println!(
+               "[{:016b},{:016b},{:016b},{:016b}].window({:2},{:2}) -> [{:016b},{:016b}] (exp [{:016b},{:016b}])", 
+               start[0], start[1], start[2], start[3],
+               start_dimension, dimensions, 
+               actual[0], actual[1],
+               expected[0], expected[1],
                );
                */
             quickcheck::TestResult::from_bool(actual == expected)
