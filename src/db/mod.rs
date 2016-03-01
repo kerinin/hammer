@@ -72,12 +72,9 @@ mod result_accumulator;
 
 // mod bench; // Uncomment to get benchmarks to run
 
-use std::clone::Clone;
-use std::cmp::Eq;
-use std::hash::Hash;
 use std::path::PathBuf;
+use std::mem::size_of;
 use std::collections::HashSet;
-use rustc_serialize::{Encodable, Decodable};
 
 use num::rational::Ratio;
 
@@ -95,95 +92,105 @@ pub enum StorageBackend {
     RocksDB(String),
 }
 
-pub trait BinaryFactory {
-    fn build(tolerance: usize, storage: StorageBackend) -> Box<Database<Self>>;
+pub trait BinaryDB {
+    fn new(tolerance: usize, storage: StorageBackend) -> Box<Database<Self>>;
 }
-pub trait VectorFactory {
-    fn build(dimensions: usize, tolerance: usize, storage: StorageBackend) -> Box<Database<Vec<Self>>>;
+pub trait VectorDB {
+    fn new(dimensions: usize, tolerance: usize, storage: StorageBackend) -> Box<Database<Self>>;
 }
 
-impl VectorFactory for u8 {
-    fn build(dimensions: usize, tolerance: usize, storage: StorageBackend) -> Box<Database<Vec<u8>>> {
+macro_rules! vector_db {
+    ($elem:ty) => {
+        impl VectorDB for $elem {
+            fn new(dimensions: usize, tolerance: usize, storage: StorageBackend) -> Box<Database<$elem>> {
 
-        match storage {
-            StorageBackend::InMemory => {
-                let id_map = id_map::HashMap::new();
-                let map_set = map_set::InMemoryHash::new();
-                let db: deletion::DB<
-                    Vec<u8>,
-                    Vec<u8>,
-                    u64,
-                    u64,
-                    id_map::HashMap<u64, Vec<u8>>,
-                    map_set::InMemoryHash<deletion::Key<u64>, u64>,
-                    > = deletion::DB::with_stores(dimensions, tolerance, id_map, map_set);
+                match storage {
+                    StorageBackend::InMemory => {
+                        let id_map = id_map::HashMap::new();
+                        let map_set = map_set::InMemoryHash::new();
+                        let db: deletion::DB<
+                            $elem,
+                            $elem,
+                            u64,
+                            deletion::Dvec,
+                            id_map::HashMap<u64, $elem>,
+                            map_set::InMemoryHash<deletion::Key<deletion::Dvec>, u64>,
+                            > = deletion::DB::with_stores(dimensions, tolerance, id_map, map_set);
 
-                return Box::new(db)
-            },
-            StorageBackend::TempRocksDB => {
-                let id_map = id_map::TempRocksDB::new();
-                let map_set = map_set::TempRocksDB::new();
-                let db: deletion::DB<
-                    Vec<u8>,
-                    Vec<u8>,
-                    u64,
-                    u64,
-                    id_map::TempRocksDB<u64, Vec<u8>>,
-                    map_set::TempRocksDB<deletion::Key<u64>, u64>,
-                    > = deletion::DB::with_stores(dimensions, tolerance, id_map, map_set);
+                        return Box::new(db)
+                    },
+                    StorageBackend::TempRocksDB => {
+                        let id_map = id_map::TempRocksDB::new();
+                        let map_set = map_set::TempRocksDB::new();
+                        let db: deletion::DB<
+                            $elem,
+                            $elem,
+                            u64,
+                            deletion::Dvec,
+                            id_map::TempRocksDB<u64, $elem>,
+                            map_set::TempRocksDB<deletion::Key<deletion::Dvec>, u64>,
+                            > = deletion::DB::with_stores(dimensions, tolerance, id_map, map_set);
 
-                return Box::new(db)
-            },
-            StorageBackend::RocksDB(ref path) => {
-                let mut id_map_path = PathBuf::from(path);
-                id_map_path.push("id_map");
-                let mut map_set_path = PathBuf::from(path);
-                map_set_path.push("map_set");
+                        return Box::new(db)
+                    },
+                    StorageBackend::RocksDB(ref path) => {
+                        let mut id_map_path = PathBuf::from(path);
+                        id_map_path.push("id_map");
+                        let mut map_set_path = PathBuf::from(path);
+                        map_set_path.push("map_set");
 
-                let id_map = id_map::RocksDB::new(id_map_path.to_str().unwrap());
-                let map_set = map_set::RocksDB::new(map_set_path.to_str().unwrap());
-                let db: deletion::DB<
-                    Vec<u8>,
-                    Vec<u8>,
-                    u64,
-                    u64,
-                    id_map::RocksDB<u64, Vec<u8>>,
-                    map_set::RocksDB<deletion::Key<u64>, u64>,
-                    > = deletion::DB::with_stores(dimensions, tolerance, id_map, map_set);
+                        let id_map = id_map::RocksDB::new(id_map_path.to_str().unwrap());
+                        let map_set = map_set::RocksDB::new(map_set_path.to_str().unwrap());
+                        let db: deletion::DB<
+                            $elem,
+                            $elem,
+                            u64,
+                            deletion::Dvec,
+                            id_map::RocksDB<u64, $elem>,
+                            map_set::RocksDB<deletion::Key<deletion::Dvec>, u64>,
+                            > = deletion::DB::with_stores(dimensions, tolerance, id_map, map_set);
 
-                return Box::new(db)
-            },
+                        return Box::new(db)
+                    },
+                }
+            }
         }
     }
 }
+vector_db!(Vec<u8>);
+vector_db!(Vec<u16>);
+vector_db!(Vec<u32>);
+vector_db!(Vec<u64>);
+vector_db!(Vec<[u64; 2]>);
+vector_db!(Vec<[u64; 4]>);
 
 macro_rules! echo_binary {
-    ($elem:ty, $dims:expr, $([$v:ty, $b:expr]),*) => {
+    ($elem:ty, $($v:ty),*) => {
 
-        impl BinaryFactory for $elem {
-            fn build(tolerance: usize, storage: StorageBackend) -> Box<Database<$elem>> {
+        impl BinaryDB for $elem {
+            fn new(tolerance: usize, storage: StorageBackend) -> Box<Database<$elem>> {
 
-                let dimensions = $dims;
+                let dimensions = 8 * size_of::<$elem>();
                 let partitions = (tolerance + 3) / 2;
                 let partition_bits = Ratio::new_raw(dimensions, partitions).ceil().to_integer();
 
                 match (partition_bits, storage) {
                     $(
-                        (b, StorageBackend::InMemory) if b <= $b => {
+                        (b, StorageBackend::InMemory) if b <= (8 * size_of::<$v>()) => {
                             let id_map = id_map::Echo::new();
                             let map_set = map_set::InMemoryHash::new();
                             let db: substitution::DB<$elem, $v, $v, $elem, id_map::Echo<$elem>, map_set::InMemoryHash<substitution::Key<$v>, $elem>> = substitution::DB::with_stores(dimensions, tolerance, id_map, map_set);
 
                             return Box::new(db)
                         },
-                        (b, StorageBackend::TempRocksDB) if b <= $b => {
+                        (b, StorageBackend::TempRocksDB) if b <= (8 * size_of::<$v>()) => {
                             let id_map = id_map::Echo::new();
                             let map_set = map_set::TempRocksDB::new();
                             let db: substitution::DB<$elem, $v, $v, $elem, id_map::Echo<$elem>, map_set::TempRocksDB<substitution::Key<$v>, $elem>> = substitution::DB::with_stores(dimensions, tolerance, id_map, map_set);
 
                             return Box::new(db)
                         },
-                        (b, StorageBackend::RocksDB(ref path)) if b <= $b => {
+                        (b, StorageBackend::RocksDB(ref path)) if b <= (8 * size_of::<$v>()) => {
                             let id_map = id_map::Echo::new();
                             let map_set = map_set::RocksDB::new(&path);
                             let db: substitution::DB<$elem, $v, $v, $elem, id_map::Echo<$elem>, map_set::RocksDB<substitution::Key<$v>, $elem>> = substitution::DB::with_stores(dimensions, tolerance, id_map, map_set);
@@ -197,38 +204,39 @@ macro_rules! echo_binary {
         }
     }
 }
-echo_binary!(u64, 64, [u8, 8], [u16, 16], [u32, 32], [u64, 64]);
-echo_binary!(u32, 32, [u8, 8], [u16, 16], [u32, 32]);
-echo_binary!(u16, 16, [u8, 8], [u16, 16]);
-echo_binary!(u8, 8, [u8, 8]);
+echo_binary!(u64, u8, u16, u32, u64);
+// echo_binary!(u64, u8, u16, [u8; 3], u32, [u8; 5], [u8; 6], [u8; 7], u64);
+echo_binary!(u32, u8, u16, u32);
+echo_binary!(u16, u8, u16);
+echo_binary!(u8, u8);
 
 macro_rules! map_binary {
-    ($elem:ty, $dims:expr, $([$v:ty, $b:expr]),*) => {
+    ($elem:ty, $($v:ty),*) => {
 
-        impl BinaryFactory for $elem {
-            fn build(tolerance: usize, storage: StorageBackend) -> Box<Database<$elem>> {
+        impl BinaryDB for $elem {
+            fn new(tolerance: usize, storage: StorageBackend) -> Box<Database<$elem>> {
 
-                let dimensions = $dims;
+                let dimensions = 8 * size_of::<$elem>();
                 let partitions = (tolerance + 3) / 2;
                 let partition_bits = Ratio::new_raw(dimensions, partitions).ceil().to_integer();
 
                 match (partition_bits, storage) {
                     $(
-                        (b, StorageBackend::InMemory) if b <= $b => {
+                        (b, StorageBackend::InMemory) if b <= (8 * size_of::<$v>()) => {
                             let id_map = id_map::HashMap::new();
                             let map_set = map_set::InMemoryHash::new();
                             let db: substitution::DB<$elem, $v, $v, u64, id_map::HashMap<u64, $elem>, map_set::InMemoryHash<substitution::Key<$v>, u64>> = substitution::DB::with_stores(dimensions, tolerance, id_map, map_set);
 
                             return Box::new(db)
                         },
-                        (b, StorageBackend::TempRocksDB) if b <= $b => {
+                        (b, StorageBackend::TempRocksDB) if b <= (8 * size_of::<$v>()) => {
                             let id_map = id_map::TempRocksDB::new();
                             let map_set = map_set::TempRocksDB::new();
                             let db: substitution::DB<$elem, $v, $v, u64, id_map::TempRocksDB<u64, $elem>, map_set::TempRocksDB<substitution::Key<$v>, u64>> = substitution::DB::with_stores(dimensions, tolerance, id_map, map_set);
 
                             return Box::new(db)
                         },
-                        (b, StorageBackend::RocksDB(ref path)) if b <= $b => {
+                        (b, StorageBackend::RocksDB(ref path)) if b <= (8 * size_of::<$v>()) => {
                             let mut id_map_path = PathBuf::from(path);
                             id_map_path.push("id_map");
                             let mut map_set_path = PathBuf::from(path);
@@ -247,6 +255,6 @@ macro_rules! map_binary {
         }
     }
 }
-map_binary!([u64; 4], 256, [u8, 8], [u16, 16], [u32, 32], [u64, 64], [[u64; 2], 128], [[u64; 4], 256]);
-map_binary!([u64; 2], 128, [u8, 8], [u16, 16], [u32, 32], [u64, 64], [[u64; 2], 128]);
+map_binary!([u64; 4], u8, u16, u32, u64, [u64; 2], [u64; 4]);
+map_binary!([u64; 2], u8, u16, u32, u64, [u64; 2]);
 

@@ -71,7 +71,9 @@ Vec<T>: Clone,
     }
 }
 
-impl Iterator for XORIter<Vec<u8>> {
+impl<T> Iterator for XORIter<Vec<T>> where
+T: Hash
+{
     type Item = Dvec;
 
     fn next(&mut self) -> Option<Dvec> {

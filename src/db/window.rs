@@ -50,8 +50,8 @@ window_uint_to_uint!(u16, u16);
 window_uint_to_uint!(u16, u8);
 window_uint_to_uint!(u8, u8);
 
-impl Windowable<Vec<u8>> for Vec<u8> {
-    fn window(&self, start_dimension: usize, dimensions: usize) -> Vec<u8> {
+impl<T: Clone> Windowable<Vec<T>> for Vec<T> {
+    fn window(&self, start_dimension: usize, dimensions: usize) -> Vec<T> {
         self[start_dimension..(start_dimension + dimensions)].to_vec()
     }
 }

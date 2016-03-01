@@ -2,7 +2,7 @@ mod echo;
 mod hash_map;
 mod rocks_db;
 
-use std::hash::{Hash, Hasher};
+use std::hash::{Hash, Hasher, SipHasher};
 use std::ops::{Deref, DerefMut};
 
 use fnv::FnvHasher;
@@ -42,6 +42,19 @@ impl<T> ToID<T> for T {
     fn to_id(self) -> T { self }
 }
 
+// NOTE: Using SipHasher here rather than FNV because we anticipate large values,
+// and the FNV speed advantage only holds to ~20 bytes (based on some rando 
+// benchmarks on the interwebs)
+impl<T: Hash> ToID<u64> for Vec<T> {
+    fn to_id(self) -> u64 {
+        let mut s = SipHasher::new();
+        for e in self.iter() {
+            e.hash(&mut s);
+        }
+        s.finish()
+    }
+}
+
 macro_rules! to_id_hash_fnv {
     ($elem:ty) => {
         impl ToID<u64> for $elem {
@@ -55,6 +68,3 @@ macro_rules! to_id_hash_fnv {
 }
 to_id_hash_fnv!([u64; 2]);
 to_id_hash_fnv!([u64; 4]);
-
-// NOTE: Make this a generic impl on T: Hash
-to_id_hash_fnv!(Vec<u8>);

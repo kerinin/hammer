@@ -42,7 +42,7 @@ pub fn main() {
         .and_then(|d| d.decode())
         .unwrap_or_else(|e| e.exit());
 
-    let config = http::server::Config{
+    let config = http::Config{
         data_dir: args.flag_data_dir.map(|d| PathBuf::from(d)),
         bind: args.flag_bind,
         bits: args.flag_bits,
