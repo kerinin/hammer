@@ -2,29 +2,27 @@ use std::clone::Clone;
 use std::hash::Hash;
 use std::cmp::Eq;
 use std::io::Read;
-use std::path::PathBuf;
-use std::collections::{HashMap, BTreeMap};
+use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 
 use bincode;
 use iron::prelude::*;
-use iron::{status, typemap};
+use iron::status;
 use router::Router;
 use persistent::State;
 use rustc_serialize::json;
-use rustc_serialize::base64;
 use rustc_serialize::base64::{FromBase64, ToBase64};
 use rustc_serialize::{Encodable, Decodable};
+use rustc_serialize::json::ToJson;
 
 use hammer::db::{VectorDB, StorageBackend};
 use hammer::db::Database;
 use hammer::db::id_map::IDMap;
 use hammer::db::map_set::MapSet;
-use hammer::db::substitution::Key;
 
-use http::{Config, ConfigKey, B32, B64, B128, B256, V32, V64, V128, V256, decode_body, BASE64_CONFIG, HammerHTTPError};
+use http::{Config, ConfigKey, V32, V64, V128, V256, decode_body, BASE64_CONFIG, AddResult, QueryResult, DeleteResult};
 
-fn add(req: &mut Request) -> IronResult<Response> {
+pub fn add(req: &mut Request) -> IronResult<Response> {
     let req_body = try!(decode_body::<Vec<Vec<String>>>(req));
 
     let bits = match req.extensions.get::<Router>().unwrap().find("bits") {
@@ -70,10 +68,11 @@ fn add(req: &mut Request) -> IronResult<Response> {
     }
 }
 
-fn do_add<T>(req_body: Vec<Vec<String>>, bits: usize, dimensions: usize, tolerance: usize, namespace: String, config_mx: Arc<RwLock<Config>>, dbmap_mx: Arc<RwLock<HashMap<(usize, usize, String), Arc<RwLock<Box<Database<T>>>>>>>) -> IronResult<Response> where
-T: Clone + VectorDB + Decodable,
+fn do_add<T>(req_body: Vec<Vec<String>>, bits: usize, dimensions: usize, tolerance: usize, namespace: String, config_mx: Arc<RwLock<Config>>, dbmap_mx: Arc<RwLock<HashMap<(usize, usize, String), Arc<RwLock<Box<Database<Vec<T>>>>>>>>) -> IronResult<Response> where
+T: Clone + Decodable,
+Vec<T>: VectorDB,
 {
-    let mut results = BTreeMap::new();
+    let mut results = Vec::with_capacity(req_body.len());
 
     // this is a little contorted, but the idea is to optimize for the
     // frequent case where the DB being inserted into exists and only
@@ -112,38 +111,48 @@ T: Clone + VectorDB + Decodable,
         let db_mx = dbmap.get(&(dimensions, tolerance, namespace)).unwrap();
         let mut db = db_mx.write().unwrap();
 
-        for value_vec in req_body.into_iter() {
-            let value = Vec::with_capacity(dimensions);
+        'vector: for vector_b64 in req_body.into_iter() {
+            let mut vector = Vec::with_capacity(dimensions);
 
-            for item_b64 in value_vec.into_iter() {
+            for item_b64 in vector_b64.into_iter() {
                 let item_bytes = match item_b64.from_base64() {
                     Ok(v) => v,
-                    Err(e) => return Ok(Response::with((status::BadRequest, format!("unable to decode base-64: {:?}", e)))),
+                    Err(e) => {
+                        results.push(AddResult::Err(format!("unable to base64-decode '{}': {:?}", item_b64, e)));
+                        continue 'vector;
+                    }
                 };
 
-                let item = match bincode::rustc_serialize::decode(&item_bytes) {
+                let item: T = match bincode::rustc_serialize::decode(&item_bytes) {
                     Ok(v) => v,
-                    Err(e) => return Ok(Response::with((status::BadRequest, format!("unable to decode {} bytes: {:?}", item_bytes.len(), e)))),
+                    Err(e) => {
+                        results.push(AddResult::Err(format!("unable to decode '{}': {:?}", item_b64, e)));
+                        continue 'vector;
+                    },
                 };
 
-                value.push(item);
+                vector.push(item);
             }
 
-            if value.len() != dimensions {
-                return Ok(Response::with((status::BadRequest, format!("vector length mismatch, wanted {}: {:?}", dimensions, value_vec))))
+            if vector.len() != dimensions {
+                results.push(AddResult::Err(format!("expected vector length to be {}, not {}", dimensions, vector.len())));
+                continue 'vector;
             }
 
-            results.insert(value_vec, db.insert(value.clone()));
+            match db.insert(vector) {
+                true => { results.push(AddResult::Ok); },
+                false => { results.push(AddResult::Exists); },
+            }
         }
 
         break
     }
 
-    let response_body = itry!(json::encode(&results));
+    let response_body = json::encode(&results.to_json()).unwrap();
     Ok(Response::with((status::Ok, response_body)))
 }
 
-fn query(req: &mut Request) -> IronResult<Response> {
+pub fn query(req: &mut Request) -> IronResult<Response> {
     let req_body = try!(decode_body::<Vec<Vec<String>>>(req));
 
     let bits = match req.extensions.get::<Router>().unwrap().find("bits") {
@@ -187,25 +196,52 @@ fn query(req: &mut Request) -> IronResult<Response> {
     }
 }
 
-fn do_query<T>(req_body: Vec<Vec<String>>, dimensions: usize, tolerance: usize, namespace: String, dbmap_mx: Arc<RwLock<HashMap<(usize, usize, String), Arc<RwLock<Box<Database<T>>>>>>>) -> IronResult<Response> where
-T: Eq + Hash + Clone + VectorDB + Encodable + Decodable,
+fn do_query<T>(req_body: Vec<Vec<String>>, dimensions: usize, tolerance: usize, namespace: String, dbmap_mx: Arc<RwLock<HashMap<(usize, usize, String), Arc<RwLock<Box<Database<Vec<T>>>>>>>>) -> IronResult<Response> where
+T: Eq + Hash + Clone + Encodable + Decodable,
+Vec<T>: VectorDB,
 {
-    let mut results = BTreeMap::new();
+    let mut results = Vec::with_capacity(req_body.len());
 
     match { dbmap_mx.read().unwrap().get(&(dimensions.clone(), tolerance.clone(), namespace.clone())) } {
-        None => {},
+        None => {
+            for _ in 0..req_body.len() {
+                results.push(QueryResult::None);
+            }
+        },
         Some(db_mx) => {
             let db = db_mx.read().unwrap();
 
-            for value_vec in req_body.into_iter() {
-                let value = value_vec.into_iter().map(|item_b64| {
-                    let item_bytes = itry!(item_b64.from_base64());
-                    let item: T = itry!(bincode::rustc_serialize::decode(&item_bytes));
-                }).collect();
+            'vector: for vector_b64 in req_body.into_iter() {
+                let mut vector = Vec::with_capacity(dimensions);
 
-                match db.get(&value) {
+                for item_b64 in vector_b64.into_iter() {
+                    let item_bytes = match item_b64.from_base64() {
+                        Ok(v) => v,
+                        Err(e) => {
+                            results.push(QueryResult::Err(format!("unable to base64-decode '{}': {:?}", item_b64, e)));
+                            continue 'vector;
+                        }
+                    };
+
+                    let item: T = match bincode::rustc_serialize::decode(&item_bytes) {
+                        Ok(v) => v,
+                        Err(e) => {
+                            results.push(QueryResult::Err(format!("unable to decode '{}': {:?}", item_b64, e)));
+                            continue 'vector;
+                        },
+                    };
+
+                    vector.push(item);
+                }
+
+                if vector.len() != dimensions {
+                    results.push(QueryResult::Err(format!("expected vector length to be {}, not {}", dimensions, vector.len())));
+                    continue 'vector;
+                }
+
+                match db.get(&vector) {
                     Some(found) => {
-                        let found_b64s = found.iter().map(|v| {
+                        let found_b64s: Vec<Vec<String>> = found.iter().map(|v| {
                             v.iter().map(|item| {
                                 let found_bytes = bincode::rustc_serialize::encode(item, bincode::SizeLimit::Infinite).unwrap();
 
@@ -213,21 +249,21 @@ T: Eq + Hash + Clone + VectorDB + Encodable + Decodable,
                             }).collect()
                         }).collect();
 
-                        results.insert(value_vec, found_b64s);
+                        results.push(QueryResult::Ok(found_b64s));
                     },
                     None => {
-                        results.insert(value_vec, Vec::new());
+                        results.push(QueryResult::None);
                     },
                 }
             }
         }
     }
 
-    let response_body = itry!(json::encode(&results));
+    let response_body = json::encode(&results.to_json()).unwrap();
     Ok(Response::with((status::Ok, response_body)))
 }
 
-fn delete(req: &mut Request) -> IronResult<Response> {
+pub fn delete(req: &mut Request) -> IronResult<Response> {
     let req_body = try!(decode_body::<Vec<Vec<String>>>(req));
 
     let bits = match req.extensions.get::<Router>().unwrap().find("bits") {
@@ -271,31 +307,56 @@ fn delete(req: &mut Request) -> IronResult<Response> {
     }
 }
 
-fn do_delete<T>(req_body: Vec<Vec<String>>, dimensions: usize, tolerance: usize, namespace: String, dbmap_mx: Arc<RwLock<HashMap<(usize, usize, String), Arc<RwLock<Box<Database<T>>>>>>>) -> IronResult<Response> where
-T: Eq + Hash + Clone + VectorDB + Encodable + Decodable,
+fn do_delete<T>(req_body: Vec<Vec<String>>, dimensions: usize, tolerance: usize, namespace: String, dbmap_mx: Arc<RwLock<HashMap<(usize, usize, String), Arc<RwLock<Box<Database<Vec<T>>>>>>>>) -> IronResult<Response> where
+T: Eq + Hash + Clone + Encodable + Decodable,
+Vec<T>: VectorDB,
 {
-    let mut results = BTreeMap::new();
+    let mut results = Vec::with_capacity(req_body.len());
 
     match { dbmap_mx.read().unwrap().get(&(dimensions.clone(), tolerance.clone(), namespace.clone())) } {
         None => {
-            for value in req_body.into_iter() {
-                results.insert(value, false);
+            for _ in 0..req_body.len() {
+                results.push(DeleteResult::NotFound);
             }
         },
         Some(db_mx) => {
             let mut db = db_mx.write().unwrap();
 
-            for value_vec in req_body.into_iter() {
-                let value = value_vec.into_iter().map(|item_b64| {
-                    let item_bytes = itry!(item_b64.from_base64());
-                    let item: T = itry!(bincode::rustc_serialize::decode(&item_bytes));
-                }).collect();
+            'vector: for vector_b64 in req_body.into_iter() {
+                let mut vector = Vec::with_capacity(dimensions);
 
-                results.insert(value_vec, db.remove(&value));
+                for item_b64 in vector_b64.into_iter() {
+                    let item_bytes = match item_b64.from_base64() {
+                        Ok(v) => v,
+                        Err(e) => {
+                            results.push(DeleteResult::Err(format!("unable to base64-decode '{}': {:?}", item_b64, e)));
+                            continue 'vector;
+                        }
+                    };
+
+                    let item: T = match bincode::rustc_serialize::decode(&item_bytes) {
+                        Ok(v) => v,
+                        Err(e) => {
+                            results.push(DeleteResult::Err(format!("unable to decode '{}': {:?}", item_b64, e)));
+                            continue 'vector;
+                        },
+                    };
+
+                    vector.push(item);
+                }
+
+                if vector.len() != dimensions {
+                    results.push(DeleteResult::Err(format!("expected vector length to be {}, not {}", dimensions, vector.len())));
+                    continue 'vector;
+                }
+                match db.remove(&vector) {
+                    true => { results.push(DeleteResult::Ok); },
+                    false => { results.push(DeleteResult::NotFound); },
+                }
             }
         }
     }
 
-    let response_body = itry!(json::encode(&results));
+    let response_body = json::encode(&results.to_json()).unwrap();
     Ok(Response::with((status::Ok, response_body)))
 }

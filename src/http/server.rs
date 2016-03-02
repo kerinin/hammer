@@ -9,7 +9,7 @@ use hammer::db::BinaryDB;
 
 use http::{Config, ConfigKey, B32, B64, B128, B256, V32, V64, V128, V256};
 use http::binary_handler;
-// use http::vector_handler;
+use http::vector_handler;
 
 pub fn serve(config: Config) {
     println!("Serving with config: {:?}", config);
@@ -19,11 +19,9 @@ pub fn serve(config: Config) {
     router.post("/query/b/:bits/:tolerance/:namespace", binary_handler::query);
     router.post("/delete/b/:bits/:tolerance/:namespace", binary_handler::delete);
 
-    /*
-       router.post("/add/v/:bits/:dimensions/:tolerance/:namespace", vector_handler::add);
-       router.post("/query/v/:bits/:dimensions/:tolerance/:namespace", vector_handler::query);
-       router.post("/delete/v/:bits/:dimensions/:tolerance/:namespace", vector_handler::delete);
-       */
+    router.post("/add/v/:bits/:dimensions/:tolerance/:namespace", vector_handler::add);
+    router.post("/query/v/:bits/:dimensions/:tolerance/:namespace", vector_handler::query);
+    router.post("/delete/v/:bits/:dimensions/:tolerance/:namespace", vector_handler::delete);
 
     let mut chain = Chain::new(router);
     chain.link_before(State::<ConfigKey>::one(config.clone()));

@@ -2,7 +2,7 @@ use std::clone::Clone;
 use std::hash::Hash;
 use std::cmp::Eq;
 use std::io::Read;
-use std::collections::{HashMap, BTreeMap};
+use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 
 use bincode;
@@ -13,13 +13,14 @@ use persistent::State;
 use rustc_serialize::json;
 use rustc_serialize::base64::{FromBase64, ToBase64};
 use rustc_serialize::{Encodable, Decodable};
+use rustc_serialize::json::ToJson;
 
 use hammer::db::{BinaryDB, StorageBackend};
 use hammer::db::Database;
 use hammer::db::id_map::IDMap;
 use hammer::db::map_set::MapSet;
 
-use http::{Config, ConfigKey, B32, B64, B128, B256, decode_body, BASE64_CONFIG};
+use http::{Config, ConfigKey, B32, B64, B128, B256, decode_body, BASE64_CONFIG, AddResult, QueryResult, DeleteResult};
 
 pub fn add(req: &mut Request) -> IronResult<Response> {
     let req_body = try!(decode_body::<Vec<String>>(req));
@@ -65,7 +66,7 @@ pub fn add(req: &mut Request) -> IronResult<Response> {
 fn do_add<T>(req_body: Vec<String>, bits: usize, tolerance: usize, namespace: String, config_mx: Arc<RwLock<Config>>, dbmap_mx: Arc<RwLock<HashMap<(usize, String), Arc<RwLock<Box<Database<T>>>>>>>) -> IronResult<Response> where
 T: Clone + BinaryDB + Decodable,
 {
-    let mut results = BTreeMap::new();
+    let mut results = Vec::with_capacity(req_body.len());
 
     // this is a little contorted, but the idea is to optimize for the
     // frequent case where the DB being inserted into exists and only
@@ -103,24 +104,34 @@ T: Clone + BinaryDB + Decodable,
         let db_mx = dbmap.get(&(tolerance, namespace)).unwrap();
         let mut db = db_mx.write().unwrap();
 
-        for value_b64 in req_body.into_iter() {
+        'value: for value_b64 in req_body.into_iter() {
             let value_bytes = match value_b64.from_base64() {
                 Ok(v) => v,
-                Err(e) => { return Ok(Response::with((status::BadRequest, format!("unable to decode base-64: {:?}", e)))) },
+                Err(e) => {
+                    results.push(AddResult::Err(format!("unable to base64-decode '{}': {:?}", value_b64, e)));
+                    continue 'value;
+                }
             };
 
             let value: T = match bincode::rustc_serialize::decode(&value_bytes) {
                 Ok(v) => v,
-                Err(e) => { return Ok(Response::with((status::BadRequest, format!("unable to decode {} bytes: {:?}", value_bytes.len(), e)))) },
+                Err(e) => {
+                    results.push(AddResult::Err(format!("unable to decode '{}': {:?}", value_b64, e)));
+                    continue 'value;
+                },
             };
 
-            results.insert(value_b64, db.insert(value.clone()));
+            match db.insert(value) {
+                true => { results.push(AddResult::Ok); },
+                false => { results.push(AddResult::Exists); },
+            }
+
         }
 
         break
     }
 
-    let response_body = itry!(json::encode(&results));
+    let response_body = json::encode(&results.to_json()).unwrap();
     Ok(Response::with((status::Ok, response_body)))
 }
 
@@ -166,36 +177,53 @@ pub fn query(req: &mut Request) -> IronResult<Response> {
 fn do_query<T>(req_body: Vec<String>, tolerance: usize, namespace: String, dbmap_mx: Arc<RwLock<HashMap<(usize, String), Arc<RwLock<Box<Database<T>>>>>>>) -> IronResult<Response> where
 T: Eq + Hash + Clone + BinaryDB + Encodable + Decodable,
 {
-    let mut results = BTreeMap::new();
+    let mut results = Vec::with_capacity(req_body.len());
 
     match { dbmap_mx.read().unwrap().get(&(tolerance.clone(), namespace.clone())) } {
-        None => {},
+        None => {
+            for _ in 0..req_body.len() {
+                results.push(QueryResult::None);
+            }
+        },
         Some(db_mx) => {
             let db = db_mx.read().unwrap();
 
-            for value_b64 in req_body.into_iter() {
-                let value_bytes = itry!(value_b64.from_base64());
-                let value: T = itry!(bincode::rustc_serialize::decode(&value_bytes));
+            'value: for value_b64 in req_body.into_iter() {
+                let value_bytes = match value_b64.from_base64() {
+                    Ok(v) => v,
+                    Err(e) => {
+                        results.push(QueryResult::Err(format!("unable to base64-decode '{}': {:?}", value_b64, e)));
+                        continue 'value;
+                    }
+                };
+
+                let value: T = match bincode::rustc_serialize::decode(&value_bytes) {
+                    Ok(v) => v,
+                    Err(e) => {
+                        results.push(QueryResult::Err(format!("unable to decode '{}': {:?}", value_b64, e)));
+                        continue 'value;
+                    },
+                };
 
                 match db.get(&value) {
                     Some(found) => {
-                        let found_b64s = found.iter().map(|v| {
+                        let found_b64s: Vec<String> = found.iter().map(|v| {
                             let found_bytes = bincode::rustc_serialize::encode(v, bincode::SizeLimit::Infinite).unwrap();
 
                             found_bytes.to_base64(BASE64_CONFIG)
                         }).collect();
 
-                        results.insert(value_b64, found_b64s);
+                        results.push(QueryResult::Ok(found_b64s));
                     },
                     None => {
-                        results.insert(value_b64, Vec::new());
+                        results.push(QueryResult::None);
                     },
                 }
             }
         }
     }
 
-    let response_body = itry!(json::encode(&results));
+    let response_body = json::encode(&results.to_json()).unwrap();
     Ok(Response::with((status::Ok, response_body)))
 }
 
@@ -241,26 +269,42 @@ pub fn delete(req: &mut Request) -> IronResult<Response> {
 fn do_delete<T>(req_body: Vec<String>, tolerance: usize, namespace: String, dbmap_mx: Arc<RwLock<HashMap<(usize, String), Arc<RwLock<Box<Database<T>>>>>>>) -> IronResult<Response> where
 T: Eq + Hash + Clone + BinaryDB + Encodable + Decodable,
 {
-    let mut results = BTreeMap::new();
+    let mut results = Vec::with_capacity(req_body.len());
 
     match { dbmap_mx.read().unwrap().get(&(tolerance.clone(), namespace.clone())) } {
         None => {
-            for value in req_body.into_iter() {
-                results.insert(value, false);
+            for _ in 0..req_body.len() {
+                results.push(DeleteResult::NotFound);
             }
         },
         Some(db_mx) => {
             let mut db = db_mx.write().unwrap();
 
-            for value_b64 in req_body.into_iter() {
-                let value_bytes = itry!(value_b64.from_base64());
-                let value: T = itry!(bincode::rustc_serialize::decode(&value_bytes));
+            'value: for value_b64 in req_body.into_iter() {
+                let value_bytes = match value_b64.from_base64() {
+                    Ok(v) => v,
+                    Err(e) => {
+                        results.push(DeleteResult::Err(format!("unable to base64-decode '{}': {:?}", value_b64, e)));
+                        continue 'value;
+                    }
+                };
 
-                results.insert(value_b64, db.remove(&value));
+                let value: T = match bincode::rustc_serialize::decode(&value_bytes) {
+                    Ok(v) => v,
+                    Err(e) => {
+                        results.push(DeleteResult::Err(format!("unable to decode '{}': {:?}", value_b64, e)));
+                        continue 'value;
+                    },
+                };
+
+                match db.remove(&value) {
+                    true => { results.push(DeleteResult::Ok); },
+                    false => { results.push(DeleteResult::NotFound); },
+                }
             }
         }
     }
 
-    let response_body = itry!(json::encode(&results));
+    let response_body = json::encode(&results.to_json()).unwrap();
     Ok(Response::with((status::Ok, response_body)))
 }

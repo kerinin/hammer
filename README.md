@@ -34,19 +34,18 @@ sizes:
 cargo build && target/build/hammer --bind localhost:3000 --bits 64 --tolerance 5
 
 # Add some keys
-curl -X POST -d '["AAAAAAAAAAA=","AAAAAAAAAAE=","AAAAAAAAAAI=","AADZvdpG3MA="]' localhost:3000/add/b/64/8/foo
-# {"AAAAAAAAAAA=":true,"AAAAAAAAAAE=":true,"AAAAAAAAAAI=":true,"AADZvdpG3MA=":true}
+curl -X POST -d '["AAAAAAAAAAA=","AAAAAAAAAAA=","AAAAAAAA","AADZvdpG3MA="]' localhost:3000/add/b/64/8/foo
+# ["ok",exists","err: unable to decode 'AAAAAAAA': (...)","ok"]
+curl -X POST -d '[["AAAAAAAAAAA=","AAAAAAAAAAE="],["AAAAAAAAAAI=","AADZvdpG3MA="]]' localhost:3000/add/v/64/2/8/foo
+# ["ok","ok"]
 
 # Query for some keys
 curl -X POST -d '["AAAAAAAAAAA=","AADZvdpG3MA="]' localhost:3000/query/b/64/8/foo
-# {
-#   "AAAAAAAAAAA=":["AAAAAAAAAAI=","AAAAAAAAAAE=","AAAAAAAAAAA="],
-#   "AADZvdpG3MA=":["AADZvdpG3MA="]
-# }
+# [["AAAAAAAAAAI=","AAAAAAAAAAE=","AAAAAAAAAAA="],["AADZvdpG3MA="]]
 
 # Delete keys
 curl -X POST -d '["AAAAAAAAAAA="]' localhost:3000/delete/b/64/8/foo
-# {"AAAAAAAAAAA=":true}
+# ["ok"]
 ```
 
 ## Architecture

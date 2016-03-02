@@ -1,7 +1,6 @@
 pub mod server;
-
-mod binary_handler;
-mod vector_handler;
+pub mod binary_handler;
+pub mod vector_handler;
 
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
@@ -13,12 +12,52 @@ use iron::{status, typemap};
 use rustc_serialize::base64;
 use rustc_serialize::json;
 use rustc_serialize::Decodable;
+use rustc_serialize::json::{ToJson, Json};
 use hammer::db::Database;
 
-pub enum HammerHTTPError {
-    Base64DecodeError,
-    BincodeDecodeError,
-    VectorLengthError,
+pub enum AddResult {
+    Ok,
+    Exists,
+    Err(String),
+}
+impl ToJson for AddResult {
+    fn to_json(&self) -> Json {
+        match self {
+            &AddResult::Ok => Json::String("ok".to_string()),
+            &AddResult::Exists => Json::String("exists".to_string()),
+            &AddResult::Err(ref e) => Json::String(format!("err: {}", e)),
+        }
+    }
+}
+
+pub enum QueryResult<T> {
+    Ok(T),
+    None,
+    Err(String),
+}
+impl<T: ToJson> ToJson for QueryResult<T> {
+    fn to_json(&self) -> Json {
+        match self {
+            &QueryResult::Ok(ref v) => v.to_json(),
+            &QueryResult::None => Json::String("none".to_string()),
+            &QueryResult::Err(ref e) => Json::String(format!("err: {}", e)),
+        }
+    }
+}
+
+pub enum DeleteResult {
+    Ok,
+    NotFound,
+    Err(String),
+}
+impl ToJson for DeleteResult {
+    fn to_json(&self) -> Json {
+        match self {
+            &DeleteResult::Ok => Json::String("ok".to_string()),
+            &DeleteResult::NotFound => Json::String("not_found".to_string()),
+            &DeleteResult::Err(ref e) => Json::String(format!("err: {}", e)),
+        }
+    }
 }
 
 struct B32;
@@ -39,7 +78,7 @@ impl typemap::Key for V128 { type Value = HashMap<(usize, usize, String), Arc<Rw
 struct V256;
 impl typemap::Key for V256 { type Value = HashMap<(usize, usize, String), Arc<RwLock<Box<Database<Vec<[u64; 4]>>>>>>; }
 
-const BASE64_CONFIG: base64::Config = base64::Config{
+pub const BASE64_CONFIG: base64::Config = base64::Config{
     char_set: base64::CharacterSet::Standard,
     newline: base64::Newline::CRLF,
     pad: true,
@@ -50,8 +89,6 @@ const BASE64_CONFIG: base64::Config = base64::Config{
 pub struct Config {
     pub data_dir: Option<PathBuf>,
     pub bind: String,
-    pub bits: usize,
-    pub tolerance: usize,
 }
 
 struct ConfigKey;
