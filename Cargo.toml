@@ -24,6 +24,7 @@ rocksdb = "*"
 bincode = "*"
 uuid = "*"
 fnv = "1.0.0"
+nom = "*"
 
 [dev-dependencies]
 quickcheck = "*"
