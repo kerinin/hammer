@@ -1,4 +1,3 @@
-use std;
 use std::ops::{BitAnd, BitOr, BitXor, Shl, Shr};
 
 /// A matrix of bits
@@ -25,145 +24,154 @@ Shr<(usize, usize)> {
     fn transpose(self) -> Self;
 }
 
-pub struct Matrix32([u32; 32]);
+macro_rules! intrinsic_matrix {
+    ($t:ident, $u:ty, $n:expr) => {
+        pub struct $t([$u; $n]);
 
-impl Matrix32 {
-    pub fn new(v: [u32; 32]) -> Matrix32 {
-        Matrix32(v)
-    }
-}
-
-impl BitMatrix for Matrix32 {
-    fn count_ones(&self) -> Vec<u32> {
-        let mut ones = Vec::with_capacity(32);
-        for n in self.0.iter() {
-            ones.push(n.count_ones());
+        impl $t {
+            pub fn new(v: [$u; $n]) -> $t {
+                $t(v)
+            }
         }
-        ones
-    }
 
-    fn transpose(mut self) -> Matrix32{
-        // Courtesy of http://www.hackersdelight.org/hdcodetxt/transpose32.c.txt
-        let mut j = 16u32;
-        let mut m = 0x0000ffffu32;
-        let mut k;
-        let mut t;
-        while j != 0 {
-            k = 0u32;
-            while k < 32 {
-                t = (self.0[k as usize] ^ (self.0[(k+j) as usize] >> j)) & m;
-
-                self.0[k as usize] = self.0[k as usize] ^ t;
-                self.0[(k+j) as usize] = self.0[(k+j) as usize] ^ (t << j);
-
-                k = ((k | j) + 1) & (j ^ std::u32::MAX);
+        impl BitMatrix for $t {
+            fn count_ones(&self) -> Vec<u32> {
+                let mut ones = Vec::with_capacity($n);
+                for n in self.0.iter() {
+                    ones.push(n.count_ones());
+                }
+                ones
             }
 
-            j = j >> 1;
-            m = m ^ (m << j);
+            fn transpose(mut self) -> $t {
+                // Courtesy of http://www.hackersdelight.org/hdcodetxt/transpose32.c.txt
+                let mut j: $u = $n / 2;
+                let mut m: $u = (0 & 0) >> ($n / 2);
+                let mut k: $u;
+                let mut t: $u;
+                while j != 0 {
+                    k = 0;
+                    while k < $n {
+                        t = (self.0[k as usize] ^ (self.0[(k+j) as usize] >> j)) & m;
+
+                        self.0[k as usize] = self.0[k as usize] ^ t;
+                        self.0[(k+j) as usize] = self.0[(k+j) as usize] ^ (t << j);
+
+                        k = ((k | j) + 1) & (j ^ (0 & 0));
+                    }
+
+                    j = j >> 1;
+                    m = m ^ (m << j);
+                }
+
+                self
+            }
         }
 
-        self
-    }
-}
+        impl BitAnd for $t {
+            type Output = $t;
 
-impl BitAnd for Matrix32 {
-    type Output = Matrix32;
-
-    fn bitand(mut self, rhs: Matrix32) -> Matrix32 {
-        for i in 0..32 {
-            self.0[i] = self.0[i] & rhs.0[i]
+            fn bitand(mut self, rhs: $t) -> $t {
+                for i in 0..$n {
+                    self.0[i] = self.0[i] & rhs.0[i]
+                }
+                self
+            }
         }
-        self
-    }
-}
 
-impl BitOr for Matrix32 {
-    type Output = Matrix32;
+        impl BitOr for $t {
+            type Output = $t;
 
-    fn bitor(mut self, rhs: Matrix32) -> Matrix32 {
-        for i in 0..32 {
-            self.0[i] = self.0[i] | rhs.0[i]
+            fn bitor(mut self, rhs: $t) -> $t {
+                for i in 0..$n {
+                    self.0[i] = self.0[i] | rhs.0[i]
+                }
+                self
+            }
         }
-        self
-    }
-}
 
-impl BitXor for Matrix32 {
-    type Output = Matrix32;
+        impl BitXor for $t {
+            type Output = $t;
 
-    fn bitxor(mut self, rhs: Matrix32) -> Matrix32 {
-        for i in 0..32 {
-            self.0[i] = self.0[i] ^ rhs.0[i]
+            fn bitxor(mut self, rhs: $t) -> $t {
+                for i in 0..$n {
+                    self.0[i] = self.0[i] ^ rhs.0[i]
+                }
+                self
+            }
         }
-        self
-    }
-}
 
-impl Shl<(usize, usize)> for Matrix32 {
-    type Output = Matrix32;
+        impl Shl<(usize, usize)> for $t {
+            type Output = $t;
 
-    fn shl(mut self, (row_shift, column_shift): (usize, usize)) -> Matrix32 {
-        match (row_shift, column_shift) {
-            (0, 0) => self,
-            (0, c) => {
-                for (from, to) in (0..c).enumerate() {
-                    self.0[to] = self.0[from];
+            fn shl(mut self, (row_shift, column_shift): (usize, usize)) -> $t {
+                match (row_shift, column_shift) {
+                    (0, 0) => self,
+                    (0, c) => {
+                        for (from, to) in (0..c).enumerate() {
+                            self.0[to] = self.0[from];
+                        }
+                        for i in c..$n {
+                            self.0[i] = 0;
+                        }
+                        self
+                    },
+                    (r, 0) => {
+                        for i in 0..$n {
+                            self.0[i] = self.0[i] << r;
+                        }
+                        self
+                    },
+                    (r, c) => {
+                        for (from, to) in (0..c).enumerate() {
+                            self.0[to] = self.0[from] << r;
+                        }
+                        for i in c..$n {
+                            self.0[i] = 0;
+                        }
+                        self
+                    },
                 }
-                for i in c..32 {
-                    self.0[i] = 0;
-                }
-                self
-            },
-            (r, 0) => {
-                for i in 0..32 {
-                    self.0[i] = self.0[i] << r;
-                }
-                self
-            },
-            (r, c) => {
-                for (from, to) in (0..c).enumerate() {
-                    self.0[to] = self.0[from] << r;
-                }
-                for i in c..32 {
-                    self.0[i] = 0;
-                }
-                self
-            },
+            }
         }
-    }
-}
 
-impl Shr<(usize, usize)> for Matrix32 {
-    type Output = Matrix32;
+        impl Shr<(usize, usize)> for $t {
+            type Output = $t;
 
-    fn shr(mut self, (row_shift, column_shift): (usize, usize)) -> Matrix32 {
-        match (row_shift, column_shift) {
-            (0, 0) => self,
-            (0, c) => {
-                for i in 0..c {
-                    self.0[i] = 0;
+            fn shr(mut self, (row_shift, column_shift): (usize, usize)) -> $t {
+                match (row_shift, column_shift) {
+                    (0, 0) => self,
+                    (0, c) => {
+                        for i in 0..c {
+                            self.0[i] = 0;
+                        }
+                        for (from, to) in (c..$n).enumerate() {
+                            self.0[to] = self.0[from];
+                        }
+                        self
+                    },
+                    (r, 0) => {
+                        for i in 0..$n {
+                            self.0[i] = self.0[i] >> r;
+                        }
+                        self
+                    },
+                    (r, c) => {
+                        for i in 0..c {
+                            self.0[i] = 0;
+                        }
+                        for (from, to) in (c..$n).enumerate() {
+                            self.0[to] = self.0[from] >> r;
+                        }
+                        self
+                    },
                 }
-                for (from, to) in (c..32).enumerate() {
-                    self.0[to] = self.0[from];
-                }
-                self
-            },
-            (r, 0) => {
-                for i in 0..32 {
-                    self.0[i] = self.0[i] >> r;
-                }
-                self
-            },
-            (r, c) => {
-                for i in 0..c {
-                    self.0[i] = 0;
-                }
-                for (from, to) in (c..32).enumerate() {
-                    self.0[to] = self.0[from] >> r;
-                }
-                self
-            },
+            }
         }
     }
 }
+intrinsic_matrix!(Matrix8, u8, 8);
+intrinsic_matrix!(Matrix16, u16, 16);
+intrinsic_matrix!(Matrix32, u32, 32);
+intrinsic_matrix!(Matrix64, u64, 64);
+
