@@ -26,11 +26,33 @@ Shr<(usize, usize)> {
 
 macro_rules! intrinsic_matrix {
     ($t:ident, $u:ty, $n:expr) => {
+        #[derive(Eq)]
         pub struct $t([$u; $n]);
 
         impl $t {
             pub fn new(v: [$u; $n]) -> $t {
                 $t(v)
+            }
+        }
+
+        impl Clone for $t {
+            fn clone(&self) -> $t {
+                let mut c = [0; $n];
+                for i in 0..$n {
+                    c[i] = self.0[i].clone();
+                }
+                $t(c)
+            }
+        }
+
+        impl PartialEq for $t {
+            fn eq(&self, other: &$t) -> bool {
+                for i in 0..$n {
+                    if self.0[i] != other.0[i] {
+                        return false
+                    }
+                }
+                return true
             }
         }
 
@@ -175,3 +197,22 @@ intrinsic_matrix!(Matrix16, u16, 16);
 intrinsic_matrix!(Matrix32, u32, 32);
 intrinsic_matrix!(Matrix64, u64, 64);
 
+#[cfg(test)] 
+mod test {
+    extern crate rand;
+    extern crate quickcheck;
+
+    use self::quickcheck::quickcheck;
+
+    use bit_matrix::{Matrix8, BitMatrix};
+
+    #[test]
+    fn transpose_identity() {
+        fn prop(a: u8, b: u8, c: u8, d: u8, e: u8, f: u8, g: u8, h: u8) -> quickcheck::TestResult {
+            let v = Matrix8::new([a, b, c, d, e, f, g, h]);
+
+            quickcheck::TestResult::from_bool(v == v.clone().transpose().transpose())
+        }
+        quickcheck(prop as fn(u8, u8, u8, u8, u8, u8, u8, u8) -> quickcheck::TestResult);
+    }
+}
