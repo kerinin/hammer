@@ -1,5 +1,5 @@
 use std::fmt::{Debug, Formatter, Error};
-use std::ops::{BitAnd, BitOr, BitXor, Shl, Shr};
+use std::ops::{Index, IndexMut, BitAnd, BitOr, BitXor, Shl, Shr};
 
 /// A matrix of bits
 ///
@@ -31,8 +31,30 @@ macro_rules! intrinsic_matrix {
         pub struct $t([$u; $n]);
 
         impl $t {
+            pub fn from_elem(e: bool) -> $t {
+                if e {
+                    $t([!0; $n])
+                } else {
+                    $t([0; $n])
+                }
+            }
+
             pub fn new(v: [$u; $n]) -> $t {
                 $t(v)
+            }
+        }
+
+        impl Index<usize> for $t {
+            type Output = $u;
+
+            fn index(&self, index: usize) -> &$u {
+                &self.0[index]
+            }
+        }
+
+        impl IndexMut<usize> for $t {
+            fn index_mut(&mut self, index: usize) -> &mut $u {
+                &mut self.0[index]
             }
         }
 
