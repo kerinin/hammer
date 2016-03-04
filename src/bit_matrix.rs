@@ -1,3 +1,4 @@
+use std::fmt::{Debug, Formatter, Error};
 use std::ops::{BitAnd, BitOr, BitXor, Shl, Shr};
 
 /// A matrix of bits
@@ -35,6 +36,12 @@ macro_rules! intrinsic_matrix {
             }
         }
 
+        impl Debug for $t {
+            fn fmt(&self, f: &mut Formatter) -> Result<(), Error> {
+                write!(f, "{:?}", self.0.iter().map(|n| format!("{:08b}", n)).collect::<Vec<String>>())
+            }
+        }
+
         impl Clone for $t {
             fn clone(&self) -> $t {
                 let mut c = [0; $n];
@@ -67,19 +74,36 @@ macro_rules! intrinsic_matrix {
 
             fn transpose(mut self) -> $t {
                 // Courtesy of http://www.hackersdelight.org/hdcodetxt/transpose32.c.txt
+                //
+                // void transpose32b(unsigned A[32]) {
+                //    int j, k;
+                //    unsigned m, t;
+                //
+                //    m = 0x0000FFFF;
+                //    for (j = 16; j != 0; j = j >> 1, m = m ^ (m << j)) {
+                //       for (k = 0; k < 32; k = (k + j + 1) & ~j) {
+                //          t = (A[k] ^ (A[k+j] >> j)) & m;
+                //          A[k] = A[k] ^ t;
+                //          A[k+j] = A[k+j] ^ (t << j);
+                //       }
+                //    }
+                // }
                 let mut j: $u = $n / 2;
-                let mut m: $u = (0 & 0) >> ($n / 2);
                 let mut k: $u;
+
+                let mut m: $u = (!0) >> j;
                 let mut t: $u;
+
                 while j != 0 {
                     k = 0;
+
                     while k < $n {
-                        t = (self.0[k as usize] ^ (self.0[(k+j) as usize] >> j)) & m;
+                        t = (self.0[k as usize] ^ (self.0[(k|j) as usize] >> j)) & m;
 
                         self.0[k as usize] = self.0[k as usize] ^ t;
-                        self.0[(k+j) as usize] = self.0[(k+j) as usize] ^ (t << j);
+                        self.0[(k|j) as usize] = self.0[(k|j) as usize] ^ (t << j);
 
-                        k = ((k | j) + 1) & (j ^ (0 & 0));
+                        k = ((k | j) + 1) & (!j);
                     }
 
                     j = j >> 1;
@@ -130,10 +154,10 @@ macro_rules! intrinsic_matrix {
                 match (row_shift, column_shift) {
                     (0, 0) => self,
                     (0, c) => {
-                        for (from, to) in (0..c).enumerate() {
+                        for (to, from) in (c..$n).enumerate() {
                             self.0[to] = self.0[from];
                         }
-                        for i in c..$n {
+                        for i in ($n-c)..$n {
                             self.0[i] = 0;
                         }
                         self
@@ -145,10 +169,10 @@ macro_rules! intrinsic_matrix {
                         self
                     },
                     (r, c) => {
-                        for (from, to) in (0..c).enumerate() {
+                        for (to, from) in (c..$n).enumerate() {
                             self.0[to] = self.0[from] << r;
                         }
-                        for i in c..$n {
+                        for i in ($n-c)..$n {
                             self.0[i] = 0;
                         }
                         self
@@ -164,11 +188,11 @@ macro_rules! intrinsic_matrix {
                 match (row_shift, column_shift) {
                     (0, 0) => self,
                     (0, c) => {
+                        for (from, to) in (c..$n).enumerate().rev() {
+                            self.0[to] = self.0[from];
+                        }
                         for i in 0..c {
                             self.0[i] = 0;
-                        }
-                        for (from, to) in (c..$n).enumerate() {
-                            self.0[to] = self.0[from];
                         }
                         self
                     },
@@ -179,11 +203,11 @@ macro_rules! intrinsic_matrix {
                         self
                     },
                     (r, c) => {
+                        for (from, to) in (c..$n).enumerate().rev() {
+                            self.0[to] = self.0[from] >> r;
+                        }
                         for i in 0..c {
                             self.0[i] = 0;
-                        }
-                        for (from, to) in (c..$n).enumerate() {
-                            self.0[to] = self.0[from] >> r;
                         }
                         self
                     },
@@ -202,9 +226,18 @@ mod test {
     extern crate rand;
     extern crate quickcheck;
 
+    use std;
     use self::quickcheck::quickcheck;
 
     use bit_matrix::{Matrix8, BitMatrix};
+
+    #[test]
+    fn transpose_sanity() {
+        let v = Matrix8::new([0, 0, 0, 0, 0, 0, 1, std::u8::MAX]);
+        let e = Matrix8::new([1, 1, 1, 1, 1, 1, 1, 3]);
+
+        assert_eq!(v.transpose(), e);
+    }
 
     #[test]
     fn transpose_identity() {
@@ -214,5 +247,33 @@ mod test {
             quickcheck::TestResult::from_bool(v == v.clone().transpose().transpose())
         }
         quickcheck(prop as fn(u8, u8, u8, u8, u8, u8, u8, u8) -> quickcheck::TestResult);
+    }
+
+    #[test]
+    fn clone_eq() {
+        fn prop(a: u8, b: u8, c: u8, d: u8, e: u8, f: u8, g: u8, h: u8) -> quickcheck::TestResult {
+            let v = Matrix8::new([a, b, c, d, e, f, g, h]);
+
+            quickcheck::TestResult::from_bool(v == v.clone())
+        }
+        quickcheck(prop as fn(u8, u8, u8, u8, u8, u8, u8, u8) -> quickcheck::TestResult);
+    }
+
+    #[test]
+    fn rotate_identity() {
+        fn prop(mut x: usize, mut y: usize, a: u8, b: u8, c: u8, d: u8, e: u8, f: u8, g: u8, h: u8) -> quickcheck::TestResult {
+            x = 1 + (x % 7);
+            y = 1 + (y % 7);
+
+            let v = Matrix8::new([a, b, c, d, e, f, g, h]);
+
+            let r1 = (v.clone() << (0, y)) | (v.clone() >> (0, 8 - y));
+            let r2 = (r1.clone() >> (0, y)) | (r1.clone() << (0, 8 - y));
+            let r3 = (r2.clone() << (x, 0)) | (r2.clone() >> (8 - x, 0));
+            let r4 = (r3.clone() >> (x, 0)) | (r3.clone() << (8 - x, 0));
+
+            quickcheck::TestResult::from_bool(v == r4)
+        }
+        quickcheck(prop as fn(usize, usize, u8, u8, u8, u8, u8, u8, u8, u8) -> quickcheck::TestResult);
     }
 }

@@ -7,4 +7,4 @@ extern crate num;
 extern crate fnv;
 
 pub mod bit_matrix;
-pub mod db;
+// pub mod db;

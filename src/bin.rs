@@ -1,4 +1,5 @@
-extern crate docopt;
+/*
+   extern crate docopt;
 #[macro_use]
 extern crate iron;
 extern crate bincode;
@@ -29,19 +30,21 @@ unset, data will be persisted to a temporary location)
 
 #[derive(Debug, RustcDecodable)]
 struct Args {
-    flag_data_dir: Option<String>,
-    flag_bind: String,
+flag_data_dir: Option<String>,
+flag_bind: String,
 }
 
 pub fn main() {
-    let args: Args = Docopt::new(USAGE)
-        .and_then(|d| d.decode())
-        .unwrap_or_else(|e| e.exit());
+let args: Args = Docopt::new(USAGE)
+.and_then(|d| d.decode())
+.unwrap_or_else(|e| e.exit());
 
-    let config = http::Config{
-        data_dir: args.flag_data_dir.map(|d| PathBuf::from(d)),
-        bind: args.flag_bind,
-    };
+let config = http::Config{
+data_dir: args.flag_data_dir.map(|d| PathBuf::from(d)),
+bind: args.flag_bind,
+};
 
-    http::server::serve(config)
+http::server::serve(config)
 }
+*/
+fn main() {}
