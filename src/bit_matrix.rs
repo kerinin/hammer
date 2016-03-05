@@ -36,7 +36,12 @@ use num::traits::Zero;
 /// assert_eq!(a.bit_transpose(), b);
 /// ```
 pub trait BitTranspose: Sized {
-    fn bit_transpose(self) -> Self;
+    fn bit_transpose(mut self) -> Self {
+        self.bit_transpose_assign();
+        self
+    }
+
+    fn bit_transpose_assign(&mut self);
 }
 
 impl<T> BitTranspose for Vec<T> where
@@ -48,7 +53,7 @@ T: Shr<usize, Output=T>,
 T: Zero,
 T: Clone,
 {
-    fn bit_transpose(mut self) -> Vec<T> {
+    fn bit_transpose_assign(&mut self) {
         assert_eq!(self.len(), 8 * size_of::<T>());
 
         // Courtesy of http://www.hackersdelight.org/hdcodetxt/transpose32.c.txt
@@ -87,8 +92,6 @@ T: Clone,
             j = j >> 1;
             m = m.clone() ^ (m << j);
         }
-
-        self
     }
 }
 

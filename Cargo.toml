@@ -25,6 +25,7 @@ bincode = "*"
 uuid = "*"
 fnv = "1.0.0"
 nom = "*"
+murmurhash3 = "*"
 
 [dev-dependencies]
 quickcheck = "*"
