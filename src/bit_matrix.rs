@@ -2,7 +2,7 @@ use std::iter;
 use std::iter::{FromIterator};
 use std::mem::size_of;
 use std::fmt::{Debug, Formatter, Error};
-use std::ops::{Index, IndexMut, BitAnd, BitOr, BitXor, Shl, Shr, Add, Range, RangeFrom, RangeTo, RangeFull};
+use std::ops::{Index, IndexMut, BitAnd, BitOr, BitXor, Shl, Shr, Mul, Add, Range, RangeFrom, RangeTo, RangeFull, Not};
 use std::borrow::{Borrow, BorrowMut};
 use num::traits::Zero;
 
@@ -11,56 +11,57 @@ pub trait TransposeBits: Sized {
     fn transpose_bits(self) -> Self;
 }
 
-macro_rules! vec_intrinsic_transpose_bits {
-    ($t:ty) => {
-        impl TransposeBits for Vec<$t> {
-            fn transpose_bits(mut self) -> Vec<$t> {
-                // Courtesy of http://www.hackersdelight.org/hdcodetxt/transpose32.c.txt
-                //
-                // void transpose32b(unsigned A[32]) {
-                //    int j, k;
-                //    unsigned m, t;
-                //
-                //    m = 0x0000FFFF;
-                //    for (j = 16; j != 0; j = j >> 1, m = m ^ (m << j)) {
-                //       for (k = 0; k < 32; k = (k + j + 1) & ~j) {
-                //          t = (A[k] ^ (A[k+j] >> j)) & m;
-                //          A[k] = A[k] ^ t;
-                //          A[k+j] = A[k+j] ^ (t << j);
-                //       }
-                //    }
-                // }
-                let mut j: $t = (8 * size_of::<$t>() as $t) / 2;
-                let mut k: $t;
+impl<T> TransposeBits for Vec<T> where
+T: BitXor<Output=T>,
+T: BitAnd<Output=T>,
+T: Not<Output=T>,
+T: Shl<usize, Output=T>,
+T: Shr<usize, Output=T>,
+T: Mul<T>,
+T: Zero,
+T: Clone,
+{
+    fn transpose_bits(mut self) -> Vec<T> {
+        // Courtesy of http://www.hackersdelight.org/hdcodetxt/transpose32.c.txt
+        //
+        // void transpose32b(unsigned A[32]) {
+        //    int j, k;
+        //    unsigned m, t;
+        //
+        //    m = 0x0000FFFF;
+        //    for (j = 16; j != 0; j = j >> 1, m = m ^ (m << j)) {
+        //       for (k = 0; k < 32; k = (k + j + 1) & ~j) {
+        //          t = (A[k] ^ (A[k+j] >> j)) & m;
+        //          A[k] = A[k] ^ t;
+        //          A[k+j] = A[k+j] ^ (t << j);
+        //       }
+        //    }
+        // }
+        let mut j: usize = (8 * size_of::<T>()) / 2;
+        let mut k: usize;
 
-                let mut m: $t = (!0) >> j;
-                let mut t: $t;
+        let mut m: T = (!<T as Zero>::zero()) >> j;
+        let mut t: T;
 
-                while j != 0 {
-                    k = 0;
+        while j != 0 {
+            k = 0;
 
-                    while k < (8 * size_of::<$t>() as $t) {
-                        t = (self[k as usize] ^ (self[(k|j) as usize] >> j)) & m;
+            while k < (8 * size_of::<T>()) {
+                t = (self[k].clone() ^ (self[k|j].clone() >> j)) & m.clone();
 
-                        self[k as usize] = self[k as usize] ^ t;
-                        self[(k|j) as usize] = self[(k|j) as usize] ^ (t << j);
+                self[k] = self[k].clone() ^ t.clone();
+                self[k|j] = self[k|j].clone() ^ t << j;
 
-                        k = ((k | j) + 1) & (!j);
-                    }
-
-                    j = j >> 1;
-                    m = m ^ (m << j);
-                }
-
-                self
+                k = ((k | j) + 1) & (!j);
             }
+
+            j = j >> 1;
+            m = m.clone() ^ (m << j);
         }
+
+        self
     }
 }
-vec_intrinsic_transpose_bits!(u8);
-vec_intrinsic_transpose_bits!(u16);
-vec_intrinsic_transpose_bits!(u32);
-vec_intrinsic_transpose_bits!(u64);
 
 
 #[cfg(test)] 
