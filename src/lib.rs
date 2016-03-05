@@ -9,4 +9,5 @@ extern crate murmurhash3;
 
 pub mod bit_matrix;
 pub mod simhash;
-// pub mod db;
+pub mod minhash;
+pub mod db;
