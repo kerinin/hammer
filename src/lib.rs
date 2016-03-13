@@ -6,6 +6,7 @@ extern crate uuid;
 extern crate num;
 extern crate fnv;
 extern crate murmurhash3;
+extern crate mail;
 
 pub mod bit_matrix;
 pub mod simhash;
