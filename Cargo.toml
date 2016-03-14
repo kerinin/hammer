@@ -26,8 +26,5 @@ uuid = "*"
 fnv = "1.0.0"
 murmurhash3 = "*"
 
-[dependencies.mail]
-git = "https://github.com/kerinin/email-rs"
-
 [dev-dependencies]
 quickcheck = "*"

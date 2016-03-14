@@ -30,7 +30,7 @@ impl<H: Hasher + Default> MinHash<H> {
         // writing integers into the hash.  IE, the "first" hash function is
         // the hashed bytes plus `0`, the "second" hash function is the hashed 
         // bytes plus `0` and `1`, etc.  This should produce a sequence of 
-        // values inheriting the distribution properties of the haser, and which
+        // values inheriting the distribution properties of the hasher, and which
         // are deterministic given `bytes`
         for i in 0..self.k {
             h.write_usize(i);
