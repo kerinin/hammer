@@ -75,8 +75,37 @@ mod result_accumulator;
 use std::path::PathBuf;
 use std::mem::size_of;
 use std::collections::HashSet;
+use std::hash::Hash;
 
 use num::rational::Ratio;
+
+use db::hamming::Hamming;
+use db::window::{Window, Windowable};
+use db::id_map::{ToID, IDMap, Echo};
+use db::map_set::{MapSet, InMemoryHash};
+use db::substitution::{Key, SubstitutionVariant};
+
+pub trait TypeMap {
+    /// The data type being indexed
+    type Input: Sync + Send + Clone + Eq + Hash + Hamming + Windowable<Self::Window> + ToID<Self::Identifier>;
+
+    /// The type of windows over Input.  Window types must be large
+    /// enough to store dimensions/tolerance  dimensions of Input (ideally not larger)
+    type Window: Sync + Send + Clone + Eq + Hash;
+
+    /// The type of variants computed over windows
+    type Variant: Sync + Send + Clone + Eq + Hash;
+
+    /// Value identifier - balances memory use with collision probability given
+    /// the cardinality of the data being indexed
+    type Identifier: Sync + Send + Clone + Eq + Hash;
+
+    /// The value sture - maps Identifier -> Input
+    type ValueStore: IDMap<Self::Identifier, Self::Input>;
+
+    /// The variant store - maps Variant -> Identifier
+    type VariantStore: Sync + Send;
+}
 
 /// Abstract interface for Hamming distance databases
 ///
@@ -167,6 +196,35 @@ vector_db!(Vec<[u64; 4]>);
 macro_rules! echo_binary {
     ($elem:ty, $($v:ty),*) => {
 
+        $(
+        impl TypeMap for ($elem, id_map::Echo<$elem>, map_set::InMemoryHash<substitution::Key<$v>, $elem>) {
+            type Input = $elem;
+            type Window = $v;
+            type Variant = $v;
+            type Identifier = $elem;
+            type ValueStore = id_map::Echo<$elem>;
+            type VariantStore = map_set::InMemoryHash<substitution::Key<$v>, $elem>;
+        }
+
+        impl TypeMap for ($elem, id_map::Echo<$elem>, map_set::TempRocksDB<substitution::Key<$v>, $elem>) {
+            type Input = $elem;
+            type Window = $v;
+            type Variant = $v;
+            type Identifier = $elem;
+            type ValueStore = id_map::Echo<$elem>;
+            type VariantStore = map_set::TempRocksDB<substitution::Key<$v>, $elem>;
+        }
+
+        impl TypeMap for ($elem, id_map::Echo<$elem>, map_set::RocksDB<substitution::Key<$v>, $elem>) {
+            type Input = $elem;
+            type Window = $v;
+            type Variant = $v;
+            type Identifier = $elem;
+            type ValueStore = id_map::Echo<$elem>;
+            type VariantStore = map_set::RocksDB<substitution::Key<$v>, $elem>;
+        }
+        )*
+
         impl BinaryDB for $elem {
             fn new(tolerance: usize, storage: StorageBackend) -> Box<Database<$elem>> {
 
@@ -179,21 +237,27 @@ macro_rules! echo_binary {
                         (b, StorageBackend::InMemory) if b <= (8 * size_of::<$v>()) => {
                             let id_map = id_map::Echo::new();
                             let map_set = map_set::InMemoryHash::new();
-                            let db: substitution::DB<$elem, $v, $v, $elem, id_map::Echo<$elem>, map_set::InMemoryHash<substitution::Key<$v>, $elem>> = substitution::DB::with_stores(dimensions, tolerance, id_map, map_set);
+                            let db: substitution::DB<
+                                ($elem, id_map::Echo<$elem>, map_set::InMemoryHash<substitution::Key<$v>, $elem>)
+                                > = substitution::DB::with_stores(dimensions, tolerance, id_map, map_set);
 
                             return Box::new(db)
                         },
                         (b, StorageBackend::TempRocksDB) if b <= (8 * size_of::<$v>()) => {
                             let id_map = id_map::Echo::new();
                             let map_set = map_set::TempRocksDB::new();
-                            let db: substitution::DB<$elem, $v, $v, $elem, id_map::Echo<$elem>, map_set::TempRocksDB<substitution::Key<$v>, $elem>> = substitution::DB::with_stores(dimensions, tolerance, id_map, map_set);
+                            let db: substitution::DB<
+                                ($elem, id_map::Echo<$elem>, map_set::TempRocksDB<substitution::Key<$v>, $elem>)
+                                > = substitution::DB::with_stores(dimensions, tolerance, id_map, map_set);
 
                             return Box::new(db)
                         },
                         (b, StorageBackend::RocksDB(ref path)) if b <= (8 * size_of::<$v>()) => {
                             let id_map = id_map::Echo::new();
                             let map_set = map_set::RocksDB::new(&path);
-                            let db: substitution::DB<$elem, $v, $v, $elem, id_map::Echo<$elem>, map_set::RocksDB<substitution::Key<$v>, $elem>> = substitution::DB::with_stores(dimensions, tolerance, id_map, map_set);
+                            let db: substitution::DB<
+                                ($elem, id_map::Echo<$elem>, map_set::RocksDB<substitution::Key<$v>, $elem>)
+                                > = substitution::DB::with_stores(dimensions, tolerance, id_map, map_set);
 
                             return Box::new(db)
                         },
@@ -213,6 +277,35 @@ echo_binary!(u8, u8);
 macro_rules! map_binary {
     ($elem:ty, $($v:ty),*) => {
 
+        $(
+        impl TypeMap for ($elem, id_map::HashMap<u64, $elem>, map_set::InMemoryHash<substitution::Key<$v>, u64>) {
+            type Input = $elem;
+            type Window = $v;
+            type Variant = $v;
+            type Identifier = u64;
+            type ValueStore = id_map::HashMap<u64, $elem>;
+            type VariantStore = map_set::InMemoryHash<substitution::Key<$v>, u64>;
+        }
+
+        impl TypeMap for ($elem, id_map::TempRocksDB<u64, $elem>, map_set::TempRocksDB<substitution::Key<$v>, u64>) {
+            type Input = $elem;
+            type Window = $v;
+            type Variant = $v;
+            type Identifier = u64;
+            type ValueStore = id_map::TempRocksDB<u64, $elem>;
+            type VariantStore = map_set::TempRocksDB<substitution::Key<$v>, u64>;
+        }
+
+        impl TypeMap for ($elem, id_map::RocksDB<u64, $elem>, map_set::RocksDB<substitution::Key<$v>, u64>) {
+            type Input = $elem;
+            type Window = $v;
+            type Variant = $v;
+            type Identifier = u64;
+            type ValueStore = id_map::RocksDB<u64, $elem>;
+            type VariantStore = map_set::RocksDB<substitution::Key<$v>, u64>;
+        }
+        )*
+
         impl BinaryDB for $elem {
             fn new(tolerance: usize, storage: StorageBackend) -> Box<Database<$elem>> {
 
@@ -225,14 +318,18 @@ macro_rules! map_binary {
                         (b, StorageBackend::InMemory) if b <= (8 * size_of::<$v>()) => {
                             let id_map = id_map::HashMap::new();
                             let map_set = map_set::InMemoryHash::new();
-                            let db: substitution::DB<$elem, $v, $v, u64, id_map::HashMap<u64, $elem>, map_set::InMemoryHash<substitution::Key<$v>, u64>> = substitution::DB::with_stores(dimensions, tolerance, id_map, map_set);
+                            let db: substitution::DB<
+                                ($elem, id_map::HashMap<u64, $elem>, map_set::InMemoryHash<substitution::Key<$v>, u64>)
+                                > = substitution::DB::with_stores(dimensions, tolerance, id_map, map_set);
 
                             return Box::new(db)
                         },
                         (b, StorageBackend::TempRocksDB) if b <= (8 * size_of::<$v>()) => {
                             let id_map = id_map::TempRocksDB::new();
                             let map_set = map_set::TempRocksDB::new();
-                            let db: substitution::DB<$elem, $v, $v, u64, id_map::TempRocksDB<u64, $elem>, map_set::TempRocksDB<substitution::Key<$v>, u64>> = substitution::DB::with_stores(dimensions, tolerance, id_map, map_set);
+                            let db: substitution::DB<
+                                ($elem, id_map::TempRocksDB<u64, $elem>, map_set::TempRocksDB<substitution::Key<$v>, u64>)
+                                > = substitution::DB::with_stores(dimensions, tolerance, id_map, map_set);
 
                             return Box::new(db)
                         },
@@ -244,7 +341,9 @@ macro_rules! map_binary {
 
                             let id_map = id_map::RocksDB::new(id_map_path.to_str().unwrap());
                             let map_set = map_set::RocksDB::new(map_set_path.to_str().unwrap());
-                            let db: substitution::DB<$elem, $v, $v, u64, id_map::RocksDB<u64, $elem>, map_set::RocksDB<substitution::Key<$v>, u64>> = substitution::DB::with_stores(dimensions, tolerance, id_map, map_set);
+                            let db: substitution::DB<
+                                ($elem, id_map::RocksDB<u64, $elem>, map_set::RocksDB<substitution::Key<$v>, u64>)
+                                > = substitution::DB::with_stores(dimensions, tolerance, id_map, map_set);
 
                             return Box::new(db)
                         },

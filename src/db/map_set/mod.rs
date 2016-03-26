@@ -47,8 +47,9 @@ V: Clone + Eq + Hash,
     fn remove(&mut self, key: &K, value: &V) -> bool;
 }
 
+/*
 impl<K, V, D: Deref + DerefMut> MapSet<K, V> for D where 
-D: Sync + Send,
+D: Sync + Send + Deref,
 <D as Deref>::Target: MapSet<K, V>,
 K: Sync + Send + Clone + Eq + Hash,
 V: Sync + Send + Clone + Eq + Hash,
@@ -65,4 +66,4 @@ V: Sync + Send + Clone + Eq + Hash,
         self.deref_mut().remove(key, value)
     }
 }
-
+*/

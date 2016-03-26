@@ -1,4 +1,5 @@
 use std::clone::Clone;
+use std::default::Default;
 use std::cmp::Eq;
 use std::hash::Hash;
 
@@ -21,6 +22,15 @@ where   K: Sync + Send + Clone + Eq + Hash,
 {
     pub fn new() -> InMemoryHash<K, V> {
         InMemoryHash {data: HashMap::new()}
+    }
+}
+
+impl<K, V> Default for InMemoryHash<K, V>
+where   K: Sync + Send + Clone + Eq + Hash, 
+        V: Sync + Send + Clone + Eq + Hash, 
+{
+    fn default() -> InMemoryHash<K, V> {
+        InMemoryHash::new()
     }
 }
 

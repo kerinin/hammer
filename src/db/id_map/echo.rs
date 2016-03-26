@@ -1,3 +1,4 @@
+use std::default::Default;
 use std::marker::PhantomData;
 
 use super::{IDMap};
@@ -9,6 +10,12 @@ pub struct Echo<T> {
 impl<T> Echo<T> {
     pub fn new() -> Echo<T> {
         Echo{t: PhantomData}
+    }
+}
+
+impl<T> Default for Echo<T> {
+    fn default() -> Echo<T> {
+        Echo::new()
     }
 }
 
