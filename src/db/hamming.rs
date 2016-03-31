@@ -5,8 +5,6 @@ use std::cmp::*;
 use std::clone::*;
 use std::hash::*;
 
-use db::deletion::{Du8, Du16, Du32, Du64};
-
 /// HmSearch-indexable value
 ///
 pub trait Hamming {
@@ -75,29 +73,6 @@ macro_rules! array_hamming {
 }
 array_hamming!([u64; 2]);
 array_hamming!([u64; 4]);
-
-macro_rules! intrinsic_deletion_hamming {
-    ($elem:ident) => {
-        // Ignoring the deletion index for now
-        impl Hamming for $elem {
-            fn hamming(&self, other: &$elem) -> usize {
-                let &(self_value, _) = self;
-                let &(ref other_value, _) = other;
-                self_value.hamming(other_value)
-            }
-
-            fn hamming_indices(&self, other: &$elem) -> Vec<usize> {
-                let &(self_value, _) = self;
-                let &(ref other_value, _) = other;
-                self_value.hamming_indices(other_value)
-            }
-        }
-    }
-}
-intrinsic_deletion_hamming!(Du8);
-intrinsic_deletion_hamming!(Du16);
-intrinsic_deletion_hamming!(Du32);
-intrinsic_deletion_hamming!(Du64);
 
 impl<T: Eq + Clone + Hash> Hamming for Vec<T> {
     // NOTE: Optimize the bound query

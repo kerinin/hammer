@@ -1,9 +1,7 @@
 use std::fmt;
-use std::cmp::{Eq, PartialEq};
+use std::cmp::{PartialEq};
 use std::clone::Clone;
-use std::hash::Hash;
 use std::collections::HashSet;
-use std::marker::PhantomData;
 
 use num::rational::Ratio;
 
@@ -11,7 +9,6 @@ use db::TypeMap;
 use db::Database;
 use db::map_set::{MapSet, InMemoryHash};
 use db::result_accumulator::ResultAccumulator;
-use db::hamming::Hamming;
 use db::window::{Window, Windowable};
 use db::id_map::{ToID, IDMap, Echo};
 use db::substitution::{Key, SubstitutionVariant};
@@ -110,7 +107,7 @@ impl<T: TypeMap> Database<<T as TypeMap>::Input> for DB<T> where
 <T as TypeMap>::Window: SubstitutionVariant<<T as TypeMap>::Variant>,
 <T as TypeMap>::VariantStore: MapSet<Key<<T as TypeMap>::Variant>, <T as TypeMap>::Identifier>,
 {
-    /// Get all indexed values within `self.tolerance` hammind distance of `key`
+    /// Get all indexed values within `self.tolerance` hamming distance of `key`
     ///
     fn get(&self, key: &<T as TypeMap>::Input) -> Option<HashSet<<T as TypeMap>::Input>> {
         let mut results = ResultAccumulator::new(self.tolerance, key.clone());

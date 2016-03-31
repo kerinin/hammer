@@ -80,10 +80,8 @@ use std::hash::Hash;
 use num::rational::Ratio;
 
 use db::hamming::Hamming;
-use db::window::{Window, Windowable};
-use db::id_map::{ToID, IDMap, Echo};
-use db::map_set::{MapSet, InMemoryHash};
-use db::substitution::{Key, SubstitutionVariant};
+use db::window::{Windowable};
+use db::id_map::{ToID, IDMap};
 
 pub trait TypeMap {
     /// The data type being indexed
@@ -130,6 +128,33 @@ pub trait VectorDB {
 
 macro_rules! vector_db {
     ($elem:ty) => {
+        impl TypeMap for ($elem, id_map::HashMap<u64, $elem>, map_set::InMemoryHash<deletion::Key<deletion::Dvec>, u64>) {
+            type Input = $elem;
+            type Window = $elem;
+            type Variant = deletion::Dvec;
+            type Identifier = u64;
+            type ValueStore = id_map::HashMap<u64, $elem>;
+            type VariantStore = map_set::InMemoryHash<deletion::Key<deletion::Dvec>, u64>;
+        }
+
+        impl TypeMap for ($elem, id_map::TempRocksDB<u64, $elem>, map_set::TempRocksDB<deletion::Key<deletion::Dvec>, u64>) {
+            type Input = $elem;
+            type Window = $elem;
+            type Variant = deletion::Dvec;
+            type Identifier = u64;
+            type ValueStore = id_map::TempRocksDB<u64, $elem>;
+            type VariantStore = map_set::TempRocksDB<deletion::Key<deletion::Dvec>, u64>;
+        }
+
+        impl TypeMap for ($elem, id_map::RocksDB<u64, $elem>, map_set::RocksDB<deletion::Key<deletion::Dvec>, u64>) {
+            type Input = $elem;
+            type Window = $elem;
+            type Variant = deletion::Dvec;
+            type Identifier = u64;
+            type ValueStore = id_map::RocksDB<u64, $elem>;
+            type VariantStore = map_set::RocksDB<deletion::Key<deletion::Dvec>, u64>;
+        }
+
         impl VectorDB for $elem {
             fn new(dimensions: usize, tolerance: usize, storage: StorageBackend) -> Box<Database<$elem>> {
 
@@ -138,12 +163,7 @@ macro_rules! vector_db {
                         let id_map = id_map::HashMap::new();
                         let map_set = map_set::InMemoryHash::new();
                         let db: deletion::DB<
-                            $elem,
-                            $elem,
-                            u64,
-                            deletion::Dvec,
-                            id_map::HashMap<u64, $elem>,
-                            map_set::InMemoryHash<deletion::Key<deletion::Dvec>, u64>,
+                            ($elem, id_map::HashMap<u64, $elem>, map_set::InMemoryHash<deletion::Key<deletion::Dvec>, u64>)
                             > = deletion::DB::with_stores(dimensions, tolerance, id_map, map_set);
 
                         return Box::new(db)
@@ -152,12 +172,7 @@ macro_rules! vector_db {
                         let id_map = id_map::TempRocksDB::new();
                         let map_set = map_set::TempRocksDB::new();
                         let db: deletion::DB<
-                            $elem,
-                            $elem,
-                            u64,
-                            deletion::Dvec,
-                            id_map::TempRocksDB<u64, $elem>,
-                            map_set::TempRocksDB<deletion::Key<deletion::Dvec>, u64>,
+                            ($elem, id_map::TempRocksDB<u64, $elem>, map_set::TempRocksDB<deletion::Key<deletion::Dvec>, u64>)
                             > = deletion::DB::with_stores(dimensions, tolerance, id_map, map_set);
 
                         return Box::new(db)
@@ -171,12 +186,7 @@ macro_rules! vector_db {
                         let id_map = id_map::RocksDB::new(id_map_path.to_str().unwrap());
                         let map_set = map_set::RocksDB::new(map_set_path.to_str().unwrap());
                         let db: deletion::DB<
-                            $elem,
-                            $elem,
-                            u64,
-                            deletion::Dvec,
-                            id_map::RocksDB<u64, $elem>,
-                            map_set::RocksDB<deletion::Key<deletion::Dvec>, u64>,
+                            ($elem, id_map::RocksDB<u64, $elem>, map_set::RocksDB<deletion::Key<deletion::Dvec>, u64>)
                             > = deletion::DB::with_stores(dimensions, tolerance, id_map, map_set);
 
                         return Box::new(db)

@@ -29,7 +29,6 @@ use std::clone::Clone;
 use std::cmp::Eq;
 use std::hash::Hash;
 use std::collections::HashSet;
-use std::ops::{Deref, DerefMut};
 
 mod in_memory_hash;
 mod rocks_db;

@@ -1,5 +1,6 @@
 use std::cmp::Eq;
 use std::hash::Hash;
+use std::default::Default;
 use std::collections;
 
 use super::IDMap;
@@ -19,6 +20,14 @@ ID: Eq + Hash,
 
     pub fn with_capacity(capacity: usize) -> HashMap<ID, T> {
         HashMap{data: collections::HashMap::with_capacity(capacity)}
+    }
+}
+
+impl<ID, T> Default for HashMap<ID, T> where
+ID: Eq + Hash,
+{
+    fn default() -> HashMap<ID, T> {
+        HashMap::new()
     }
 }
 
