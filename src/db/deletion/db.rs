@@ -302,6 +302,7 @@ mod test {
     use self::quickcheck::quickcheck;
 
     use std::collections::HashSet;
+    use std::iter::repeat;
     use self::rand::{thread_rng, sample, Rng};
     use bincode::SizeLimit;
     use bincode::rustc_serialize::{encode, decode};
@@ -392,7 +393,6 @@ mod test {
         assert_eq!(Some(f), keys);
     }
 
-    /*
     #[test]
     fn find_permutation_of_inserted_key() {
         let mut rng1 = thread_rng();
@@ -404,11 +404,11 @@ mod test {
 
         for start_dimensions in start_dimensions_seq.take(1000) {
             let mut p: DB<TypeMapVecU8> = DB::new(dimensions, max_hd);
-            let a = 0b11111111u64;
+            let a = repeat(1).take(dimensions).collect::<Vec<u8>>();
 
             let mut b = a.clone();
             for start_dimension in start_dimensions.iter() {
-                b = b ^ (0b10000000u64 >> *start_dimension);
+                b[*start_dimension] = 0;
             }
 
             let mut c = HashSet::new();
@@ -437,11 +437,11 @@ mod test {
 
         for start_dimensions in start_dimensions_seq.take(1000) {
             let mut p: DB<TypeMapVecU8> = DB::new(dimensions, max_hd);
-            let a = 0b11111111u64;
+            let a = repeat(1).take(dimensions).collect::<Vec<u8>>();
 
             let mut b = a.clone();
             for start_dimension in start_dimensions.iter() {
-                b = b & (0b10000000u64 >> *start_dimension);
+                b[*start_dimension] = 0;
             }
 
             let mut c = HashSet::new();
@@ -454,7 +454,6 @@ mod test {
             assert_eq!(None, keys);
         }
     }
-    */
 
     #[test]
     fn remove_inserted_key() {
