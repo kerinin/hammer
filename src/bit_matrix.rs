@@ -101,7 +101,6 @@ mod test {
     extern crate rand;
     extern crate quickcheck;
 
-    use std;
     use self::quickcheck::quickcheck;
 
     use bit_matrix::{BitTranspose};

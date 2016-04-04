@@ -13,6 +13,8 @@ use db::window::{Window, Windowable};
 use db::id_map::{ToID, IDMap, Echo};
 use db::substitution::{Key, SubstitutionVariant};
 
+type TypeMapU64 = (u64, Echo<u64>, InMemoryHash<Key<u64>, u64>);
+
 /// HmSearch Database using substitution variants
 ///
 /// Pseudo-code Index(T):
@@ -214,7 +216,7 @@ impl<T: TypeMap> PartialEq for DB<T> {
 // Internal tests
 #[test]
 fn test_sdb_partition_evenly() {
-    let a: DB<(u64, Echo<u64>, InMemoryHash<Key<u64>, u64>)> = DB::new(32, 5);
+    let a: DB<TypeMapU64> = DB::new(32, 5);
 
     assert_eq!(a.dimensions, 32);
     assert_eq!(a.tolerance, 5);
@@ -229,7 +231,7 @@ fn test_sdb_partition_evenly() {
 
 #[test]
 fn test_sdb_partition_unevenly() {
-    let a: DB<(u64, Echo<u64>, InMemoryHash<Key<u64>, u64>)> = DB::new(32, 7);
+    let a: DB<TypeMapU64> = DB::new(32, 7);
 
     assert_eq!(a.dimensions, 32);
     assert_eq!(a.tolerance, 7);
@@ -245,7 +247,7 @@ fn test_sdb_partition_unevenly() {
 
 #[test]
 fn test_sdb_partition_too_many() {
-    let a: DB<(u64, Echo<u64>, InMemoryHash<Key<u64>, u64>)> = DB::new(4, 8);
+    let a: DB<TypeMapU64> = DB::new(4, 8);
 
     assert_eq!(a.dimensions, 4);
     assert_eq!(a.tolerance, 8);
@@ -259,7 +261,7 @@ fn test_sdb_partition_too_many() {
 
 #[test]
 fn test_sdb_partition_zero() {
-    let a: DB<(u64, Echo<u64>, InMemoryHash<Key<u64>, u64>)> = DB::new(32, 0);
+    let a: DB<TypeMapU64> = DB::new(32, 0);
 
     assert_eq!(a.dimensions, 32);
     assert_eq!(a.tolerance, 0);
@@ -271,7 +273,7 @@ fn test_sdb_partition_zero() {
 
 #[test]
 fn test_sdb_partition_with_no_bytes() {
-    let a: DB<(u64, Echo<u64>, InMemoryHash<Key<u64>, u64>)> = DB::new(0, 0);
+    let a: DB<TypeMapU64> = DB::new(0, 0);
 
     assert_eq!(a.dimensions, 0);
     assert_eq!(a.tolerance, 0);
@@ -293,13 +295,13 @@ mod test {
     use self::rand::{thread_rng, sample, Rng};
 
     use db::*;
-    use db::substitution::{DB, Key};
-    use db::id_map::Echo;
-    use db::map_set::InMemoryHash;
+    use db::substitution::{DB};
+
+    use db::substitution::db::{TypeMapU64};
 
     #[test]
     fn find_missing_key() {
-        let p: DB<(u64, Echo<u64>, InMemoryHash<Key<u64>, u64>)> = DB::new(8, 2);
+        let p: DB<TypeMapU64> = DB::new(8, 2);
         let a = 0b11111111u64;
         let keys = p.get(&a);
 
@@ -308,7 +310,7 @@ mod test {
 
     #[test]
     fn insert_first_key() {
-        let mut p: DB<(u64, Echo<u64>, InMemoryHash<Key<u64>, u64>)> = DB::new(8, 2);
+        let mut p: DB<TypeMapU64> = DB::new(8, 2);
         let a = 0b11111111u64;
 
         assert!(p.insert(a.clone()));
@@ -316,7 +318,7 @@ mod test {
 
     #[test]
     fn insert_second_key() {
-        let mut p: DB<(u64, Echo<u64>, InMemoryHash<Key<u64>, u64>)> = DB::new(8, 2);
+        let mut p: DB<TypeMapU64> = DB::new(8, 2);
         let a = 0b11111111u64;
 
         p.insert(a.clone());
@@ -326,7 +328,7 @@ mod test {
 
     #[test]
     fn find_inserted_key() {
-        let mut p: DB<(u64, Echo<u64>, InMemoryHash<Key<u64>, u64>)> = DB::new(8, 2);
+        let mut p: DB<TypeMapU64> = DB::new(8, 2);
         let a = 0b11111111u64;
         let mut b: HashSet<u64> = HashSet::new();
         b.insert(a.clone());
@@ -340,7 +342,7 @@ mod test {
 
     #[test]
     fn find_permutations_of_inserted_key() {
-        let mut p: DB<(u64, Echo<u64>, InMemoryHash<Key<u64>, u64>)> = DB::new(8, 2);
+        let mut p: DB<TypeMapU64> = DB::new(8, 2);
         let a = 0b00001111u64;
         let b = 0b00000111u64;
         let mut c = HashSet::new();
@@ -355,7 +357,7 @@ mod test {
 
     #[test]
     fn find_permutations_of_multiple_similar_keys() {
-        let mut p: DB<(u64, Echo<u64>, InMemoryHash<Key<u64>, u64>)> = DB::new(8, 4);
+        let mut p: DB<TypeMapU64> = DB::new(8, 4);
         let a = 0b00000000u64;
         let b = 0b10000000u64;
         let c = 0b10000001u64;
@@ -387,7 +389,7 @@ mod test {
             .map(|i| sample(&mut rng2, 0..dimensions, i % max_hd));
 
         for start_dimensions in start_dimensions_seq.take(1000usize) {
-            let mut p: DB<(u64, Echo<u64>, InMemoryHash<Key<u64>, u64>)> = DB::new(dimensions, max_hd);
+            let mut p: DB<TypeMapU64> = DB::new(dimensions, max_hd);
             let a = 0b11111111u64;
 
             let mut b = a.clone();
@@ -420,7 +422,7 @@ mod test {
             .filter(|start_dimensions| start_dimensions.len() > max_hd);
 
         for start_dimensions in start_dimensions_seq.take(1000) {
-            let mut p: DB<(u64, Echo<u64>, InMemoryHash<Key<u64>, u64>)> = DB::new(dimensions, max_hd);
+            let mut p: DB<TypeMapU64> = DB::new(dimensions, max_hd);
             let a = 0b11111111u64;
 
             let mut b = a.clone();
@@ -441,7 +443,7 @@ mod test {
 
     #[test]
     fn remove_inserted_key() {
-        let mut p: DB<(u64, Echo<u64>, InMemoryHash<Key<u64>, u64>)> = DB::new(8, 2);
+        let mut p: DB<TypeMapU64> = DB::new(8, 2);
         let a = 0b00001111u64;
 
         p.insert(a.clone());
@@ -455,7 +457,7 @@ mod test {
 
     #[test]
     fn remove_missing_key() {
-        let mut p: DB<(u64, Echo<u64>, InMemoryHash<Key<u64>, u64>)> = DB::new(8, 2);
+        let mut p: DB<TypeMapU64> = DB::new(8, 2);
         let a = 0b00001111u64;
 
         assert!(!p.remove(&a));
@@ -531,7 +533,7 @@ fn idempotent_read() {
             return quickcheck::TestResult::discard()
         }
 
-        let mut p: DB<(u64, Echo<u64>, InMemoryHash<Key<u64>, u64>)> = DB::new(64, 4);
+        let mut p: DB<TypeMapU64> = DB::new(64, 4);
         p.insert(a.clone());
         p.insert(b.clone());
         p.insert(c.clone());
@@ -553,7 +555,7 @@ fn idempotent_delete() {
             return quickcheck::TestResult::discard()
         }
 
-        let mut p: DB<(u64, Echo<u64>, InMemoryHash<Key<u64>, u64>)> = DB::new(64, 4);
+        let mut p: DB<TypeMapU64> = DB::new(64, 4);
         p.insert(a.clone());
         p.insert(b.clone());
         p.insert(c.clone());

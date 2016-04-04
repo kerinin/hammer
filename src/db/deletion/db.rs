@@ -12,7 +12,7 @@ use db::Database;
 use db::result_accumulator::ResultAccumulator;
 use db::map_set::{MapSet, InMemoryHash};
 use db::window::{Window, Windowable};
-use db::id_map::{ToID, IDMap, Echo};
+use db::id_map::{ToID, IDMap};
 use db::deletion::{Key, DeletionVariant, Dvec};
 
 type TypeMapVecU8 = (Vec<u8>, id_map::HashMap<u64, Vec<u8>>, InMemoryHash<Key<Dvec>, u64>);
@@ -305,12 +305,11 @@ mod test {
     use std::iter::repeat;
     use self::rand::{thread_rng, sample, Rng};
     use bincode::SizeLimit;
-    use bincode::rustc_serialize::{encode, decode};
+    use bincode::rustc_serialize::{encode};
 
 
     use db::*;
     use db::deletion::{DB};
-    use db::deletion::{Dvec};
     use db::deletion::db::{TypeMapVecU8};
 
     #[test]
