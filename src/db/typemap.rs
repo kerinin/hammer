@@ -1,10 +1,13 @@
 //! TypeMap implementations for common types
 
+use std::path::PathBuf;
+use num::rational::Ratio;
+
 use db::id_map;
 use db::map_set;
 use db::deletion;
 use db::substitution;
-use db::TypeMap;
+use db::{TypeMap, StorageBackend, Factory, Database};
 
 macro_rules! deletion_inmemory {
     ($t:ident, $elem:ty) => {
@@ -225,3 +228,518 @@ substitution_map_rocksdb!(U64x2wU16RocksDB, [u64; 2], u16);
 substitution_map_rocksdb!(U64x2wU32RocksDB, [u64; 2], u32);
 substitution_map_rocksdb!(U64x2wU64RocksDB, [u64; 2], u64);
 substitution_map_rocksdb!(U64x2wU64x2RocksDB, [u64; 2], [u64; 2]);
+
+impl Factory<Vec<[u64; 4]>> for Vec<[u64; 4]> {
+    fn build(dimensions: usize, tolerance: usize, backend: StorageBackend) -> Box<Database<Vec<[u64; 4]>>> {
+        match backend {
+            StorageBackend::InMemory => {
+                let db: deletion::DB<VecU64x4InMemory> = deletion::DB::new(dimensions, tolerance);
+                Box::new(db)
+            },
+            StorageBackend::TempRocksDB => {
+                let id_map = id_map::TempRocksDB::new();
+                let map_set = map_set::TempRocksDB::new();
+                let db: deletion::DB<VecU64x4TempRocksDB> = deletion::DB::with_stores(dimensions, tolerance, id_map, map_set);
+                Box::new(db)
+            },
+            StorageBackend::RocksDB(ref path) => {
+                let mut id_map_path = path.clone();
+                id_map_path.push("id_map");
+                let mut map_set_path = PathBuf::from(path);
+                map_set_path.push("map_set");
+
+                let id_map = id_map::RocksDB::new(id_map_path.to_str().unwrap());
+                let map_set = map_set::RocksDB::new(map_set_path.to_str().unwrap());
+                let db: deletion::DB<VecU64x4RocksDB> = deletion::DB::with_stores(dimensions, tolerance, id_map, map_set);
+                Box::new(db)
+            },
+        }
+    }
+}
+
+impl Factory<[u64; 4]> for [u64; 4] {
+    fn build(dimensions: usize, tolerance: usize, backend: StorageBackend) -> Box<Database<[u64; 4]>> {
+        let partitions = (tolerance + 3) / 2;
+        let partition_bits = Ratio::new_raw(dimensions, partitions).ceil().to_integer();
+
+        match (partition_bits, backend) {
+            (b, StorageBackend::InMemory) if b <= 8 => {
+                let db: substitution::DB<U64x4wU8InMemory> = substitution::DB::new(dimensions, tolerance);
+                Box::new(db)
+            },
+            (b, StorageBackend::InMemory) if b <= 16 => {
+                let db: substitution::DB<U64x4wU16InMemory> = substitution::DB::new(dimensions, tolerance);
+                Box::new(db)
+            },
+            (b, StorageBackend::InMemory) if b <= 32 => {
+                let db: substitution::DB<U64x4wU32InMemory> = substitution::DB::new(dimensions, tolerance);
+                Box::new(db)
+            },
+            (b, StorageBackend::InMemory) if b <= 64 => {
+                let db: substitution::DB<U64x4wU64InMemory> = substitution::DB::new(dimensions, tolerance);
+                Box::new(db)
+            },
+            (b, StorageBackend::InMemory) if b <= 128 => {
+                let db: substitution::DB<U64x4wU64x2InMemory> = substitution::DB::new(dimensions, tolerance);
+                Box::new(db)
+            },
+            (b, StorageBackend::InMemory) if b <= 256 => {
+                let db: substitution::DB<U64x4wU64x2InMemory> = substitution::DB::new(dimensions, tolerance);
+                Box::new(db)
+            },
+            (b, StorageBackend::TempRocksDB) if b <= 8 => {
+                let id_map = id_map::TempRocksDB::new();
+                let map_set = map_set::TempRocksDB::new();
+                let db: substitution::DB<U64x4wU8TempRocksDB> = substitution::DB::with_stores(dimensions, tolerance, id_map, map_set);
+                Box::new(db)
+            },
+            (b, StorageBackend::TempRocksDB) if b <= 16 => {
+                let id_map = id_map::TempRocksDB::new();
+                let map_set = map_set::TempRocksDB::new();
+                let db: substitution::DB<U64x4wU16TempRocksDB> = substitution::DB::with_stores(dimensions, tolerance, id_map, map_set);
+                Box::new(db)
+            },
+            (b, StorageBackend::TempRocksDB) if b <= 32 => {
+                let id_map = id_map::TempRocksDB::new();
+                let map_set = map_set::TempRocksDB::new();
+                let db: substitution::DB<U64x4wU32TempRocksDB> = substitution::DB::with_stores(dimensions, tolerance, id_map, map_set);
+                Box::new(db)
+            },
+            (b, StorageBackend::TempRocksDB) if b <= 64 => {
+                let id_map = id_map::TempRocksDB::new();
+                let map_set = map_set::TempRocksDB::new();
+                let db: substitution::DB<U64x4wU64TempRocksDB> = substitution::DB::with_stores(dimensions, tolerance, id_map, map_set);
+                Box::new(db)
+            },
+            (b, StorageBackend::TempRocksDB) if b <= 128 => {
+                let id_map = id_map::TempRocksDB::new();
+                let map_set = map_set::TempRocksDB::new();
+                let db: substitution::DB<U64x4wU64x2TempRocksDB> = substitution::DB::with_stores(dimensions, tolerance, id_map, map_set);
+                Box::new(db)
+            },
+            (b, StorageBackend::TempRocksDB) if b <= 256 => {
+                let id_map = id_map::TempRocksDB::new();
+                let map_set = map_set::TempRocksDB::new();
+                let db: substitution::DB<U64x4wU64x4TempRocksDB> = substitution::DB::with_stores(dimensions, tolerance, id_map, map_set);
+                Box::new(db)
+            },
+            (b, StorageBackend::RocksDB(ref path)) if b <= 8 => {
+                let mut id_map_path = path.clone();
+                id_map_path.push("id_map");
+                let mut map_set_path = path.clone();
+                map_set_path.push("map_set");
+
+                let id_map = id_map::RocksDB::new(id_map_path.to_str().unwrap());
+                let map_set = map_set::RocksDB::new(map_set_path.to_str().unwrap());
+                let db: substitution::DB<U64x4wU8RocksDB> = substitution::DB::with_stores(dimensions, tolerance, id_map, map_set);
+                Box::new(db)
+            },
+            (b, StorageBackend::RocksDB(ref path)) if b <= 16 => {
+                let mut id_map_path = path.clone();
+                id_map_path.push("id_map");
+                let mut map_set_path = path.clone();
+                map_set_path.push("map_set");
+
+                let id_map = id_map::RocksDB::new(id_map_path.to_str().unwrap());
+                let map_set = map_set::RocksDB::new(map_set_path.to_str().unwrap());
+                let db: substitution::DB<U64x4wU16RocksDB> = substitution::DB::with_stores(dimensions, tolerance, id_map, map_set);
+                Box::new(db)
+            },
+            (b, StorageBackend::RocksDB(ref path)) if b <= 32 => {
+                let mut id_map_path = path.clone();
+                id_map_path.push("id_map");
+                let mut map_set_path = PathBuf::from(path);
+                map_set_path.push("map_set");
+
+                let id_map = id_map::RocksDB::new(id_map_path.to_str().unwrap());
+                let map_set = map_set::RocksDB::new(map_set_path.to_str().unwrap());
+                let db: substitution::DB<U64x4wU32RocksDB> = substitution::DB::with_stores(dimensions, tolerance, id_map, map_set);
+                Box::new(db)
+            },
+            (b, StorageBackend::RocksDB(ref path)) if b <= 64 => {
+                let mut id_map_path = path.clone();
+                id_map_path.push("id_map");
+                let mut map_set_path = PathBuf::from(path);
+                map_set_path.push("map_set");
+
+                let id_map = id_map::RocksDB::new(id_map_path.to_str().unwrap());
+                let map_set = map_set::RocksDB::new(map_set_path.to_str().unwrap());
+                let db: substitution::DB<U64x4wU64RocksDB> = substitution::DB::with_stores(dimensions, tolerance, id_map, map_set);
+                Box::new(db)
+            },
+            (b, StorageBackend::RocksDB(ref path)) if b <= 128 => {
+                let mut id_map_path = path.clone();
+                id_map_path.push("id_map");
+                let mut map_set_path = PathBuf::from(path);
+                map_set_path.push("map_set");
+
+                let id_map = id_map::RocksDB::new(id_map_path.to_str().unwrap());
+                let map_set = map_set::RocksDB::new(map_set_path.to_str().unwrap());
+                let db: substitution::DB<U64x4wU64x2RocksDB> = substitution::DB::with_stores(dimensions, tolerance, id_map, map_set);
+                Box::new(db)
+            },
+            (b, StorageBackend::RocksDB(ref path)) if b <= 256 => {
+                let mut id_map_path = path.clone();
+                id_map_path.push("id_map");
+                let mut map_set_path = PathBuf::from(path);
+                map_set_path.push("map_set");
+
+                let id_map = id_map::RocksDB::new(id_map_path.to_str().unwrap());
+                let map_set = map_set::RocksDB::new(map_set_path.to_str().unwrap());
+                let db: substitution::DB<U64x4wU64x4RocksDB> = substitution::DB::with_stores(dimensions, tolerance, id_map, map_set);
+                Box::new(db)
+            },
+            _ => panic!("Unsupported tolerance"),
+        }
+    }
+}
+
+impl Factory<[u64; 2]> for [u64; 2] {
+    fn build(dimensions: usize, tolerance: usize, backend: StorageBackend) -> Box<Database<[u64; 2]>> {
+        let partitions = (tolerance + 3) / 2;
+        let partition_bits = Ratio::new_raw(dimensions, partitions).ceil().to_integer();
+
+        match (partition_bits, backend) {
+            (b, StorageBackend::InMemory) if b <= 8 => {
+                let db: substitution::DB<U64x2wU8InMemory> = substitution::DB::new(dimensions, tolerance);
+                Box::new(db)
+            },
+            (b, StorageBackend::InMemory) if b <= 16 => {
+                let db: substitution::DB<U64x2wU16InMemory> = substitution::DB::new(dimensions, tolerance);
+                Box::new(db)
+            },
+            (b, StorageBackend::InMemory) if b <= 32 => {
+                let db: substitution::DB<U64x2wU32InMemory> = substitution::DB::new(dimensions, tolerance);
+                Box::new(db)
+            },
+            (b, StorageBackend::InMemory) if b <= 64 => {
+                let db: substitution::DB<U64x2wU64InMemory> = substitution::DB::new(dimensions, tolerance);
+                Box::new(db)
+            },
+            (b, StorageBackend::InMemory) if b <= 128 => {
+                let db: substitution::DB<U64x2wU64x2InMemory> = substitution::DB::new(dimensions, tolerance);
+                Box::new(db)
+            },
+            (b, StorageBackend::TempRocksDB) if b <= 8 => {
+                let id_map = id_map::TempRocksDB::new();
+                let map_set = map_set::TempRocksDB::new();
+                let db: substitution::DB<U64x2wU8TempRocksDB> = substitution::DB::with_stores(dimensions, tolerance, id_map, map_set);
+                Box::new(db)
+            },
+            (b, StorageBackend::TempRocksDB) if b <= 16 => {
+                let id_map = id_map::TempRocksDB::new();
+                let map_set = map_set::TempRocksDB::new();
+                let db: substitution::DB<U64x2wU16TempRocksDB> = substitution::DB::with_stores(dimensions, tolerance, id_map, map_set);
+                Box::new(db)
+            },
+            (b, StorageBackend::TempRocksDB) if b <= 32 => {
+                let id_map = id_map::TempRocksDB::new();
+                let map_set = map_set::TempRocksDB::new();
+                let db: substitution::DB<U64x2wU32TempRocksDB> = substitution::DB::with_stores(dimensions, tolerance, id_map, map_set);
+                Box::new(db)
+            },
+            (b, StorageBackend::TempRocksDB) if b <= 64 => {
+                let id_map = id_map::TempRocksDB::new();
+                let map_set = map_set::TempRocksDB::new();
+                let db: substitution::DB<U64x2wU64TempRocksDB> = substitution::DB::with_stores(dimensions, tolerance, id_map, map_set);
+                Box::new(db)
+            },
+            (b, StorageBackend::TempRocksDB) if b <= 128 => {
+                let id_map = id_map::TempRocksDB::new();
+                let map_set = map_set::TempRocksDB::new();
+                let db: substitution::DB<U64x2wU64x2TempRocksDB> = substitution::DB::with_stores(dimensions, tolerance, id_map, map_set);
+                Box::new(db)
+            },
+            (b, StorageBackend::RocksDB(ref path)) if b <= 8 => {
+                let mut id_map_path = path.clone();
+                id_map_path.push("id_map");
+                let mut map_set_path = path.clone();
+                map_set_path.push("map_set");
+
+                let id_map = id_map::RocksDB::new(id_map_path.to_str().unwrap());
+                let map_set = map_set::RocksDB::new(map_set_path.to_str().unwrap());
+                let db: substitution::DB<U64x2wU8RocksDB> = substitution::DB::with_stores(dimensions, tolerance, id_map, map_set);
+                Box::new(db)
+            },
+            (b, StorageBackend::RocksDB(ref path)) if b <= 16 => {
+                let mut id_map_path = path.clone();
+                id_map_path.push("id_map");
+                let mut map_set_path = path.clone();
+                map_set_path.push("map_set");
+
+                let id_map = id_map::RocksDB::new(id_map_path.to_str().unwrap());
+                let map_set = map_set::RocksDB::new(map_set_path.to_str().unwrap());
+                let db: substitution::DB<U64x2wU16RocksDB> = substitution::DB::with_stores(dimensions, tolerance, id_map, map_set);
+                Box::new(db)
+            },
+            (b, StorageBackend::RocksDB(ref path)) if b <= 32 => {
+                let mut id_map_path = path.clone();
+                id_map_path.push("id_map");
+                let mut map_set_path = PathBuf::from(path);
+                map_set_path.push("map_set");
+
+                let id_map = id_map::RocksDB::new(id_map_path.to_str().unwrap());
+                let map_set = map_set::RocksDB::new(map_set_path.to_str().unwrap());
+                let db: substitution::DB<U64x2wU32RocksDB> = substitution::DB::with_stores(dimensions, tolerance, id_map, map_set);
+                Box::new(db)
+            },
+            (b, StorageBackend::RocksDB(ref path)) if b <= 64 => {
+                let mut id_map_path = path.clone();
+                id_map_path.push("id_map");
+                let mut map_set_path = PathBuf::from(path);
+                map_set_path.push("map_set");
+
+                let id_map = id_map::RocksDB::new(id_map_path.to_str().unwrap());
+                let map_set = map_set::RocksDB::new(map_set_path.to_str().unwrap());
+                let db: substitution::DB<U64x2wU64RocksDB> = substitution::DB::with_stores(dimensions, tolerance, id_map, map_set);
+                Box::new(db)
+            },
+            (b, StorageBackend::RocksDB(ref path)) if b <= 128 => {
+                let mut id_map_path = path.clone();
+                id_map_path.push("id_map");
+                let mut map_set_path = PathBuf::from(path);
+                map_set_path.push("map_set");
+
+                let id_map = id_map::RocksDB::new(id_map_path.to_str().unwrap());
+                let map_set = map_set::RocksDB::new(map_set_path.to_str().unwrap());
+                let db: substitution::DB<U64x2wU64x2RocksDB> = substitution::DB::with_stores(dimensions, tolerance, id_map, map_set);
+                Box::new(db)
+            },
+            _ => panic!("Unsupported tolerance"),
+        }
+    }
+}
+
+impl Factory<u64> for u64 {
+    fn build(dimensions: usize, tolerance: usize, backend: StorageBackend) -> Box<Database<u64>> {
+        let partitions = (tolerance + 3) / 2;
+        let partition_bits = Ratio::new_raw(dimensions, partitions).ceil().to_integer();
+
+        match (partition_bits, backend) {
+            (b, StorageBackend::InMemory) if b <= 8 => {
+                let db: substitution::DB<U64wU8InMemory> = substitution::DB::new(dimensions, tolerance);
+                Box::new(db)
+            },
+            (b, StorageBackend::InMemory) if b <= 16 => {
+                let db: substitution::DB<U64wU16InMemory> = substitution::DB::new(dimensions, tolerance);
+                Box::new(db)
+            },
+            (b, StorageBackend::InMemory) if b <= 32 => {
+                let db: substitution::DB<U64wU32InMemory> = substitution::DB::new(dimensions, tolerance);
+                Box::new(db)
+            },
+            (b, StorageBackend::InMemory) if b <= 64 => {
+                let db: substitution::DB<U64wU64InMemory> = substitution::DB::new(dimensions, tolerance);
+                Box::new(db)
+            },
+            (b, StorageBackend::TempRocksDB) if b <= 8 => {
+                let id_map = id_map::Echo::new();
+                let map_set = map_set::TempRocksDB::new();
+                let db: substitution::DB<U64wU8TempRocksDB> = substitution::DB::with_stores(dimensions, tolerance, id_map, map_set);
+                Box::new(db)
+            },
+            (b, StorageBackend::TempRocksDB) if b <= 16 => {
+                let id_map = id_map::Echo::new();
+                let map_set = map_set::TempRocksDB::new();
+                let db: substitution::DB<U64wU16TempRocksDB> = substitution::DB::with_stores(dimensions, tolerance, id_map, map_set);
+                Box::new(db)
+            },
+            (b, StorageBackend::TempRocksDB) if b <= 32 => {
+                let id_map = id_map::Echo::new();
+                let map_set = map_set::TempRocksDB::new();
+                let db: substitution::DB<U64wU32TempRocksDB> = substitution::DB::with_stores(dimensions, tolerance, id_map, map_set);
+                Box::new(db)
+            },
+            (b, StorageBackend::TempRocksDB) if b <= 64 => {
+                let id_map = id_map::Echo::new();
+                let map_set = map_set::TempRocksDB::new();
+                let db: substitution::DB<U64wU64TempRocksDB> = substitution::DB::with_stores(dimensions, tolerance, id_map, map_set);
+                Box::new(db)
+            },
+            (b, StorageBackend::RocksDB(ref path)) if b <= 8 => {
+                let mut map_set_path = path.clone();
+                map_set_path.push("map_set");
+
+                let id_map = id_map::Echo::new();
+                let map_set = map_set::RocksDB::new(map_set_path.to_str().unwrap());
+                let db: substitution::DB<U64wU8RocksDB> = substitution::DB::with_stores(dimensions, tolerance, id_map, map_set);
+                Box::new(db)
+            },
+            (b, StorageBackend::RocksDB(ref path)) if b <= 16 => {
+                let mut map_set_path = path.clone();
+                map_set_path.push("map_set");
+
+                let id_map = id_map::Echo::new();
+                let map_set = map_set::RocksDB::new(map_set_path.to_str().unwrap());
+                let db: substitution::DB<U64wU16RocksDB> = substitution::DB::with_stores(dimensions, tolerance, id_map, map_set);
+                Box::new(db)
+            },
+            (b, StorageBackend::RocksDB(ref path)) if b <= 32 => {
+                let mut map_set_path = PathBuf::from(path);
+                map_set_path.push("map_set");
+
+                let id_map = id_map::Echo::new();
+                let map_set = map_set::RocksDB::new(map_set_path.to_str().unwrap());
+                let db: substitution::DB<U64wU32RocksDB> = substitution::DB::with_stores(dimensions, tolerance, id_map, map_set);
+                Box::new(db)
+            },
+            (b, StorageBackend::RocksDB(ref path)) if b <= 64 => {
+                let mut map_set_path = PathBuf::from(path);
+                map_set_path.push("map_set");
+
+                let id_map = id_map::Echo::new();
+                let map_set = map_set::RocksDB::new(map_set_path.to_str().unwrap());
+                let db: substitution::DB<U64wU64RocksDB> = substitution::DB::with_stores(dimensions, tolerance, id_map, map_set);
+                Box::new(db)
+            },
+            _ => panic!("Unsupported tolerance"),
+        }
+    }
+}
+
+impl Factory<u32> for u32 {
+    fn build(dimensions: usize, tolerance: usize, backend: StorageBackend) -> Box<Database<u32>> {
+        let partitions = (tolerance + 3) / 2;
+        let partition_bits = Ratio::new_raw(dimensions, partitions).ceil().to_integer();
+
+        match (partition_bits, backend) {
+            (b, StorageBackend::InMemory) if b <= 8 => {
+                let db: substitution::DB<U32wU8InMemory> = substitution::DB::new(dimensions, tolerance);
+                Box::new(db)
+            },
+            (b, StorageBackend::InMemory) if b <= 16 => {
+                let db: substitution::DB<U32wU16InMemory> = substitution::DB::new(dimensions, tolerance);
+                Box::new(db)
+            },
+            (b, StorageBackend::InMemory) if b <= 32 => {
+                let db: substitution::DB<U32wU32InMemory> = substitution::DB::new(dimensions, tolerance);
+                Box::new(db)
+            },
+            (b, StorageBackend::TempRocksDB) if b <= 8 => {
+                let id_map = id_map::Echo::new();
+                let map_set = map_set::TempRocksDB::new();
+                let db: substitution::DB<U32wU8TempRocksDB> = substitution::DB::with_stores(dimensions, tolerance, id_map, map_set);
+                Box::new(db)
+            },
+            (b, StorageBackend::TempRocksDB) if b <= 16 => {
+                let id_map = id_map::Echo::new();
+                let map_set = map_set::TempRocksDB::new();
+                let db: substitution::DB<U32wU16TempRocksDB> = substitution::DB::with_stores(dimensions, tolerance, id_map, map_set);
+                Box::new(db)
+            },
+            (b, StorageBackend::TempRocksDB) if b <= 32 => {
+                let id_map = id_map::Echo::new();
+                let map_set = map_set::TempRocksDB::new();
+                let db: substitution::DB<U32wU32TempRocksDB> = substitution::DB::with_stores(dimensions, tolerance, id_map, map_set);
+                Box::new(db)
+            },
+            (b, StorageBackend::RocksDB(ref path)) if b <= 8 => {
+                let mut map_set_path = path.clone();
+                map_set_path.push("map_set");
+
+                let id_map = id_map::Echo::new();
+                let map_set = map_set::RocksDB::new(map_set_path.to_str().unwrap());
+                let db: substitution::DB<U32wU8RocksDB> = substitution::DB::with_stores(dimensions, tolerance, id_map, map_set);
+                Box::new(db)
+            },
+            (b, StorageBackend::RocksDB(ref path)) if b <= 16 => {
+                let mut map_set_path = path.clone();
+                map_set_path.push("map_set");
+
+                let id_map = id_map::Echo::new();
+                let map_set = map_set::RocksDB::new(map_set_path.to_str().unwrap());
+                let db: substitution::DB<U32wU16RocksDB> = substitution::DB::with_stores(dimensions, tolerance, id_map, map_set);
+                Box::new(db)
+            },
+            (b, StorageBackend::RocksDB(ref path)) if b <= 32 => {
+                let mut map_set_path = PathBuf::from(path);
+                map_set_path.push("map_set");
+
+                let id_map = id_map::Echo::new();
+                let map_set = map_set::RocksDB::new(map_set_path.to_str().unwrap());
+                let db: substitution::DB<U32wU32RocksDB> = substitution::DB::with_stores(dimensions, tolerance, id_map, map_set);
+                Box::new(db)
+            },
+            _ => panic!("Unsupported tolerance"),
+        }
+    }
+}
+
+impl Factory<u16> for u16 {
+    fn build(dimensions: usize, tolerance: usize, backend: StorageBackend) -> Box<Database<u16>> {
+        let partitions = (tolerance + 3) / 2;
+        let partition_bits = Ratio::new_raw(dimensions, partitions).ceil().to_integer();
+
+        match (partition_bits, backend) {
+            (b, StorageBackend::InMemory) if b <= 8 => {
+                let db: substitution::DB<U16wU8InMemory> = substitution::DB::new(dimensions, tolerance);
+                Box::new(db)
+            },
+            (b, StorageBackend::InMemory) if b <= 16 => {
+                let db: substitution::DB<U16wU16InMemory> = substitution::DB::new(dimensions, tolerance);
+                Box::new(db)
+            },
+            (b, StorageBackend::TempRocksDB) if b <= 8 => {
+                let id_map = id_map::Echo::new();
+                let map_set = map_set::TempRocksDB::new();
+                let db: substitution::DB<U16wU8TempRocksDB> = substitution::DB::with_stores(dimensions, tolerance, id_map, map_set);
+                Box::new(db)
+            },
+            (b, StorageBackend::TempRocksDB) if b <= 16 => {
+                let id_map = id_map::Echo::new();
+                let map_set = map_set::TempRocksDB::new();
+                let db: substitution::DB<U16wU16TempRocksDB> = substitution::DB::with_stores(dimensions, tolerance, id_map, map_set);
+                Box::new(db)
+            },
+            (b, StorageBackend::RocksDB(ref path)) if b <= 8 => {
+                let mut map_set_path = path.clone();
+                map_set_path.push("map_set");
+
+                let id_map = id_map::Echo::new();
+                let map_set = map_set::RocksDB::new(map_set_path.to_str().unwrap());
+                let db: substitution::DB<U16wU8RocksDB> = substitution::DB::with_stores(dimensions, tolerance, id_map, map_set);
+                Box::new(db)
+            },
+            (b, StorageBackend::RocksDB(ref path)) if b <= 16 => {
+                let mut map_set_path = path.clone();
+                map_set_path.push("map_set");
+
+                let id_map = id_map::Echo::new();
+                let map_set = map_set::RocksDB::new(map_set_path.to_str().unwrap());
+                let db: substitution::DB<U16wU16RocksDB> = substitution::DB::with_stores(dimensions, tolerance, id_map, map_set);
+                Box::new(db)
+            },
+            _ => panic!("Unsupported tolerance"),
+        }
+    }
+}
+
+impl Factory<u8> for u8 {
+    fn build(dimensions: usize, tolerance: usize, backend: StorageBackend) -> Box<Database<u8>> {
+        let partitions = (tolerance + 3) / 2;
+        let partition_bits = Ratio::new_raw(dimensions, partitions).ceil().to_integer();
+
+        match (partition_bits, backend) {
+            (b, StorageBackend::InMemory) if b <= 8 => {
+                let db: substitution::DB<U8wU8InMemory> = substitution::DB::new(dimensions, tolerance);
+                Box::new(db)
+            },
+            (b, StorageBackend::TempRocksDB) if b <= 8 => {
+                let id_map = id_map::Echo::new();
+                let map_set = map_set::TempRocksDB::new();
+                let db: substitution::DB<U8wU8TempRocksDB> = substitution::DB::with_stores(dimensions, tolerance, id_map, map_set);
+                Box::new(db)
+            },
+            (b, StorageBackend::RocksDB(ref path)) if b <= 8 => {
+                let mut map_set_path = path.clone();
+                map_set_path.push("map_set");
+
+                let id_map = id_map::Echo::new();
+                let map_set = map_set::RocksDB::new(map_set_path.to_str().unwrap());
+                let db: substitution::DB<U8wU8RocksDB> = substitution::DB::with_stores(dimensions, tolerance, id_map, map_set);
+                Box::new(db)
+            },
+            _ => panic!("Unsupported tolerance"),
+        }
+    }
+}

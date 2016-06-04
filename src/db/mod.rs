@@ -74,6 +74,7 @@ mod result_accumulator;
 
 use std::collections::HashSet;
 use std::hash::Hash;
+use std::path::PathBuf;
 
 use db::hamming::Hamming;
 use db::window::{Windowable};
@@ -107,4 +108,16 @@ pub trait Database<T>: Sync + Send {
     fn get(&self, key: &T) -> Option<HashSet<T>>;
     fn insert(&mut self, key: T) -> bool;
     fn remove(&mut self, key: &T) -> bool;
+}
+
+pub enum StorageBackend {
+    InMemory,
+    TempRocksDB,
+    RocksDB(PathBuf),
+}
+
+/// Constructor for databases over common types
+///
+pub trait Factory<T>: Sync + Send {
+    fn build(dimensions: usize, tolerance: usize, backend: StorageBackend) -> Box<Database<T>>;
 }
