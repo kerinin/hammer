@@ -15,10 +15,10 @@ use rustc_serialize::base64::{FromBase64, ToBase64};
 use rustc_serialize::{Encodable, Decodable};
 use rustc_serialize::json::ToJson;
 
-use hammer::db::{BinaryDB, StorageBackend};
-use hammer::db::Database;
+use hammer::db::{Database, Factory, StorageBackend};
 use hammer::db::id_map::IDMap;
 use hammer::db::map_set::MapSet;
+use hammer::db::typemap::*;
 
 use http::{Config, ConfigKey, B32, B64, B128, B256, decode_body, BASE64_CONFIG, AddResult, QueryResult, DeleteResult};
 
@@ -43,6 +43,7 @@ pub fn add(req: &mut Request) -> IronResult<Response> {
     let config_mx = req.get::<State<ConfigKey>>().unwrap();
 
     match bits {
+        /*
         32 => {
             let dbmap_mx = req.get::<State<B32>>().unwrap();
             do_add(req_body, bits, tolerance, namespace, config_mx, dbmap_mx)
@@ -59,12 +60,14 @@ pub fn add(req: &mut Request) -> IronResult<Response> {
             let dbmap_mx = req.get::<State<B256>>().unwrap();
             do_add(req_body, bits, tolerance, namespace, config_mx, dbmap_mx)
         },
+        */
         _ => Ok(Response::with((status::BadRequest, "Unsuported bitsize"))),
     }
 }
 
+/*
 fn do_add<T>(req_body: Vec<String>, bits: usize, tolerance: usize, namespace: String, config_mx: Arc<RwLock<Config>>, dbmap_mx: Arc<RwLock<HashMap<(usize, String), Arc<RwLock<Box<Database<T>>>>>>>) -> IronResult<Response> where
-T: Clone + BinaryDB + Decodable,
+T: Clone + Decodable,
 {
     let mut results = Vec::with_capacity(req_body.len());
 
@@ -83,12 +86,12 @@ T: Clone + BinaryDB + Decodable,
                     let mut value_store_path = dir.clone();
                     value_store_path.push(format!("b{:03}_{:03}_{:}", bits, tolerance, namespace));
 
-                    StorageBackend::RocksDB(value_store_path.to_str().unwrap().to_string())
+                    StorageBackend::RocksDB(value_store_path)
                 },
                 None => StorageBackend::InMemory
             };
 
-            let db = BinaryDB::new(tolerance, backend);
+            let db = Factory::build(bits, tolerance, backend);
 
             let mut dbmap = dbmap_mx.write().unwrap();
             dbmap.insert((tolerance.clone(), namespace.clone()), Arc::new(RwLock::new(db)));
@@ -308,3 +311,4 @@ T: Eq + Hash + Clone + BinaryDB + Encodable + Decodable,
     let response_body = json::encode(&results.to_json()).unwrap();
     Ok(Response::with((status::Ok, response_body)))
 }
+*/

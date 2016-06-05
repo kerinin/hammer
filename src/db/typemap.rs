@@ -229,7 +229,7 @@ substitution_map_rocksdb!(U64x2wU32RocksDB, [u64; 2], u32);
 substitution_map_rocksdb!(U64x2wU64RocksDB, [u64; 2], u64);
 substitution_map_rocksdb!(U64x2wU64x2RocksDB, [u64; 2], [u64; 2]);
 
-impl Factory<Vec<[u64; 4]>> for Vec<[u64; 4]> {
+impl Factory for Vec<[u64; 4]> {
     fn build(dimensions: usize, tolerance: usize, backend: StorageBackend) -> Box<Database<Vec<[u64; 4]>>> {
         match backend {
             StorageBackend::InMemory => {
@@ -257,7 +257,7 @@ impl Factory<Vec<[u64; 4]>> for Vec<[u64; 4]> {
     }
 }
 
-impl Factory<[u64; 4]> for [u64; 4] {
+impl Factory for [u64; 4] {
     fn build(dimensions: usize, tolerance: usize, backend: StorageBackend) -> Box<Database<[u64; 4]>> {
         let partitions = (tolerance + 3) / 2;
         let partition_bits = Ratio::new_raw(dimensions, partitions).ceil().to_integer();
@@ -394,7 +394,7 @@ impl Factory<[u64; 4]> for [u64; 4] {
     }
 }
 
-impl Factory<[u64; 2]> for [u64; 2] {
+impl Factory for [u64; 2] {
     fn build(dimensions: usize, tolerance: usize, backend: StorageBackend) -> Box<Database<[u64; 2]>> {
         let partitions = (tolerance + 3) / 2;
         let partition_bits = Ratio::new_raw(dimensions, partitions).ceil().to_integer();
@@ -510,7 +510,7 @@ impl Factory<[u64; 2]> for [u64; 2] {
     }
 }
 
-impl Factory<u64> for u64 {
+impl Factory for u64 {
     fn build(dimensions: usize, tolerance: usize, backend: StorageBackend) -> Box<Database<u64>> {
         let partitions = (tolerance + 3) / 2;
         let partition_bits = Ratio::new_raw(dimensions, partitions).ceil().to_integer();
@@ -597,7 +597,7 @@ impl Factory<u64> for u64 {
     }
 }
 
-impl Factory<u32> for u32 {
+impl Factory for u32 {
     fn build(dimensions: usize, tolerance: usize, backend: StorageBackend) -> Box<Database<u32>> {
         let partitions = (tolerance + 3) / 2;
         let partition_bits = Ratio::new_raw(dimensions, partitions).ceil().to_integer();
@@ -665,7 +665,7 @@ impl Factory<u32> for u32 {
     }
 }
 
-impl Factory<u16> for u16 {
+impl Factory for u16 {
     fn build(dimensions: usize, tolerance: usize, backend: StorageBackend) -> Box<Database<u16>> {
         let partitions = (tolerance + 3) / 2;
         let partition_bits = Ratio::new_raw(dimensions, partitions).ceil().to_integer();
@@ -714,7 +714,7 @@ impl Factory<u16> for u16 {
     }
 }
 
-impl Factory<u8> for u8 {
+impl Factory for u8 {
     fn build(dimensions: usize, tolerance: usize, backend: StorageBackend) -> Box<Database<u8>> {
         let partitions = (tolerance + 3) / 2;
         let partition_bits = Ratio::new_raw(dimensions, partitions).ceil().to_integer();

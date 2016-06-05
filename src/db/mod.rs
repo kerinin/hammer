@@ -118,6 +118,6 @@ pub enum StorageBackend {
 
 /// Constructor for databases over common types
 ///
-pub trait Factory<T>: Sync + Send {
-    fn build(dimensions: usize, tolerance: usize, backend: StorageBackend) -> Box<Database<T>>;
+pub trait Factory {
+    fn build(dimensions: usize, tolerance: usize, backend: StorageBackend) -> Box<Database<Self>>;
 }
