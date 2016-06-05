@@ -52,7 +52,6 @@ pub fn add(req: &mut Request) -> IronResult<Response> {
             let dbmap_mx = req.get::<State<V32>>().unwrap();
             do_add(req_body, bits, dimensions, tolerance, namespace, config_mx, dbmap_mx)
         },
-        /*
         64 => {
             let dbmap_mx = req.get::<State<V64>>().unwrap();
             do_add(req_body, bits, dimensions, tolerance, namespace, config_mx, dbmap_mx)
@@ -65,7 +64,6 @@ pub fn add(req: &mut Request) -> IronResult<Response> {
             let dbmap_mx = req.get::<State<V256>>().unwrap();
             do_add(req_body, bits, dimensions, tolerance, namespace, config_mx, dbmap_mx)
         },
-        */
         _ => Ok(Response::with((status::BadRequest, "Unsuported bitsize"))),
     }
 }
@@ -154,7 +152,6 @@ Vec<T>: Factory,
     Ok(Response::with((status::Ok, response_body)))
 }
 
-/*
 pub fn query(req: &mut Request) -> IronResult<Response> {
     let req_body = try!(decode_body::<Vec<Vec<String>>>(req));
 
@@ -361,4 +358,3 @@ T: Eq + Hash + Clone + Encodable + Decodable,
     let response_body = json::encode(&results.to_json()).unwrap();
     Ok(Response::with((status::Ok, response_body)))
 }
-*/

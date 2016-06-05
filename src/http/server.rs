@@ -5,8 +5,6 @@ use iron::prelude::*;
 use router::Router;
 use persistent::State;
 
-use hammer::db::BinaryDB;
-
 use http::{Config, ConfigKey, B32, B64, B128, B256, V32, V64, V128, V256};
 use http::binary_handler;
 use http::vector_handler;

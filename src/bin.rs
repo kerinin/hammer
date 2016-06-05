@@ -43,5 +43,5 @@ pub fn main() {
         bind: args.flag_bind,
     };
 
-    // http::server::serve(config)
+    http::server::serve(config)
 }

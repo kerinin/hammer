@@ -1,4 +1,4 @@
-// pub mod server;
+pub mod server;
 pub mod binary_handler;
 pub mod vector_handler;
 
