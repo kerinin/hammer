@@ -257,6 +257,146 @@ impl Factory for Vec<[u64; 4]> {
     }
 }
 
+impl Factory for Vec<[u64; 2]> {
+    fn build(dimensions: usize, tolerance: usize, backend: StorageBackend) -> Box<Database<Vec<[u64; 2]>>> {
+        match backend {
+            StorageBackend::InMemory => {
+                let db: deletion::DB<VecU64x2InMemory> = deletion::DB::new(dimensions, tolerance);
+                Box::new(db)
+            },
+            StorageBackend::TempRocksDB => {
+                let id_map = id_map::TempRocksDB::new();
+                let map_set = map_set::TempRocksDB::new();
+                let db: deletion::DB<VecU64x2TempRocksDB> = deletion::DB::with_stores(dimensions, tolerance, id_map, map_set);
+                Box::new(db)
+            },
+            StorageBackend::RocksDB(ref path) => {
+                let mut id_map_path = path.clone();
+                id_map_path.push("id_map");
+                let mut map_set_path = PathBuf::from(path);
+                map_set_path.push("map_set");
+
+                let id_map = id_map::RocksDB::new(id_map_path.to_str().unwrap());
+                let map_set = map_set::RocksDB::new(map_set_path.to_str().unwrap());
+                let db: deletion::DB<VecU64x2RocksDB> = deletion::DB::with_stores(dimensions, tolerance, id_map, map_set);
+                Box::new(db)
+            },
+        }
+    }
+}
+
+impl Factory for Vec<u64> {
+    fn build(dimensions: usize, tolerance: usize, backend: StorageBackend) -> Box<Database<Vec<u64>>> {
+        match backend {
+            StorageBackend::InMemory => {
+                let db: deletion::DB<VecU64InMemory> = deletion::DB::new(dimensions, tolerance);
+                Box::new(db)
+            },
+            StorageBackend::TempRocksDB => {
+                let id_map = id_map::TempRocksDB::new();
+                let map_set = map_set::TempRocksDB::new();
+                let db: deletion::DB<VecU64TempRocksDB> = deletion::DB::with_stores(dimensions, tolerance, id_map, map_set);
+                Box::new(db)
+            },
+            StorageBackend::RocksDB(ref path) => {
+                let mut id_map_path = path.clone();
+                id_map_path.push("id_map");
+                let mut map_set_path = PathBuf::from(path);
+                map_set_path.push("map_set");
+
+                let id_map = id_map::RocksDB::new(id_map_path.to_str().unwrap());
+                let map_set = map_set::RocksDB::new(map_set_path.to_str().unwrap());
+                let db: deletion::DB<VecU64RocksDB> = deletion::DB::with_stores(dimensions, tolerance, id_map, map_set);
+                Box::new(db)
+            },
+        }
+    }
+}
+
+impl Factory for Vec<u32> {
+    fn build(dimensions: usize, tolerance: usize, backend: StorageBackend) -> Box<Database<Vec<u32>>> {
+        match backend {
+            StorageBackend::InMemory => {
+                let db: deletion::DB<VecU32InMemory> = deletion::DB::new(dimensions, tolerance);
+                Box::new(db)
+            },
+            StorageBackend::TempRocksDB => {
+                let id_map = id_map::TempRocksDB::new();
+                let map_set = map_set::TempRocksDB::new();
+                let db: deletion::DB<VecU32TempRocksDB> = deletion::DB::with_stores(dimensions, tolerance, id_map, map_set);
+                Box::new(db)
+            },
+            StorageBackend::RocksDB(ref path) => {
+                let mut id_map_path = path.clone();
+                id_map_path.push("id_map");
+                let mut map_set_path = PathBuf::from(path);
+                map_set_path.push("map_set");
+
+                let id_map = id_map::RocksDB::new(id_map_path.to_str().unwrap());
+                let map_set = map_set::RocksDB::new(map_set_path.to_str().unwrap());
+                let db: deletion::DB<VecU32RocksDB> = deletion::DB::with_stores(dimensions, tolerance, id_map, map_set);
+                Box::new(db)
+            },
+        }
+    }
+}
+
+impl Factory for Vec<u16> {
+    fn build(dimensions: usize, tolerance: usize, backend: StorageBackend) -> Box<Database<Vec<u16>>> {
+        match backend {
+            StorageBackend::InMemory => {
+                let db: deletion::DB<VecU16InMemory> = deletion::DB::new(dimensions, tolerance);
+                Box::new(db)
+            },
+            StorageBackend::TempRocksDB => {
+                let id_map = id_map::TempRocksDB::new();
+                let map_set = map_set::TempRocksDB::new();
+                let db: deletion::DB<VecU16TempRocksDB> = deletion::DB::with_stores(dimensions, tolerance, id_map, map_set);
+                Box::new(db)
+            },
+            StorageBackend::RocksDB(ref path) => {
+                let mut id_map_path = path.clone();
+                id_map_path.push("id_map");
+                let mut map_set_path = PathBuf::from(path);
+                map_set_path.push("map_set");
+
+                let id_map = id_map::RocksDB::new(id_map_path.to_str().unwrap());
+                let map_set = map_set::RocksDB::new(map_set_path.to_str().unwrap());
+                let db: deletion::DB<VecU16RocksDB> = deletion::DB::with_stores(dimensions, tolerance, id_map, map_set);
+                Box::new(db)
+            },
+        }
+    }
+}
+
+impl Factory for Vec<u8> {
+    fn build(dimensions: usize, tolerance: usize, backend: StorageBackend) -> Box<Database<Vec<u8>>> {
+        match backend {
+            StorageBackend::InMemory => {
+                let db: deletion::DB<VecU8InMemory> = deletion::DB::new(dimensions, tolerance);
+                Box::new(db)
+            },
+            StorageBackend::TempRocksDB => {
+                let id_map = id_map::TempRocksDB::new();
+                let map_set = map_set::TempRocksDB::new();
+                let db: deletion::DB<VecU8TempRocksDB> = deletion::DB::with_stores(dimensions, tolerance, id_map, map_set);
+                Box::new(db)
+            },
+            StorageBackend::RocksDB(ref path) => {
+                let mut id_map_path = path.clone();
+                id_map_path.push("id_map");
+                let mut map_set_path = PathBuf::from(path);
+                map_set_path.push("map_set");
+
+                let id_map = id_map::RocksDB::new(id_map_path.to_str().unwrap());
+                let map_set = map_set::RocksDB::new(map_set_path.to_str().unwrap());
+                let db: deletion::DB<VecU8RocksDB> = deletion::DB::with_stores(dimensions, tolerance, id_map, map_set);
+                Box::new(db)
+            },
+        }
+    }
+}
+
 impl Factory for [u64; 4] {
     fn build(dimensions: usize, tolerance: usize, backend: StorageBackend) -> Box<Database<[u64; 4]>> {
         let partitions = (tolerance + 3) / 2;

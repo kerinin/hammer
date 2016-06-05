@@ -43,7 +43,6 @@ pub fn add(req: &mut Request) -> IronResult<Response> {
     let config_mx = req.get::<State<ConfigKey>>().unwrap();
 
     match bits {
-        /*
         32 => {
             let dbmap_mx = req.get::<State<B32>>().unwrap();
             do_add(req_body, bits, tolerance, namespace, config_mx, dbmap_mx)
@@ -60,14 +59,12 @@ pub fn add(req: &mut Request) -> IronResult<Response> {
             let dbmap_mx = req.get::<State<B256>>().unwrap();
             do_add(req_body, bits, tolerance, namespace, config_mx, dbmap_mx)
         },
-        */
         _ => Ok(Response::with((status::BadRequest, "Unsuported bitsize"))),
     }
 }
 
-/*
 fn do_add<T>(req_body: Vec<String>, bits: usize, tolerance: usize, namespace: String, config_mx: Arc<RwLock<Config>>, dbmap_mx: Arc<RwLock<HashMap<(usize, String), Arc<RwLock<Box<Database<T>>>>>>>) -> IronResult<Response> where
-T: Clone + Decodable,
+T: Clone + Factory + Decodable,
 {
     let mut results = Vec::with_capacity(req_body.len());
 
@@ -178,7 +175,7 @@ pub fn query(req: &mut Request) -> IronResult<Response> {
 }
 
 fn do_query<T>(req_body: Vec<String>, tolerance: usize, namespace: String, dbmap_mx: Arc<RwLock<HashMap<(usize, String), Arc<RwLock<Box<Database<T>>>>>>>) -> IronResult<Response> where
-T: Eq + Hash + Clone + BinaryDB + Encodable + Decodable,
+T: Eq + Hash + Clone + Encodable + Decodable,
 {
     let mut results = Vec::with_capacity(req_body.len());
 
@@ -270,7 +267,7 @@ pub fn delete(req: &mut Request) -> IronResult<Response> {
 }
 
 fn do_delete<T>(req_body: Vec<String>, tolerance: usize, namespace: String, dbmap_mx: Arc<RwLock<HashMap<(usize, String), Arc<RwLock<Box<Database<T>>>>>>>) -> IronResult<Response> where
-T: Eq + Hash + Clone + BinaryDB + Encodable + Decodable,
+T: Eq + Hash + Clone + Encodable + Decodable,
 {
     let mut results = Vec::with_capacity(req_body.len());
 
@@ -311,4 +308,3 @@ T: Eq + Hash + Clone + BinaryDB + Encodable + Decodable,
     let response_body = json::encode(&results.to_json()).unwrap();
     Ok(Response::with((status::Ok, response_body)))
 }
-*/

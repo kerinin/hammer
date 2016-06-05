@@ -1,6 +1,6 @@
 // pub mod server;
 pub mod binary_handler;
-// pub mod vector_handler;
+pub mod vector_handler;
 
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
